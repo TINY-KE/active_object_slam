@@ -1,0 +1,24 @@
+<launch>
+<!--     <include file="$(find darknet_ros)/launch/darknet_ros.launch"/> -->
+<!-- launch-prefix="gdb -ex run - -args"   -->
+    <node pkg="active_eao_new"  type="active_rgbd"  name="active_rgbd"  output="screen"  launch-prefix="gdb -ex run --args"  >
+        <!-- <param name="sensor" value="MONO"/> -->
+        <param name="sensor" value="RGBD"/>
+        <param name="online" value="true" type="bool"/>
+        <!-- <param name="rosbag" value="false" type="bool"/> -->
+        <param name="rosbag" value="false" type="bool"/>
+        <!-- <param name="gravity_aixs" value="2" type="int"/> -->
+        <param name="gravity_aixs" value="3" type="int"/>
+
+
+        <!-- KINECT DK-->
+        <param name="rgb_topic" value="/rgb/image_raw" type="string"/>
+        <param name="depth_topic" value="/depth_to_rgb/image_raw" type="string"/>
+        <param name="bbox_topic" value="/darknet_ros/bounding_boxes" type="string"/>
+        <param name="WORK_SPACE_PATH" value="/home/zhjd/active_eao/src/active_eao/" type="string"/>
+        <param name="yamlfile" value="TUM3_ros.yaml" type="string"/>
+        <param name="method" value="None" type="string"/>    <!-- NA  IoU    NP EAO        None iForest LineAndiForest   -->
+        <!-- kinectdk_720.yaml -->
+    </node>
+
+</launch>

@@ -1,0 +1,567 @@
+/home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/ninja/linux/ninja -G Ninja -S /home/zhjd/active_eao/src/active_eao -B /home/zhjd/active_eao/src/active_eao/cmake-build-debug
+CMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Using flag -std=c++11.
+-- Found Boost: /usr/local/include (found version "1.65.1") found components: filesystem thread date_time iostreams serialization chrono system atomic regex 
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (eigen) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:142 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:627 (find_eigen)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:835 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Found Boost: /usr/include (found suitable version "1.65.1", minimum required is "1.40.0") found components: system filesystem thread date_time iostreams serialization chrono atomic regex 
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (openni)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:225 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:633 (find_openni)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (OpenNI2)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:270 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:635 (find_openni2)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (ensenso)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:302 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:637 (find_ensenso)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find ensenso (missing: ENSENSO_LIBRARY ENSENSO_INCLUDE_DIR) 
+** WARNING ** io features related to ensenso will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (DAVIDSDK)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:336 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:639 (find_davidSDK)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find DAVIDSDK (missing: DAVIDSDK_LIBRARY DAVIDSDK_INCLUDE_DIR) 
+** WARNING ** io features related to davidSDK will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (DSSDK) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:378 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:641 (find_dssdk)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find DSSDK (missing: _DSSDK_LIBRARIES) 
+** WARNING ** io features related to dssdk will be disabled
+** WARNING ** io features related to pcap will be disabled
+** WARNING ** io features related to png will be disabled
+-- The imported target "vtkRenderingPythonTkWidgets" references the file
+   "/usr/lib/x86_64-linux-gnu/libvtkRenderingPythonTkWidgets.so"
+but this file does not exist.  Possible reasons include:
+* The file was deleted, renamed, or moved to another location.
+* An install or uninstall procedure did not complete successfully.
+* The installation package was faulty and contained
+   "/usr/lib/cmake/vtk-6.3/VTKTargets.cmake"
+but not all the files it references.
+
+-- The imported target "vtk" references the file
+   "/usr/bin/vtk"
+but this file does not exist.  Possible reasons include:
+* The file was deleted, renamed, or moved to another location.
+* An install or uninstall procedure did not complete successfully.
+* The installation package was faulty and contained
+   "/usr/lib/cmake/vtk-6.3/VTKTargets.cmake"
+but not all the files it references.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (libusb-1.0)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:504 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:647 (find_libusb)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+** WARNING ** io features related to libusb-1.0 will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (Flann) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:459 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:629 (find_flann)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:835 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (Flann) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:459 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:629 (find_flann)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:835 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (openni)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:225 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:633 (find_openni)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (OpenNI2)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:270 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:635 (find_openni2)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (ensenso)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:302 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:637 (find_ensenso)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find ensenso (missing: ENSENSO_LIBRARY ENSENSO_INCLUDE_DIR) 
+** WARNING ** visualization features related to ensenso will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (DAVIDSDK)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:336 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:639 (find_davidSDK)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find DAVIDSDK (missing: DAVIDSDK_LIBRARY DAVIDSDK_INCLUDE_DIR) 
+** WARNING ** visualization features related to davidSDK will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (DSSDK) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:378 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:641 (find_dssdk)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find DSSDK (missing: _DSSDK_LIBRARIES) 
+** WARNING ** visualization features related to dssdk will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (RSSDK) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:418 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:643 (find_rssdk)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Could NOT find RSSDK (missing: _RSSDK_LIBRARIES) 
+** WARNING ** visualization features related to rssdk will be disabled
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (qhull) does
+  not match the name of the calling package (PCL).  This can lead to problems
+  in calling code that expects `find_package` result variables (e.g.,
+  `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:175 (find_package_handle_standard_args)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:631 (find_qhull)
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:832 (find_external_library)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_COMMON
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_COMMON)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_OCTREE
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_OCTREE)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_IO
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_IO)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_KDTREE
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_KDTREE)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_SEARCH
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_SEARCH)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_SAMPLE_CONSENSUS
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_SAMPLE_CONSENSUS) does not match the name of the calling package
+  (PCL).  This can lead to problems in calling code that expects
+  `find_package` result variables (e.g., `_FOUND`) to follow a certain
+  pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_FILTERS
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_FILTERS) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_2D
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_2D)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:899 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_GEOMETRY
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_GEOMETRY) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:899 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_FEATURES
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_FEATURES) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_ML
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_ML)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_SEGMENTATION
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_SEGMENTATION) does not match the name of the calling package (PCL).
+  This can lead to problems in calling code that expects `find_package`
+  result variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_VISUALIZATION
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_VISUALIZATION) does not match the name of the calling package (PCL).
+  This can lead to problems in calling code that expects `find_package`
+  result variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_SURFACE
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_SURFACE) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_REGISTRATION
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_REGISTRATION) does not match the name of the calling package (PCL).
+  This can lead to problems in calling code that expects `find_package`
+  result variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_KEYPOINTS
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_KEYPOINTS) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_TRACKING
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_TRACKING) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_RECOGNITION
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_RECOGNITION) does not match the name of the calling package (PCL).
+  This can lead to problems in calling code that expects `find_package`
+  result variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_STEREO
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_STEREO)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_OUTOFCORE
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args`
+  (PCL_OUTOFCORE) does not match the name of the calling package (PCL).  This
+  can lead to problems in calling code that expects `find_package` result
+  variables (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- looking for PCL_PEOPLE
+CMake Warning (dev) at /home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/FindPackageHandleStandardArgs.cmake:438 (message):
+  The package name passed to `find_package_handle_standard_args` (PCL_PEOPLE)
+  does not match the name of the calling package (PCL).  This can lead to
+  problems in calling code that expects `find_package` result variables
+  (e.g., `_FOUND`) to follow a certain pattern.
+Call Stack (most recent call first):
+  /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake:896 (find_package_handle_standard_args)
+  CMakeLists.txt:54 (find_package)
+This warning is for project developers.  Use -Wno-dev to suppress it.
+
+-- Using CATKIN_DEVEL_PREFIX: /home/zhjd/active_eao/src/active_eao/cmake-build-debug/devel
+-- Using CMAKE_PREFIX_PATH: /home/zhjd/active_eao/devel;/home/zhjd/workspace/cartographer_build/devel;/home/zhjd/workspace/kinect_dk/devel;/home/zhjd/ws_active/devel;/home/zhjd/ws_turtlebot_custom/devel;/opt/ros/melodic
+-- This workspace overlays: /home/zhjd/active_eao/devel;/home/zhjd/workspace/cartographer_build/devel;/home/zhjd/workspace/kinect_dk/devel;/home/zhjd/ws_active/devel;/home/zhjd/ws_turtlebot_custom/devel;/opt/ros/melodic
+-- Using PYTHON_EXECUTABLE: /usr/bin/python
+-- Using Debian Python package layout
+-- Using empy: /usr/bin/empy
+-- Using CATKIN_ENABLE_TESTING: ON
+-- Call enable_testing()
+-- Using CATKIN_TEST_RESULTS_DIR: /home/zhjd/active_eao/src/active_eao/cmake-build-debug/test_results
+-- Found gtest sources under '/usr/src/googletest': gtests will be built
+-- Found gmock sources under '/usr/src/googletest': gmock will be built
+CMake Deprecation Warning at /usr/src/googletest/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Deprecation Warning at /usr/src/googletest/googlemock/CMakeLists.txt:41 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+CMake Deprecation Warning at /usr/src/googletest/googletest/CMakeLists.txt:48 (cmake_minimum_required):
+  Compatibility with CMake < 2.8.12 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value or use a ...<max> suffix to tell
+  CMake that the project does not need compatibility with older versions.
+
+
+-- Using Python nosetests: /usr/bin/nosetests-2.7
+-- catkin 0.7.29
+-- BUILD_SHARED_LIBS is on
+-- Using these message generators: gencpp;geneus;genlisp;gennodejs;genpy
+-- Configuring done
+CMake Warning at CMakeLists.txt:93 (add_library):
+  Cannot generate a safe runtime search path for target active_eao_new_lib
+  because files in some directories may conflict with libraries in implicit
+  directories:
+
+    runtime library [libboost_system.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_regex.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_filesystem.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_program_options.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_system.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_thread.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_chrono.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_date_time.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_atomic.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+
+  Some of these libraries may not be found correctly.
+
+
+CMake Warning at CMakeLists.txt:134 (add_executable):
+  Cannot generate a safe runtime search path for target active_rgbd because
+  files in some directories may conflict with libraries in implicit
+  directories:
+
+    runtime library [libboost_system.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_regex.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_filesystem.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_program_options.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_system.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_thread.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_chrono.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_date_time.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_atomic.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+
+  Some of these libraries may not be found correctly.
+
+
+-- Generating done
+-- Build files have been written to: /home/zhjd/active_eao/src/active_eao/cmake-build-debug

@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: active_eao_new
+Description: Description of active_eao_new
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

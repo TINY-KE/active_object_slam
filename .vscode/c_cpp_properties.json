@@ -1,0 +1,34 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "${default}",
+                "limitSymbolsToIncludedHeaders": false
+            },
+            "includePath": [
+                "/opt/ros/melodic/include/**",
+                "/home/zhjd/ws_active/src/kinect/ORB_SLAM2/include/**",
+                "/home/zhjd/ws_active/src/actionlib_test/include/**",
+                "/home/zhjd/ws_active/src/algorithm/astar/include/**",
+                "/home/zhjd/ws_active/src/algorithm/exploration/explore/include/**",
+                "/home/zhjd/ws_active/src/algorithm/m-explore(explore_lite)/explore/include/**",
+                "/home/zhjd/ws_active/src/kinect/iai_kinect2/kinect2_bridge/include/**",
+                "/home/zhjd/ws_active/src/kinect/iai_kinect2/kinect2_calibration/include/**",
+                "/home/zhjd/ws_active/src/kinect/iai_kinect2/kinect2_registration/include/**",
+                "/home/zhjd/ws_active/src/algorithm/map_frontier/include/**",
+                "/home/zhjd/ws_active/src/algorithm/m-explore(explore_lite)/map_merge/include/**",
+                "/home/zhjd/ws_active/src/octomap/publish_pointcloud/include/**",
+                "/home/zhjd/ws_active/src/algorithm/RRT_exploration/rrt_exploration-master/include/**",
+                "/home/zhjd/ws_active/src/robot_platform_and_simulation/ugv_sdk-next/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++14",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,44 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "g++ - Build and debug active file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/zhjd/work/ORB_SLAM2/Examples/RGB-D/rgbd_tum",
+            "args": [ 
+                "/home/zhjd/work/ORB_SLAM2/Vocabulary/ORBvoc.txt", 
+                "/home/zhjd/work/ORB_SLAM2/Examples/RGB-D/TUM3.yaml", 
+                "/home/zhjd/dataset/TUM/rgbd_dataset_freiburg3_long_office_household", 
+                "/home/zhjd/dataset/TUM/rgbd_dataset_freiburg3_long_office_household/associate.txt"
+                // "/home/zhjd/dataset/rgbd_dataset_freiburg1_desk", 
+                // "/home/zhjd/dataset/rgbd_dataset_freiburg1_desk/associate.txt"
+            ],
+            
+            // "program": "/home/zhjd/work/ORB_SLAM2/Examples/Monocular/mono_tum",
+            // "args": [ 
+            //     "/home/zhjd/work/ORB_SLAM2/Vocabulary/ORBvoc.txt", 
+            //     "/home/zhjd/work/ORB_SLAM2/Examples/RGB-D/TUM2.yaml", 
+            //     "/home/zhjd/dataset/TUM/rgbd_dataset_freiburg3_long_office_household"
+            // ],
+ 
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}

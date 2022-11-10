@@ -1,0 +1,174 @@
+/**
+* This file is part of ORB-SLAM2.
+*
+* Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
+* For more information see <https://github.com/raulmur/ORB_SLAM2>
+*
+* ORB-SLAM2 is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* ORB-SLAM2 is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#include<iostream>
+#include<algorithm>
+#include<fstream>
+#include<chrono>
+
+#include<ros/ros.h>
+#include <cv_bridge/cv_bridge.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+#include <opencv2/core/core.hpp>
+#include <geometry_msgs/PoseStamped.h> 
+#include <tf/tf.h> 
+#include <tf/transform_datatypes.h> 
+#include "Converter.h"
+#include "System.h"
+
+// darknet_ros_msgs
+#include <darknet_ros_msgs/BoundingBoxes.h>
+#include <darknet_ros_msgs/BoundingBox.h>
+#include <darknet_ros_msgs/ObjectCount.h>
+#include "YOLOv3SE.h"
+std::string WORK_SPACE_PATH = "";
+using namespace std;
+
+class ImageGrabber
+{
+public:
+    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    
+    void GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD,const darknet_ros_msgs::BoundingBoxesConstPtr& msgBbox);
+
+    ORB_SLAM2::System* mpSLAM;
+
+    vector<BoxSE> darknetRosMsgToBoxSE(vector<darknet_ros_msgs::BoundingBox>& boxes);
+};
+
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "RGBD");
+    ros::start();
+    string yamlfile, sensor; bool semanticOnline, rosBagFlag;
+    ros::param::param<std::string>("~WORK_SPACE_PATH", WORK_SPACE_PATH, "/home/zhjd/active_eao/src/active_eao/");
+    const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";
+    ros::param::param<std::string>("~yamlfile", yamlfile, "TUM3_ros.yaml"); /*kinectdk.yaml  TUM3.yaml TUM3_ros.yaml kinectdk_720.yaml*/
+    const std::string YamlFile = WORK_SPACE_PATH + "/config/" + yamlfile;
+    ros::param::param<std::string>("~sensor", sensor, "RGBD");
+    ros::param::param<bool>("~online", semanticOnline, "true");
+    ORB_SLAM2::System SLAM(VocFile,  YamlFile,  ORB_SLAM2::System::RGBD,  true);
+
+
+    ImageGrabber igb(&SLAM);
+    ros::NodeHandle nh;
+    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/rgb/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/depth_to_rgb/image_raw", 1);
+    message_filters::Subscriber<darknet_ros_msgs::BoundingBoxes> bbox_sub(nh, "/darknet_ros/bounding_boxes", 1);
+    typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, darknet_ros_msgs::BoundingBoxes> sync_pol;
+    message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub,bbox_sub);
+    sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2,_3));
+    
+    ros::spin();
+
+    // Stop all threads
+    SLAM.Shutdown();
+
+    // Save camera trajectory
+    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+
+    ros::shutdown();
+
+    return 0;
+}
+
+void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD,const darknet_ros_msgs::BoundingBoxesConstPtr& msgBbox)
+{
+    double current_time = msgRGB->header.stamp.toSec();
+    std::cout << std::endl << std::endl;
+    std::cout << "[Get a Frame with bbox] Timestamp:" << current_time << std::endl;
+
+    // Copy the ros image message to cv::Mat.
+    cv_bridge::CvImageConstPtr cv_ptrRGB;
+    try
+    {
+        cv_ptrRGB = cv_bridge::toCvShare(msgRGB);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
+    }
+
+    cv_bridge::CvImageConstPtr cv_ptrD;
+    try
+    {
+        cv_ptrD = cv_bridge::toCvShare(msgD);
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
+    }
+
+    std::vector<darknet_ros_msgs::BoundingBox> boxes = msgBbox->bounding_boxes;
+    std::vector<BoxSE> BboxVector = darknetRosMsgToBoxSE(boxes);
+
+
+    cv::Mat Tcw;
+    Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,  cv_ptrD->image,  cv_ptrRGB->header.stamp.toSec(),  BboxVector);
+}
+
+vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::BoundingBox>& boxes){
+        //修改
+        if (boxes.size() == 0)
+        {
+            std::cout << "[WARNNING] OBJECTS SIZE IS ZERO" << std::endl;
+        }
+        /* darknet_ros_msgs::BoundingBox
+         * float64 probability
+         * int64 xmin
+         * int64 ymin
+         * int64 xmax
+         * int64 ymax
+         * int16 id
+         * string Class
+         * */
+        std::vector<BoxSE> boxes_online;
+        for (auto &objInfo : boxes)
+        {
+            if (objInfo.probability < 0.5)
+                continue;
+            // TODO: 检测和yolo3ros 相同.
+            // 0: person; 24: handbag?24应该是backpack背包,26是handbag手提包; 28: suitcase; 39: bottle; 56: chair;
+            // 57: couch; 58:potted plant; 59: bed; 60: dining table; 62: tv;
+            // 63: laptop; 66: keyboard; 67: phone; 73: book;
+            //if (objInfo.id != 0 && objInfo.id != 24 && objInfo.id != 28 && objInfo.id != 39 && objInfo.id != 56 && objInfo.id != 57 && objInfo.id != 58 && objInfo.id != 59 && objInfo.id != 60 && objInfo.id != 62 && objInfo.id != 63 && objInfo.id != 66 && objInfo.id != 67 && objInfo.id != 73
+            ///* 自己添加 */ && objInfo.id != 72 /* refrigerator */  && objInfo.id != 11 /* stop sign */
+            //)
+            //    continue;
+            BoxSE box;
+            box.m_class = objInfo.id;
+            box.m_score = objInfo.probability;
+            box.x = objInfo.xmin;
+            box.y = objInfo.ymin;
+            box.width = (objInfo.xmax - objInfo.xmin);
+            box.height = (objInfo.ymax - objInfo.ymin );
+            // box.m_class_name = "";
+            boxes_online.push_back(box);
+        }
+        //安装识别的概率，进行排序
+        std::sort(boxes_online.begin(), boxes_online.end(), [](BoxSE a, BoxSE b) -> bool { return a.m_score > b.m_score; });
+        return boxes_online;
+}

@@ -1,0 +1,130 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV)
+
+# 无壳
+# Camera.fx: 606.908447265625
+# Camera.fy: 606.661376953125
+# Camera.cx: 639.0679321289062
+# Camera.cy: 371.56201171875
+
+# Camera.k1: 0.08884860314939133
+# Camera.k2: -0.035236453615561214
+# Camera.p1: 0.002197431241396009
+# Camera.p2: -0.0033539099573555026
+
+# 有壳
+Camera.fx: 621.6399196687748
+Camera.fy: 621.9208549068445
+Camera.cx: 636.4096878643566
+Camera.cy: 368.69440151116925
+ 
+Camera.k1: 0.08494646968292886
+Camera.k2: -0.057856446188127304
+Camera.p1: -0.0002251392425751024
+Camera.p2: 0.0007165993637298339
+
+Camera.width: 1280
+Camera.height: 720
+Camera.max_dis: 5.0
+Camera.min_dis: 0.5
+# Camera frames per second
+Camera.fps: 30.0
+
+# IR projector baseline times fx (aprox.)
+Camera.bf: 40.0
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 0
+
+# Close/Far threshold. Baseline times.
+ThDepth: 40.0
+
+# Deptmap values factor  ？？
+DepthMapFactor: 1000.0
+
+# 0: no constraint, first frame is vertical to ground; 1: use ground truth; 2: use imu
+ConstraintType: 0
+
+
+
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 1000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid
+ORBextractor.nLevels: 8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500
+
+Viewer.pangolin: 1
+Viewer.rviz: 1
+Viewer.readlocalobject: 1
+# pcl pointcloud mapping
+PointCloudMapping.Resolution: 0.01
+
+#--------------------------------------------------------------------------------------------
+# Plane Optimization Parameters
+#--------------------------------------------------------------------------------------------
+Plane.AssociationDisRef: 0.2
+Plane.AssociationDisMon: 0.2
+Plane.AssociationAngRef: 0.8 # 30 degree
+Plane.AssociationAngMon: 0.8 # 30 degree
+Plane.VerticalThreshold: 0.08716 # 85 degree
+Plane.ParallelThreshold: 0.9962 # 5 degree
+Plane.AngleInfo: 1
+Plane.DistanceInfo: 100
+Plane.Chi: 300
+Plane.VPChi: 300
+Plane.ParallelInfo: 0.5
+Plane.VerticalInfo: 0.5
+
+#--------------------------------------------------------------------------------------------
+# Supposed Plane Extraction Parameters
+#--------------------------------------------------------------------------------------------
+#Line.Ratio: 0.2
+#Line.DistanceThreshold: 0.01
+#Plane.ShowSPlane: 1
+
+
+#--------------------------------------------------------------------------------------------
+# Result File Paths
+#--------------------------------------------------------------------------------------------
+SavePath.Frame: "FrameTrajectory.txt"
+SavePath.Keyframe: "KeyFrameTrajectory.txt"
+SavePath.PlaneFeature: "PlaneFeature.txt"
+
+#--------------------------------------------------------------------------------------------
+# NBV
+#--------------------------------------------------------------------------------------------
+MAM.divide: 20
