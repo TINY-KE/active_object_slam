@@ -43,6 +43,13 @@
 #include <darknet_ros_msgs/ObjectCount.h>
 #include "YOLOv3SE.h"
 std::string WORK_SPACE_PATH = "";
+bool MotionIou_flag = true;
+bool NoPara_flag = true;
+bool ProIou_flag = true;
+bool Ttest_flag = true;
+bool iforest_flag = true;
+bool little_mass_flag = true;
+
 using namespace std;
 
 class ImageGrabber
@@ -63,6 +70,13 @@ int main(int argc, char **argv)
     ros::start();
     string yamlfile, sensor; bool semanticOnline, rosBagFlag;
     ros::param::param<std::string>("~WORK_SPACE_PATH", WORK_SPACE_PATH, "/home/zhjd/active_eao/src/active_eao/");
+    ros::param::param<bool>("~MotionIou_flag", MotionIou_flag, true);
+    ros::param::param<bool>("~NoPara_flag", NoPara_flag, false);
+    ros::param::param<bool>("~ProIou_flag", ProIou_flag, false);
+    ros::param::param<bool>("~Ttest_flag", Ttest_flag, false);
+    ros::param::param<bool>("~iforest_flag", iforest_flag, false);
+    ros::param::param<bool>("~little_mass_flag", little_mass_flag, false);
+
     const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";
     ros::param::param<std::string>("~yamlfile", yamlfile, "TUM3_ros.yaml"); /*kinectdk.yaml  TUM3.yaml TUM3_ros.yaml kinectdk_720.yaml*/
     const std::string YamlFile = WORK_SPACE_PATH + "/config/" + yamlfile;
@@ -154,10 +168,12 @@ vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::Boundi
             // 0: person; 24: handbag?24应该是backpack背包,26是handbag手提包; 28: suitcase; 39: bottle; 56: chair;
             // 57: couch; 58:potted plant; 59: bed; 60: dining table; 62: tv;
             // 63: laptop; 66: keyboard; 67: phone; 73: book;
-            //if (objInfo.id != 0 && objInfo.id != 24 && objInfo.id != 28 && objInfo.id != 39 && objInfo.id != 56 && objInfo.id != 57 && objInfo.id != 58 && objInfo.id != 59 && objInfo.id != 60 && objInfo.id != 62 && objInfo.id != 63 && objInfo.id != 66 && objInfo.id != 67 && objInfo.id != 73
+            //if (/*objInfo.id != 0 &&*/ objInfo.id != 24 && objInfo.id != 28 && objInfo.id != 39 && objInfo.id != 56 && objInfo.id != 57 && objInfo.id != 58 && objInfo.id != 59 && objInfo.id != 60 && objInfo.id != 62 && objInfo.id != 63 && objInfo.id != 66 && objInfo.id != 67 && objInfo.id != 73
             ///* 自己添加 */ && objInfo.id != 72 /* refrigerator */  && objInfo.id != 11 /* stop sign */
+            //&& objInfo.id != 77 /*teddy bear*/
             //)
-            //    continue;
+            if (objInfo.id != 77)
+                continue;
             BoxSE box;
             box.m_class = objInfo.id;
             box.m_score = objInfo.probability;

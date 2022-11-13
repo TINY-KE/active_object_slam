@@ -12,7 +12,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Dense>
-
+#include <algorithm>
 //数值计算
 #include <numeric>
 #include <math.h>
@@ -20,6 +20,16 @@
 #include <iostream>
 #include "YOLOv3SE.h"
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
+#include "isolation_forest.h"
+
+extern std::string WORK_SPACE_PATH;
+extern bool MotionIou_flag;
+extern bool NoPara_flag;
+extern bool ProIou_flag;
+extern bool Ttest_flag;
+extern bool iforest_flag;
+extern bool little_mass_flag;
+
 namespace ORB_SLAM2
 {
 class Frame;
@@ -30,10 +40,10 @@ class Object_Map;
 
 class Object_2D;
 enum eAssociateFlag{
-        Iou=1,
+        MotionIou=1,
         NoPara=2,
         t_test=3,
-        Debug=4
+        ProIou=4 //Debug=4
     };
 
 
@@ -53,8 +63,9 @@ class Object_2D {
         float mWidth;
         float mHeight;
         cv::Rect mBox_cvRect;                   // cv::Rect format.
-        cv::Rect mBox_cvRect_FeaturePoints_nouse;     // the bounding box constructed by object feature points.
-        BoxSE mBox_yoloSE;                      // BoxSE
+        cv::Rect mBox_cvRect_FeaturePoints;     // the bounding box constructed by object feature points.
+                                                // 在tracker处理object2d时，生成的mBox_cvRect_FeaturePoints。用途： 用在2d和3d数据关联中的ProjectIou
+        //BoxSE mBox_yoloSE;                      // BoxSE
         cv::Point2f mBoxCenter_2d;              // 2D center.
 
         // Frame and Map
@@ -63,9 +74,9 @@ class Object_2D {
 
         // coordinate
         cv::Mat sum_pos_3d;                         // Summation of points observed in the current frame.
-        cv::Mat mPos_world;                               // current object center (3d, world).
-        cv::Mat mCenter_ofAssMapObj;                // map object center.
-        //float mStandar_x, mStandar_y, mStandar_z;   // standard deviation  注释的原因： 2d中心的坐标在计算3d坐标的偏差时有用。2d中心的偏差有什么用？
+        cv::Mat mPos_world;                         // current object center (3d, world). 通过当前帧的观测框中的point，计算而来
+        //cv::Mat mCenter_ofAssMapObj;                // map object center.   通过数据关联map中的物体的中心坐标
+        //float mStandar_x, mStandar_y, mStandar_z; // standard deviation  注释的原因： 2d中心的坐标在计算3d坐标的偏差时有用。2d中心的偏差有什么用？
 
         //mappoint
         vector<MapPoint*>  mvMapPonits;             // object points in current frame. 存储的是
@@ -83,11 +94,13 @@ class Object_2D {
         void ComputeMeanAndDeviation();                 // compute the mean and standard deviation of object points in current frame.
         void RemoveOutlier_ByHeightorDepth();                  // remove outliers by boxplot.
         void MergeTwo_Obj2D(Object_2D *Old_Object2D);
-        bool Object2D_DataAssociationWith_everyObject3D();    // data association.
+        int Object2D_DataAssociationWith_Object3D();    // data association.
         int creatObject();
-        int  NoParaDataAssociation(Object_Map* ObjectMapSingle, cv::Mat &image); // NP.
+        int  NoParaDataAssociation(Object_Map* ObjectMapSingle); // NP.
 
         void AddObjectPoint(MapPoint *pMP);
+        void AddPotentialAssociatedObjects( vector<Object_Map*> obj3ds, int AssoId, int beAssoId);
+
     //crash bug
     protected:
         std::mutex mMutexObjMapPoints;   //对特征点 处理时
@@ -196,7 +209,7 @@ public:
     cv::Rect mLastRect;
     cv::Rect mLastLastRect;
     //cv::Rect mPredictRect;
-    cv::Rect mRectProject_forDataAssociate2D;
+    cv::Rect mRect_byProjectPoints;
     int mnAddedID;
     int mnLastAddID;
     int mnLastLastAddID;
@@ -218,6 +231,7 @@ public:
 
     //物体中的特征点
     vector< MapPoint*> mvpMapObjectMappoints;
+    vector< MapPoint*> mvpMapObjectMappoints_NewForActive;
     //vector< MapPoint*> mvpMapCurrentNewMappoints;  //物体中新添加的特征点，用于更新占据概率地图
 
 
@@ -229,7 +243,7 @@ public:
 
     void ComputeMeanAndDeviation_3D();
     void IsolationForestDeleteOutliers();
-    bool UpdateObject3D(Object_2D* Object_2d, cv::Mat &image, int Flag);
+    bool UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag);
     void Update_Twobj();      // update object pose.
 //
     void ComputeProjectRectFrame(Frame &Frame);  //将obj3d中的point投影到目标frame中，计算obj3d在目标frame中的投影边界框.从而查看obje3d,能够关联目标frame中物体
@@ -285,6 +299,8 @@ protected:
 
 protected:
     std::mutex mMutexPose;
+
+
 };
 
 

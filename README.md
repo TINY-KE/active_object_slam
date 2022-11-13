@@ -28,7 +28,7 @@
   + 看看算法中会不会用到点的位姿和新的point？？
 + mnLastAddID 和 mnLastLastAddID  还没赋值
 + IouThreshold = 0.6;  IOU的阈值 要不要调节
-+                 if ((Iou > IouThreshold) && (Iou > IouMax))
++                 if ((MotionIou > IouThreshold) && (MotionIou > IouMax))
 + poseOptimizaiton 
   + g2o调用mappoint时, 启动了(MapPoint::mGlobalMutex)的线程锁
   + Recover optimized pose时, 没有启动frame的线程锁.  是否说明修改指针对应的值是不用修改的,只有调用size时禁止新的空间开辟
@@ -50,7 +50,33 @@
 + 物体位姿的存储形式 Converter::toSE3Quat(pFrame->mTcw)
 + Eigen::Vector3d PointPos_object = this->mCuboid3D.pose.inverse() * PointPos_world;
 + mLastFrame = Frame(mCurrentFrame);  没有将彩色图像和物体图像 传递过去  会有影响吗?
-+ .
++ 关闭np test中的，均匀化试一试
++ wm统计量计算的对吗? W = min(W_p, W_q)
+    w_x = min(w_x_2d_bigger_3d + m * (m + 1) / 2, w_x_3d_bigger_2d + n * (n + 1) / 2) + w_x_3d_equal_2d / 2;
+    w_y = min(w_y_2d_bigger_3d + m * (m + 1) / 2, w_y_3d_bigger_2d + n * (n + 1) / 2) + w_y_3d_equal_2d / 2;
+    w_z = min(w_z_2d_bigger_3d + m * (m + 1) / 2, w_z_3d_bigger_2d + n * (n + 1) / 2) + w_z_3d_equal_2d / 2;
+  + 存储潜在关联对象的操作， 统一为一个函数. mReObj
++ AddPotentialAssociatedObjects(ObjectMaps, AssoObjId_byIou  ,AssoObjId_byNP);   为什么只将np加入iou，而不将iou加入np
+  + 当前都是将** ，融入到被updateObjectPose的id中。
+  + 查看mReObj后续的用途
++ 只要ProIou大于0.25就认为是，潜在的关联对象？？
++ ProIou=4 //Debug=4
++  Read t-distribution boundary value.  为什么t分布有二维值
++ obj3d->ComputeProjectRectFrame(*mpCurrentFrame);
++ object3d的ComputeMeanAndStandard和IsolationForestDeleteOutliers有什么区别？？
+  + this->ComputeMeanAndStandard();
+  + this->IsolationForestDeleteOutliers();
+  + 这两者的顺序，怎么时而前，时而后
+  + iforest不处理  75 64 65， 为什么？ 62的iforest阈值不同。
+  + #pragma once
+  + iforest 关闭后,试试效果
++ MotionIou的速度估计有问题
++ if ((fIou < 0.5) && (fIou2 < 0.8))  这个指标 是提升了,还是下降了??
++ mSumPointsPos += x3d;  这些能不能去掉， 改为一个统一计算均值中心坐标的函数
++ 为什么要将object3d中的原point， 因为不符合最新帧的物体检测框， 就将原point剔除掉。 完全可能是因为当前帧的观测不到位
++ 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于10, 且与地图中的其他物体过于重合 ,则设置为bad_3d
++ mmAppearSametime 和 PotentialAssociatedObjects 的区别。 在active slam中的用途
++ 怎么匹配失败了。 用前几帧 测试一下。
 
 ### 0 未来可以微调的参数
 + 剔除物体检测框时的预设参数

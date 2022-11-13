@@ -812,7 +812,7 @@ void Tracking::CreatObject_intrackmotion(){
         // the bounding box constructed by object feature points.
         // notes: 视野范围内的特征点
         // 用于data associate中
-        obj2d->mBox_cvRect_FeaturePoints_nouse = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+        obj2d->mBox_cvRect_FeaturePoints = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
     }
 
     // **********************************************************************************************
@@ -861,9 +861,9 @@ void Tracking::CreatObject_intrackmotion(){
         // 特征点稍微多一些，但是检测框离边太近了   object points too few and the object on the edge of the image.
         else if  (obj_2ds[f]->mvMapPonits.size() < 10)
         {
-            if ((obj_2ds[f]->mBox_yoloSE.x < 20) || (obj_2ds[f]->mBox_yoloSE.y < 20) ||
-                (obj_2ds[f]->mBox_yoloSE.x + obj_2ds[f]->mBox_yoloSE.width > ColorImage.cols - 20) ||
-                (obj_2ds[f]->mBox_yoloSE.y + obj_2ds[f]->mBox_yoloSE.height > ColorImage.rows - 20))
+            if ((obj_2ds[f]->mBox_cvRect.x < 20) || (obj_2ds[f]->mBox_cvRect.y < 20) ||
+                (obj_2ds[f]->mBox_cvRect.x + obj_2ds[f]->mBox_cvRect.width > ColorImage.cols - 20) ||
+                (obj_2ds[f]->mBox_cvRect.y + obj_2ds[f]->mBox_cvRect.height > ColorImage.rows - 20))
             {
                 obj_2ds[f]->bad = true;
             }
@@ -985,10 +985,11 @@ void Tracking::CreatObject_intrackmotion(){
             Object3D->mLastRect = obj2d->mBox_cvRect;             // last rect.
             //Object3D->mPredictRect = obj->mBoxRect;       // for iou.
             Object3D->mSumPointsPos = 0; //cv::Mat::zeros(3,1,CV_32F);
-            Object3D->mAveCenter3D = 0; //cv::Mat::zeros(3,1,CV_32F);
+            Object3D->mAveCenter3D = obj2d->mPos_world;  ; //cv::Mat::zeros(3,1,CV_32F);
 
             std::cout<<"【debug】INIT物体 存入特征点"<<std::endl;
             // add properties of the point and save it to the object.
+            Object3D->mvpMapObjectMappoints_NewForActive.clear();
             for (size_t i = 0; i < obj2d->mvMapPonits.size(); i++)
             {
                 if(obj2d->mvMapPonits[i]->isBad())
@@ -1000,6 +1001,7 @@ void Tracking::CreatObject_intrackmotion(){
 
                 // save to the object.
                 Object3D->mvpMapObjectMappoints.push_back(pMP);
+                Object3D->mvpMapObjectMappoints_NewForActive.push_back(pMP);
             }
 
             // 2d object.
@@ -1015,7 +1017,7 @@ void Tracking::CreatObject_intrackmotion(){
             //mpMap->mvObjectMap.push_back(ObjectMapSingle);
             mpMap->AddObject(Object3D);
             std::cout<<"【debug】INIT物体 存入map"<<std::endl;
-
+            std::cout<<"【debug】INIT物体 物体id:"<<Object3D->mnLastAddID<<", 帧id:"<<mCurrentFrame.mnId<<std::endl;
             //物体初始化完成
             mbObjectIni = true;
             mnObjectIniFrameID = mCurrentFrame.mnId;
@@ -1044,12 +1046,12 @@ void Tracking::CreatObject_intrackmotion(){
                 obj3d->ComputeProjectRectFrame(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
             else
             {
-                obj3d->mRectProject_forDataAssociate2D = cv::Rect(0, 0, 0, 0);
+                obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
             }
         }
 
-        // step 10.2 data association.
-        // 将当前帧中的obj2d, 与地图中所有obj3d的mRectProject_forDataAssociate2D, 进行比较, 看是否数据关联 是同一个物体
+        // step 10.2 data association and creat new object
+        // 将当前帧中的obj2d, 与地图中所有obj3d, 进行比较, 看是否数据关联 是同一个物体
         // 如果不是,则生成一个新的物体,并添加进地图Map中.
         for (size_t k = 0; k < obj_2ds.size(); ++k)
         {
@@ -1057,8 +1059,12 @@ void Tracking::CreatObject_intrackmotion(){
             if (obj_2ds[k]->mvMapPonits.size() < 5)
                 continue;
 
-            // note: data association.
-            obj_2ds[k]->creatObject();
+            int result = obj_2ds[k]->creatObject();
+            switch (result) {
+                case -1:   cout << "检测框靠近边缘" << endl;   break;
+                case 0:    cout << "融入旧的物体中" << endl;   break;
+                case 1:    cout << "生成新的物体" << endl;     break;
+            }
         }
 
 
@@ -1081,9 +1087,10 @@ void Tracking::CreatObject_intrackmotion(){
                 if (df < 10)
                 {
                     // 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于5, 则设置为bad_3d
-                    if (df < 5)
+                    if (df < 5){
+                        std::cout<<"object->bad 观测帧<5, 物体id:"<<obj3d->mnLastAddID<<", 帧id:"<<(mCurrentFrame.mnId - 30)<<std::endl;
                         obj3d->bad_3d = true;
-
+                    }
                     // 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于10, 且与地图中的其他物体过于重合 ,则设置为bad_3d
                     else
                     {
@@ -1096,6 +1103,7 @@ void Tracking::CreatObject_intrackmotion(){
                             if (overlap)
                             {
                                 obj_3ds_new[i]->bad_3d = true;
+                                std::cout<<"object->bad 观测帧<10,且overlap" <<std::endl;
                                 break;
                             }
                         }

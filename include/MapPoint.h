@@ -153,11 +153,10 @@ public:
         //bool object_view = false;
         int object_mnId;
         int object_class;
-        std::map<int, int> viewdCount_forObjectId;   // pMP->object_id_vector.insert(make_pair(Object3D->mnId, 1));  //记录point被某个object3d看见的次数
+        std::map<int, int> viewdCount_forObjectId;   // 原object_id_vector  //记录point被某个object3d看见的次数
         cv::KeyPoint feature_uvCoordinate;    //record the coordinates of each point in the xy(uv) directions   但会不会由于匹配错误，
         //set<int> frame_id;
         //bool First_obj_view;
-        //bool out_point;
 };
 
 } //namespace ORB_SLAM

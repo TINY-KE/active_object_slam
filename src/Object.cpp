@@ -6,6 +6,7 @@
 #include "Converter.h"
 namespace ORB_SLAM2
 {
+
 mutex Object_2D::mGlobalMutex;  //crash bug
 
 Object_2D::Object_2D() {
@@ -25,8 +26,6 @@ Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
     mBoxCenter_2d = cv::Point2f(box.x + box.width / 2, box.y + box.height / 2);
     // opencv Rect format.
     mBox_cvRect = cv::Rect(box.x, box.y, box.width, box.height);
-    // original box format.
-    mBox_yoloSE = box;
 
     this->mpCurrentFrame = CurrentFrame;
     this->mpMap = Map;
@@ -173,555 +172,537 @@ void Object_2D::MergeTwo_Obj2D(Object_2D *Old_Object2D)
     //this->ComputeMeanAndDeviation();
 }
 
-bool Object_2D::Object2D_DataAssociationWith_everyObject3D()  //cv::Mat &image
+int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
 {
+    std::cout<<"查看是否关联到旧物体"<<std::endl;
     const cv::Mat image = mpCurrentFrame->mColorImage.clone();
     const cv::Mat Rcw = cv::Mat::zeros(3,3,CV_32F);
     const cv::Mat tcw = cv::Mat::eye(3,1,CV_32F);  //深拷贝
     mpCurrentFrame->mTcw.rowRange(0, 3).colRange(0, 3).copyTo(Rcw);
     mpCurrentFrame->mTcw.rowRange(0, 3).col(3).copyTo(tcw);
 
-    cv::Rect RectCurrent = mBox_cvRect;    // object bounding box in current frame.
-    cv::Rect RectPredict;               // predicted bounding box according to last frame and next to last frame.
-    cv::Rect RectProject;               // bounding box constructed by projecting points.
+    cv::Rect RectCurrent = mBox_cvRect;     // object bounding box in current frame.
+    cv::Rect RectPredict;                   // predicted bounding box according to last frame and next to last frame.
+    cv::Rect RectProject;                   // bounding box constructed by projecting points.
 
-    //const vector<Object_Map*> ObjectMaps  = mpMap->GetObjects();
-    //// ****************************************************
-    ////         STEP 1.  IoU  association.              *
-    //// ****************************************************
-    //float IouMax = 0;                   //
-    //bool bAssoByIou = false;            // 默认禁用. 通过后续IOU匹配的结果, 再决定是否要启动IOU
-    //int AssoObjId_byIou = -1;              // the associated map object ID.
-    //int ObjID_IouMax = -1;               // temporary variable. 代表map中与this->object_2d, 最IOU匹配的object_map
-    //float IouThreshold = 0.5;           // IoU threshold.
-    ////if((flag != "NA") && (flag != "NP"))
-    //{
-    //
-    //    for (int i = 0; i < (int)ObjectMaps.size(); i++)
-    //    {
-    //        Object_Map* obj3d = ObjectMaps[i];
-    //        if (mclass_id != obj3d->mnClass)
-    //            continue;
-    //        if (obj3d->bBadErase)
-    //            continue;
-    //        if ((mpCurrentFrame->mnId-1) == obj3d->mnLastAddID )   //如果是临近的两帧， 则可以用IOU关联。
-    //        {
-    //            // step 1.1 predict object bounding box according to last frame and next to last frame.
-    //            if ((mpCurrentFrame->mnId-2) == obj3d->mnLastLastAddID)
-    //            {   //以下基于的假设: 临近三帧,相同物体的检测框,在图像上的移动是相同的
-    //                // 0____ll___l____c
-    //                // c = l - ll + l = 2 * l - ll
-    //                // left-top.
-    //                float left_top_x = obj3d->mLastRect.x * 2 - obj3d->mLastLastRect.x;     // cv::Rect的x代表 方形的左上角的x坐标
-    //                if (left_top_x < 0)
-    //                    left_top_x = 0;
-    //                float left_top_y = obj3d->mLastRect.y * 2 - obj3d->mLastLastRect.y;     // cv::Rect的y代表 方形的左上角的y坐标
-    //                if (left_top_y < 0)
-    //                    left_top_y = 0;
-    //                // right-bottom.
-    //                float right_down_x = (obj3d->mLastRect.x + obj3d->mLastRect.width) * 2 - (obj3d->mLastLastRect.x + obj3d->mLastLastRect.width);
-    //                if (left_top_x > image.cols)
-    //                    right_down_x = image.cols;
-    //                float right_down_y = (obj3d->mLastRect.y + obj3d->mLastRect.height) * 2 - (obj3d->mLastLastRect.y + obj3d->mLastLastRect.height);
-    //                if (left_top_y > image.rows)
-    //                    right_down_y = image.rows;
-    //
-    //                float width = right_down_x - left_top_x;
-    //                float height = right_down_y - left_top_y;
-    //
-    //                // predicted bounding box.
-    //                RectPredict = cv::Rect(left_top_x, left_top_y, width, height);
-    //
-    //                // If two consecutive frames are observed, increase the threshold.
-    //                IouThreshold = 0.6;
-    //            }
-    //            else
-    //                RectPredict = obj3d->mLastRect;    //如果不是临近三帧, 则认为物体检测框和上一帧相同
-    //
-    //            // step 1.2 compute IoU, record the max IoU and the map object ID.
-    //            float Iou = Converter::bboxOverlapratio(RectCurrent, RectPredict);
-    //            if ((Iou > IouThreshold) && (Iou > IouMax))
-    //            {
-    //                IouMax = Iou;
-    //                ObjID_IouMax = i;
-    //            }
-    //        }
-    //    }// 对map中的object遍历完毕,找到IOU匹配最佳的物体"IouMaxObjID"
-    //
-    //    // step 1.3 if the association is successful, update the map object.
-    //    Object_Map* obj3d_IouMax = ObjectMaps[ObjID_IouMax];
-    //    if ((IouMax > 0) && (ObjID_IouMax >= 0))
-    //    {
-    //        // 更新object3d 中的特征点
-    //        bool bFlag = obj3d_IouMax->UpdateObject3D(this, image, Iou);
-    //        if (bFlag)
-    //        {
-    //            bAssoByIou = true;              // associated by IoU.
-    //            AssoObjId_byIou = ObjID_IouMax;     // associated map object id.
-    //        }
-    //    }
-    //}
-    //// Iou data association END ----------------------------------------------------------------------------
-    //
-    //// *************************************************
-    ////      STEP 2. Nonparametric data association     *
-    //// *************************************************
-    //bool bAssoByNp = false;
-    //int  AssoObjId_byNP  = -1; //;nAssoByNPId
-    //vector<int> vAssoObjIds_byNP;     // potential associated objects.
-    ////if((flag != "NA") && (flag != "IoU"))
-    //{
-    //    // 遍历vObjectMap中每一个物体实例，与自身的2D目标框做NP
-    //    for (int i = (int)ObjectMaps.size() - 1; (i >= 0) ; i--)
-    //    {
-    //        Object_Map* obj3d = ObjectMaps[i];
-    //        if (mclass_id != obj3d->mnClass)
-    //            continue;
-    //        if (obj3d->bBadErase)
-    //            continue;
-    //
-    //        // step 2.1 nonparametric test.
-    //        int NoParaFlag = this->NoParaDataAssociation(obj3d, image);  //TODO: NoParaDataAssociation是怎么计算和obj3d的关联关系的??
-    //
-    //        if (NoParaFlag == 0) // 0: skip the nonparametric test and continue with the subsequent t-test.
-    //            break;
-    //        if (NoParaFlag == 2) // 2: association failed, compare next object.
-    //            continue;
-    //        else if (NoParaFlag == 1) // 1: association succeeded, but there may be more than one.
-    //            vAssoObjIds_byNP.push_back(i);
-    //    }// 对map中的object遍历完毕,找到NoPara匹配合适的所有物体"vObjByNPId"
-    //
-    //    // step 2.2 update data association and record potential associated objects.
-    //    if (vAssoObjIds_byNP.size() >= 1)
-    //    {
-    //        // case 1: if associated by IoU, the objects judged by nonparametric-test are marked as potential association objects.
-    //        if (bAssoByIou)
-    //        {
-    //            Object_Map* obj3d_IOU = ObjectMaps[AssoObjId_byIou];
-    //            // 遍历NP的匹配，是否与IOU判断一致
-    //            for (int i = 0; i < vAssoObjIds_byNP.size(); i++)
-    //            {
-    //                int AssoObjId_byNP_temp = vAssoObjIds_byNP[i];
-    //
-    //                //如果NP和IOU找到的物体相同, 则不作处理
-    //                if (AssoObjId_byNP_temp == AssoObjId_byIou)
-    //                    continue;
-    //
-    //                //如果不同, 则在mReObj中, 记录NP潜在的链接关系. 之后可用于 TODO:其他部分                                   Record potential association objects and potential association times.
-    //                Object_Map* obj3d_NP = ObjectMaps[AssoObjId_byNP_temp];
-    //                map<int, int>::iterator sit;  sit = obj3d_IOU->mReObj.find(obj3d_NP->mnId);
-    //                if (sit != obj3d_IOU->mReObj.end())
-    //                {
-    //                    int sit_sec = sit->second;
-    //                    obj3d_IOU->mReObj.erase(obj3d_NP->mnId);
-    //                    obj3d_IOU->mReObj.insert(make_pair(obj3d_NP->mnId, sit_sec + 1));
-    //                }
-    //                else
-    //                    obj3d_IOU->mReObj.insert(make_pair(obj3d_NP->mnId, 1));
-    //            }
-    //        }
-    //
-    //        // case 2: if association failed by IoU,
-    //        // notes: 如果没有IOU重合，则把NP的结果代入DataAssociateUpdate进行检查
-    //        // 疑问：多对多怎么处理？即：vObjByNPId  vAssoObjIds_byNP 中有多个返回bFlag==true。不过好像没有影响
-    //        // 答: 似乎只会处理第一个成功的, 就break出去了.
-    //        else
-    //        {
-    //            for (int i = 0; i < vAssoObjIds_byNP.size(); i++)
-    //            {
-    //                // update.
-    //                int AssoObjId_byNP_temp = vAssoObjIds_byNP[i];
-    //                bool bFlag = ObjectMaps[AssoObjId_byNP_temp]->UpdateObject3D(this, image, NoPara);
-    //
-    //                // if association successful, other objects are marked as potential association objects.
-    //                if (bFlag)
-    //                {
-    //                    bAssoByNp = true;               // associated by NP.
-    //                    AssoObjId_byNP = AssoObjId_byNP_temp;    // associated map object id.
-    //
-    //                    if (vAssoObjIds_byNP.size() > i + 1)  //TODO: 这个判断没有意义. 因此如果不是最后一个, 那么下面必然要执行. 如果是最后一个,那么也不用循环了,之后的break也没有意义
-    //                    {
-    //                        for (int j = i + 1; j < vAssoObjIds_byNP.size(); j++)
-    //                        {
-    //                            // Record potential association objects and potential association times.
-    //                            map<int, int>::iterator sit;
-    //                            int AssoObjId_byNP_2 = vAssoObjIds_byNP[j];
-    //                            sit = ObjectMaps[AssoObjId_byNP]->mReObj.find(  ObjectMaps[AssoObjId_byNP_2]->mnId  );
-    //                            if (sit != ObjectMaps[AssoObjId_byNP]->mReObj.end())
-    //                            {
-    //                                int sit_sec = sit->second;
-    //                                ObjectMaps[AssoObjId_byNP]->mReObj.erase(ObjectMaps[AssoObjId_byNP_2]->mnId);
-    //                                ObjectMaps[AssoObjId_byNP]->mReObj.insert(make_pair(ObjectMaps[AssoObjId_byNP_2]->mnId, sit_sec + 1));
-    //                            }
-    //                            else
-    //                                ObjectMaps[AssoObjId_byNP]->mReObj.insert(make_pair(ObjectMaps[AssoObjId_byNP_2]->mnId, 1));
-    //                        }
-    //                        break;
-    //                    }
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-    //// Nonparametric data association END --------------------------------------------------------------------------------------------------------
-    //
-    //
-    //
-    //// ****************************************************
-    ////         STEP 3. Projected box data association     *
-    //// ****************************************************
-    //bool bAssoByProject = false;
-    //int nAssoByProId = -1;
-    //vector<int> vObjByProIouId;
-    //
-    //if((flag != "NA") && (flag != "IoU") && (flag != "NP"))
-    //{
-    //    // 获得最大IOU的编号和值，记录部分bIoU大于0.25的
-    //    float fIouMax = 0.0;
-    //    int ProIouMaxObjId = -1;
-    //    for (int i = (int)mpMap->mvObjectMap.size() - 1; i >= 0; i--)
-    //    {
-    //        if (_class_id != mpMap->mvObjectMap[i]->mnClass)
-    //            continue;
-    //
-    //        if (mpMap->mvObjectMap[i]->bBadErase)
-    //            continue;
-    //        // notes： 小样本和多物体下使用
-    //        int df = (int)mpMap->mvObjectMap[i]->mObject_2ds_current.size();
-    //
-    //        if ((Obj_c_MapPonits.size() >= 10) && (df > 8))
-    //            continue;
-    //
-    //        // step 3.1 compute IoU with bounding box constructed by projecting points.
-    //        // notes: mRectFeaturePoints 为物体确定的最大包围框，RectCurrent为YOLOX确定的包围框
-    //        float fIou = Converter::bboxOverlapratio(RectCurrent, mpMap->mvObjectMap[i]->mRectProject);
-    //        float fIou2 = Converter::bboxOverlapratio(mRectFeaturePoints, mpMap->mvObjectMap[i]->mRectProject);
-    //        fIou = max(fIou, fIou2);
-    //
-    //        // record the max IoU and map object id.
-    //        // notes: 找到最大重叠目标框
-    //        if ((fIou >= 0.25) && (fIou > fIouMax))
-    //        {
-    //            fIouMax = fIou;
-    //            ProIouMaxObjId = i;
-    //            // 这种记录方式是不是有点不科学，毕竟这个不是排序过的
-    //            vObjByProIouId.push_back(i);
-    //        }
-    //    }
-    //    // step 3.2 update data association and record potential associated objects.
-    //    if (fIouMax >= 0.25)
-    //    {
-    //        sort(vObjByProIouId.begin(), vObjByProIouId.end());
-    //
-    //        if (bAssoByIou || bAssoByNp)
-    //        {
-    //            for (int j = vObjByProIouId.size() - 1; j >= 0; j--)
-    //            {
-    //                int ReId;
-    //                if (bAssoByIou)
-    //                    ReId = AssoObjId_byIou;
-    //                if (bAssoByNp)
-    //                    ReId = nAssoByNPId;
-    //
-    //                if (vObjByProIouId[j] == ReId)
-    //                    continue;
-    //
-    //                map<int, int>::iterator sit;
-    //                sit = mpMap->mvObjectMap[ReId]->mReObj.find(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId);
-    //                if (sit != mpMap->mvObjectMap[ReId]->mReObj.end())
-    //                {
-    //                    int sit_sec = sit->second;
-    //                    mpMap->mvObjectMap[ReId]->mReObj.erase(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId);
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId, sit_sec + 1));
-    //                }
-    //                else
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId, 1));
-    //            }
-    //        }
-    //        else
-    //        {
-    //            // update.
-    //            bool bFlag = mpMap->mvObjectMap[ProIouMaxObjId]->DataAssociateUpdate_forobj2d(this, mCurrentFrame,
-    //                                                                                          image, 4); // 4: project iou.
-    //
-    //            // association succeeded.
-    //            if (bFlag)
-    //            {
-    //                bAssoByProject = true;          // associated by projecting box.
-    //                nAssoByProId = ProIouMaxObjId;  // associated map object id.
-    //            }
-    //
-    //            for (int j = vObjByProIouId.size() - 1; j >= 0; j--)
-    //            {
-    //                if (vObjByProIouId[j] == ProIouMaxObjId)
-    //                    continue;
-    //
-    //                map<int, int>::iterator sit;
-    //                sit = mpMap->mvObjectMap[ProIouMaxObjId]->mReObj.find(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId);
-    //                if (sit != mpMap->mvObjectMap[ProIouMaxObjId]->mReObj.end())
-    //                {
-    //                    int sit_sec = sit->second;
-    //                    mpMap->mvObjectMap[ProIouMaxObjId]->mReObj.erase(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId);
-    //                    mpMap->mvObjectMap[ProIouMaxObjId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId, sit_sec + 1));
-    //                }
-    //                else
-    //                    mpMap->mvObjectMap[ProIouMaxObjId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByProIouId[j]]->mnId, 1));
-    //            }
-    //        }
-    //    }
-    //}
-    //// Projected box data association END ---------------------------------------------------------------------------------------
-    //
-    //// ************************************************
-    ////          STEP 4. t-test data association       *
-    //// ************************************************
-    //// step 4.1 Read t-distribution boundary value.
-    //float tTestData[122][9] = {0};
-    //ifstream infile;
-    //std::string filePath = WORK_SPACE_PATH + "/data/t_test.txt";
-    //infile.open(filePath);
-    //for (int i = 0; i < 122; i++)
-    //{
-    //    for (int j = 0; j < 9; j++)
-    //    {
-    //        infile >> tTestData[i][j];
-    //    }
-    //}
-    //infile.close();
-    //
-    //// step 4.2 t-test.
-    //bool bAssoByT = false;
-    //int nAssoByTId = -1;
-    //vector<int> vObjByTId;
-    //vector<int> vObjByTIdLower; // potential association.
-    //if((flag != "NA") && (flag != "IoU") && (flag != "NP"))
-    //{
-    //    for (int i = (int)mpMap->mvObjectMap.size() - 1; i >= 0; i--)
-    //    {
-    //        if (_class_id != mpMap->mvObjectMap[i]->mnClass)
-    //            continue;
-    //
-    //        if (mpMap->mvObjectMap[i]->bBadErase)
-    //            continue;
-    //
-    //        // t-test results in 3 directions.
-    //        float t_test;
-    //        float t_test_x, t_test_y, t_test_z;
-    //
-    //        // Degrees of freedom.
-    //        int df = (int)mpMap->mvObjectMap[i]->mObject_2ds_current.size();
-    //        // 场景复杂下才启用
-    //        if (df <= 8)
-    //            continue;
-    //
-    //        // Iou.
-    //        float fIou = Converter::bboxOverlapratio(RectCurrent, mpMap->mvObjectMap[i]->mRectProject);
-    //        float fIou2 = Converter::bboxOverlapratio(mRectFeaturePoints, mpMap->mvObjectMap[i]->mRectProject);
-    //        fIou = max(fIou, fIou2);
-    //
-    //        // The distance from points to the object center.
-    //        float dis_x, dis_y, dis_z;
-    //        cv::Mat pos_points = GetWorldPos();
-    //        dis_x = abs(mpMap->mvObjectMap[i]->mCenter3D.at<float>(0, 0) - pos_points.at<float>(0, 0));
-    //        dis_y = abs(mpMap->mvObjectMap[i]->mCenter3D.at<float>(1, 0) - pos_points.at<float>(1, 0));
-    //        dis_z = abs(mpMap->mvObjectMap[i]->mCenter3D.at<float>(2, 0) - pos_points.at<float>(2, 0));
-    //
-    //        // t-test.
-    //        // notes: 对应论文中公式5
-    //        t_test_x = dis_x / (mpMap->mvObjectMap[i]->mCenterStandar_x / sqrt(df));
-    //        t_test_y = dis_y / (mpMap->mvObjectMap[i]->mCenterStandar_y / sqrt(df));
-    //        t_test_z = dis_z / (mpMap->mvObjectMap[i]->mCenterStandar_z / sqrt(df));
-    //
-    //        // Satisfy t test.  // 5->0.05.
-    //        // notes: curr_t_test < t_{n-1, \alpha /2} 详见t test单样本双侧临界表
-    //        if ((t_test_x < tTestData[min((df - 1), 121)][5]) &&
-    //            (t_test_y < tTestData[min((df - 1), 121)][5]) &&
-    //            (t_test_z < tTestData[min((df - 1), 121)][5]))
-    //        {
-    //            vObjByTId.push_back(i);
-    //        }
-    //        // If the T-test is not satisfied, but the IOU is large, reducing the significance.
-    //        else if (fIou > 0.25)
-    //        {
-    //            // 显著性降低为0.001，容许值更大一些
-    //            if ((t_test_x < tTestData[min((df - 1), 121)][8]) &&
-    //                (t_test_y < tTestData[min((df - 1), 121)][8]) &&
-    //                (t_test_z < tTestData[min((df - 1), 121)][8]))
-    //            {
-    //                vObjByTId.push_back(i);
-    //            }
-    //
-    //            else if ((fIou > 0.25) && ((t_test_x + t_test_y + t_test_z) / 3 < 10))
-    //            {
-    //                vObjByTId.push_back(i);
-    //            }
-    //            else
-    //            {
-    //                vObjByTIdLower.push_back(i);
-    //            }
-    //        }
-    //        else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
-    //        {
-    //            mpMap->mvObjectMap[i]->ComputeProjectRectFrame(image, mCurrentFrame);
-    //
-    //            float fIou_force = Converter::bboxOverlapratio(RectCurrent, mpMap->mvObjectMap[i]->mRectProject);
-    //            float fIou2_force = Converter::bboxOverlapratio(mRectFeaturePoints, mpMap->mvObjectMap[i]->mRectProject);
-    //            fIou_force = max(fIou_force, fIou2_force);
-    //
-    //            if (fIou_force > 0.25)
-    //                vObjByTIdLower.push_back(i);
-    //        }
-    //    }
-    //
-    //    // step 4.2 update data association and record potential associated objects.
-    //    if (bAssoByIou || bAssoByNp || bAssoByProject)
-    //    {
-    //        int ReId;
-    //        if (bAssoByIou)
-    //            ReId = AssoObjId_byIou;
-    //        if (bAssoByNp)
-    //            ReId = nAssoByNPId;
-    //        if (bAssoByProject)
-    //            ReId = nAssoByProId;
-    //        // 疑问： vObjByTId和vObjByTIdLower有什么区别？
-    //        if (vObjByTId.size() >= 1)
-    //        {
-    //            for (int j = 0; j < vObjByTId.size(); j++)
-    //            {
-    //                if (vObjByTId[j] == ReId)
-    //                    continue;
-    //
-    //                map<int, int>::iterator sit;
-    //                sit = mpMap->mvObjectMap[ReId]->mReObj.find(mpMap->mvObjectMap[vObjByTId[j]]->mnId);
-    //                if (sit != mpMap->mvObjectMap[ReId]->mReObj.end())
-    //                {
-    //                    int sit_sec = sit->second;
-    //                    mpMap->mvObjectMap[ReId]->mReObj.erase(mpMap->mvObjectMap[vObjByTId[j]]->mnId);
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTId[j]]->mnId, sit_sec + 1));
-    //                }
-    //                else
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTId[j]]->mnId, 1));
-    //            }
-    //        }
-    //
-    //        if (vObjByTIdLower.size() >= 0)
-    //        {
-    //            for (int j = 0; j < vObjByTIdLower.size(); j++)
-    //            {
-    //                if (vObjByTIdLower[j] == ReId)
-    //                    continue;
-    //
-    //                map<int, int>::iterator sit;
-    //                sit = mpMap->mvObjectMap[ReId]->mReObj.find(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId);
-    //                if (sit != mpMap->mvObjectMap[ReId]->mReObj.end())
-    //                {
-    //                    int sit_sec = sit->second;
-    //                    mpMap->mvObjectMap[ReId]->mReObj.erase(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId);
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId, sit_sec + 1));
-    //                }
-    //                else
-    //                    mpMap->mvObjectMap[ReId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId, 1));
-    //            }
-    //        }
-    //    }
-    //    else
-    //    {
-    //        if (vObjByTId.size() >= 1)
-    //        {
-    //            for (int i = 0; i < vObjByTId.size(); i++)
-    //            {
-    //                bool bFlag = mpMap->mvObjectMap[vObjByTId[i]]->DataAssociateUpdate_forobj2d(this, mCurrentFrame,
-    //                                                                                            image, 3); // 3 是指 T 方法.
-    //
-    //                if (bFlag)
-    //                {
-    //                    bAssoByT = true;
-    //                    nAssoByTId = vObjByTId[i];
-    //
-    //                    if (vObjByTId.size() > i)
-    //                    {
-    //                        for (int j = i + 1; j < vObjByTId.size(); j++)
-    //                        {
-    //                            map<int, int>::iterator sit;
-    //                            sit = mpMap->mvObjectMap[nAssoByTId]->mReObj.find(mpMap->mvObjectMap[vObjByTId[j]]->mnId);
-    //                            if (sit != mpMap->mvObjectMap[nAssoByTId]->mReObj.end())
-    //                            {
-    //                                int sit_sec = sit->second;
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.erase(mpMap->mvObjectMap[vObjByTId[j]]->mnId);
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTId[j]]->mnId, sit_sec + 1));
-    //                            }
-    //                            else
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTId[j]]->mnId, 1));
-    //                        }
-    //                    }
-    //
-    //                    if (vObjByTIdLower.size() >= 0)
-    //                    {
-    //                        for (int j = 0; j < vObjByTIdLower.size(); j++)
-    //                        {
-    //                            if (vObjByTIdLower[j] == nAssoByTId)
-    //                                continue;
-    //
-    //                            map<int, int>::iterator sit;
-    //                            sit = mpMap->mvObjectMap[nAssoByTId]->mReObj.find(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId);
-    //                            if (sit != mpMap->mvObjectMap[nAssoByTId]->mReObj.end())
-    //                            {
-    //                                int sit_sec = sit->second;
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.erase(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId);
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId, sit_sec + 1));
-    //                            }
-    //                            else
-    //                                mpMap->mvObjectMap[nAssoByTId]->mReObj.insert(make_pair(mpMap->mvObjectMap[vObjByTIdLower[j]]->mnId, 1));
-    //                        }
-    //                    }
-    //
-    //                    break;
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-    //// t-test data association END ---------------------------------------------------------------------------------------
+    const vector<Object_Map*> ObjectMaps  = mpMap->GetObjects();
+    // ****************************************************
+    //         STEP 1. Motion  IoU  association.              *
+    // ****************************************************
+    float IouMax = 0;                           //
+    bool bAssoByMotionIou = false;              // 默认禁用. 通过后续IOU匹配的结果,
+    int AssoObjId_byIou = -1;                   // the associated map object ID.
+    int ObjID_IouMax = -1;                      // temporary variable. 代表map中与this->object_2d, 最IOU匹配的object_map
+    float IouThreshold = 0.5;                   // IoU threshold.
+    if(MotionIou_flag)//if((flag != "NA") && (flag != "NP"))
+    {
+
+        for (int i = 0; i < (int)ObjectMaps.size(); i++)
+        {
+            Object_Map* obj3d = ObjectMaps[i];
+            if (mclass_id != obj3d->mnClass)
+                continue;
+            if (obj3d->bad_3d)
+                continue;
+            if ((mpCurrentFrame->mnId-1) == obj3d->mnLastAddID )   //如果是临近的两帧， 则可以用IOU关联。
+            {
+                // step 1.1 predict object bounding box according to last frame and next to last frame.
+                if ((mpCurrentFrame->mnId-2) == obj3d->mnLastLastAddID)
+                {   //以下基于的假设: 临近三帧,相同物体的检测框,在图像上的移动是相同的
+                    // 0____ll___l____c
+                    // c = l - ll + l = 2 * l - ll
+                    // left-top.
+                    float left_top_x = obj3d->mLastRect.x * 2 - obj3d->mLastLastRect.x;     // cv::Rect的x代表 方形的左上角的x坐标
+                    if (left_top_x < 0)
+                        left_top_x = 0;
+                    float left_top_y = obj3d->mLastRect.y * 2 - obj3d->mLastLastRect.y;     // cv::Rect的y代表 方形的左上角的y坐标
+                    if (left_top_y < 0)
+                        left_top_y = 0;
+                    // right-bottom.
+                    float right_down_x = (obj3d->mLastRect.x + obj3d->mLastRect.width) * 2 - (obj3d->mLastLastRect.x + obj3d->mLastLastRect.width);
+                    if (left_top_x > image.cols)
+                        right_down_x = image.cols;
+                    float right_down_y = (obj3d->mLastRect.y + obj3d->mLastRect.height) * 2 - (obj3d->mLastLastRect.y + obj3d->mLastLastRect.height);
+                    if (left_top_y > image.rows)
+                        right_down_y = image.rows;
+
+                    float width = right_down_x - left_top_x;
+                    float height = right_down_y - left_top_y;
+
+                    // predicted bounding box.
+                    RectPredict = cv::Rect(left_top_x, left_top_y, width, height);
+
+                    // If two consecutive frames are observed, increase the threshold.
+                    IouThreshold = 0.6;
+                }
+                else
+                    RectPredict = obj3d->mLastRect;    //如果不是临近三帧, 则认为物体检测框和上一帧相同
+
+                // step 1.2 compute IoU, record the max IoU and the map object ID.
+                float Iou = Converter::bboxOverlapratio(RectCurrent, RectPredict);
+
+                //可视化 for debug
+                cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
+                cv::Scalar color = (200,0,0);
+                cv::rectangle(  mat_test,  RectCurrent, (0,0,255), 2);
+                cv::rectangle(  mat_test,  RectPredict, (255,0,0), 2);
+                cv::putText(mat_test, std::to_string(Iou),cv::Point(0,500), cv::FONT_HERSHEY_DUPLEX  ,1.0,(0,255,0), 2);
+                cv::imshow("[MotionIou]",mat_test);
+                std::cout<<"[MotionIou] iou:"<<Iou <<std::endl;
+                if ((Iou > IouThreshold) && (Iou > IouMax))
+                {
+                    IouMax = Iou;
+                    ObjID_IouMax = i;
+                    std::cout<<"[MotionIou] yes "<<std::endl;
+                }
+
+            }
+        }// 对map中的object遍历完毕,找到IOU匹配最佳的物体"IouMaxObjID"
+
+        // step 1.3 if the association is successful, update the map object.
+        Object_Map* obj3d_IouMax = ObjectMaps[ObjID_IouMax];
+        if ((IouMax > 0) && (ObjID_IouMax >= 0))
+        {
+            // 更新当前object2d中的特征点，到匹配上的object3d中
+            bool bFlag = obj3d_IouMax->UpdateToObject3D(this, *mpCurrentFrame, MotionIou);
+            if (bFlag)
+            {
+                bAssoByMotionIou = true;              // associated by IoU.
+                AssoObjId_byIou = ObjID_IouMax;     // associated map object id.
+            }
+        }
+    }
+    // Iou data association END ----------------------------------------------------------------------------
+
+    // *************************************************
+    //      STEP 2. Nonparametric data association     *
+    // *************************************************
+    bool bAssoByNp = false;
+    int  AssoObjId_byNP  = -1; //;nAssoByNPId
+    vector<int> vAssoObjIds_byNP;     // potential associated objects.
+    if(NoPara_flag)//if((flag != "NA") && (flag != "IoU"))
+    {
+        // 遍历vObjectMap中每一个物体实例，与自身的2D目标框做NP
+        for (int i = (int)ObjectMaps.size() - 1; (i >= 0) ; i--)
+        {
+            Object_Map* obj3d = ObjectMaps[i];
+            if (mclass_id != obj3d->mnClass)
+                continue;
+            if (obj3d->bad_3d)
+                continue;
+
+            // step 2.1 nonparametric test.
+            int NoParaFlag = this->NoParaDataAssociation(obj3d);  //TODO: NoParaDataAssociation是怎么计算和obj3d的关联关系的??
+
+            if (NoParaFlag == 0) // 0: skip the nonparametric test and continue with the subsequent t-test.
+                break;
+            if (NoParaFlag == 2) // 2: association failed, compare next object.
+                continue;
+            else if (NoParaFlag == 1) // 1: association succeeded, but there may be more than one.
+                vAssoObjIds_byNP.push_back(i);
+        }// 对map中的object遍历完毕,找到NoPara匹配合适的所有物体"vObjByNPId"
+
+        // step 2.2 update data association and record potential associated objects.
+        if (vAssoObjIds_byNP.size() >= 1)
+        {
+            // case 1: if associated by IoU, the objects judged by nonparametric-test are marked as potential association objects.
+            if (bAssoByMotionIou)
+            {
+                Object_Map* obj3d_IOU = ObjectMaps[AssoObjId_byIou];
+                // 遍历NP的匹配，是否与IOU判断一致
+                for (int i = 0; i < vAssoObjIds_byNP.size(); i++)
+                {
+                    AssoObjId_byNP = vAssoObjIds_byNP[i];
+
+                    //如果NP和IOU找到的物体相同, 则不作处理. 因为已经在前面的iou中处理过一次了
+                    if (AssoObjId_byNP == AssoObjId_byIou)
+                        continue;
+
+                    //如果不同, 则在mReObj中, 记录NP潜在的链接关系. 之后可用于 TODO:其他部分。                                   Record potential association objects and potential association times.
+                    AddPotentialAssociatedObjects(ObjectMaps, AssoObjId_byIou  ,AssoObjId_byNP);
+                }
+            }
+
+            // case 2: if association failed by IoU,
+            // notes: 如果没有IOU重合，则把NP的结果代入DataAssociateUpdate进行检查
+            // 疑问：多对多怎么处理？即：vObjByNPId  vAssoObjIds_byNP 中有多个返回bFlag==true。不过好像没有影响
+            // 答: 似乎只会处理第一个成功的, 就break出去了.
+            else
+            {
+                for (int i = 0; i < vAssoObjIds_byNP.size(); i++)
+                {
+                    //  更新当前object2d中的特征点，到匹配上的object3d中
+                    AssoObjId_byNP = vAssoObjIds_byNP[i];
+                    bool bFlag = ObjectMaps[AssoObjId_byNP]->UpdateToObject3D(this, *mpCurrentFrame, NoPara);
+
+                    // if association successful, other objects are marked as potential association objects.
+                    if (bFlag)
+                    {
+                        bAssoByNp = true;               // associated by NP.
+                        AssoObjId_byNP = AssoObjId_byNP;    // associated map object id.
+
+                        if (vAssoObjIds_byNP.size() > i + 1)  //TODO: 这个判断没有意义. 因此如果不是最后一个, 那么下面必然要执行. 如果是最后一个,那么也不用循环了,之后的break也没有意义
+                        {
+                            for (int j = i + 1; j < vAssoObjIds_byNP.size(); j++)
+                            {
+                                int AssoObjId_byNP_2 = vAssoObjIds_byNP[j];
+                                // Record potential association objects and potential association times.
+                                AddPotentialAssociatedObjects(ObjectMaps, AssoObjId_byNP, AssoObjId_byNP_2);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Nonparametric data association END --------------------------------------------------------------------------------------------------------
+
+
+
+    // ****************************************************
+    //         STEP 3. Projected box data association     *
+    // ****************************************************
+    bool bAssoByProjectIou = false;
+    int MaxAssoObjId_byProIou = -1;  //int nAssoByProId = -1;
+    vector<int> vAssoObjIds_byProIou;
+    if(ProIou_flag)//if((flag != "NA") && (flag != "IoU") && (flag != "NP"))
+    {
+        // 获得最大IOU的编号和值，记录部分bIoU大于0.25的
+        float fIouMax = 0.0;
+
+        for (int i = (int)ObjectMaps.size() - 1; i >= 0; i--)
+        {
+            Object_Map* obj3D = ObjectMaps[i];
+            if (mclass_id != obj3D->mnClass){
+                std::cout<<"[ProIou]物体class不同"<<std::endl;
+                continue;
+            }
+
+
+            if (obj3D->bad_3d){
+                std::cout<<"[ProIou]物体bad"<<std::endl;
+                continue;
+            }
+
+
+            // notes： 小样本和多物体下使用
+            if(little_mass_flag)
+            {
+                int df = (int) obj3D->mvObject_2ds.size();
+                if ((mvMapPonits.size() >= 10) && (df > 8)) {
+                    std::cout << "[ProIou]小样本和多物体下使用" << std::endl;
+                    continue;
+                }
+            }
+
+
+            // step 3.1 compute IoU with bounding box constructed by projecting points.
+            // notes: mRectFeaturePoints 为物体确定的最大包围框，RectCurrent为YOLOX确定的包围框
+            float fIou = Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints);
+            float fIou2 = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints);
+            fIou = max(fIou, fIou2);
+
+            //可视化 for debug
+            cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
+            cv::Scalar color = (200,0,0);
+            cv::rectangle(  mat_test,  RectCurrent, (0,0,255), 2);
+            cv::rectangle(  mat_test,  mBox_cvRect_FeaturePoints, (255,0,0), 2);
+            cv::rectangle(  mat_test,  obj3D->mRect_byProjectPoints, (0,255,0), 2);
+            cv::putText(mat_test, std::to_string(fIou), cv::Point(0,500), cv::FONT_HERSHEY_DUPLEX  ,1.0,(0,255,0), 2);
+            cv::imshow("[ProIou]",mat_test);
+            std::cout<<"[ProIou] iou:"<<fIou <<std::endl;
+            // record the max IoU and map object id.
+            // notes: 找到最大重叠目标框
+            // TODO: 只要ProIou大于0.25就认为是，潜在的关联对象？？
+            if ((fIou >= 0.25) && (fIou > fIouMax))
+            {
+                fIouMax = fIou;
+                MaxAssoObjId_byProIou = i;   //AssoObjId_byProIou  ProIouMaxObjId = i;
+                // 这种记录方式是不是有点不科学，毕竟这个不是排序过的
+                vAssoObjIds_byProIou.push_back(i);
+                std::cout<<"[ProIou] yes "<<std::endl;
+            }
+
+        }
+        // step 3.2 update data association and record potential associated objects.
+        if (fIouMax >= 0.25)
+        {
+            sort(vAssoObjIds_byProIou.begin(), vAssoObjIds_byProIou.end());
+
+            if (bAssoByMotionIou || bAssoByNp)
+            { //如果已经成功了MotionIou或NP的数据关联， 则检查一下结果是否一致。不一致，则加入潜在关联对象
+                for (int j = vAssoObjIds_byProIou.size() - 1; j >= 0; j--)
+                {
+                    int AssoObjId_byMotionIouOrNP;
+                    if (bAssoByMotionIou)
+                        AssoObjId_byMotionIouOrNP = AssoObjId_byIou;
+                    if (bAssoByNp)
+                        AssoObjId_byMotionIouOrNP = AssoObjId_byNP;
+
+                    if (vAssoObjIds_byProIou[j] == AssoObjId_byMotionIouOrNP)
+                        continue;
+
+                    // 加入潜在关联物体
+                    int AssoObjId_byProIou = vAssoObjIds_byProIou[j];
+                    AddPotentialAssociatedObjects(ObjectMaps, AssoObjId_byMotionIouOrNP, AssoObjId_byProIou);
+                }
+            }
+            else
+            {
+                // update. 如果没有经过MotionIou或NP的数据关联，则更新到对应的Objct3d。
+                bool bFlag = ObjectMaps[MaxAssoObjId_byProIou]->UpdateToObject3D(this, *mpCurrentFrame, ProIou); // 4: project iou.
+
+                // association succeeded.
+                if (bFlag)
+                {
+                    bAssoByProjectIou = true;          // associated by projecting box.
+                }
+
+                for (int j = vAssoObjIds_byProIou.size() - 1; j >= 0; j--)
+                {
+                    if (vAssoObjIds_byProIou[j] == MaxAssoObjId_byProIou)
+                        continue;
+
+                    //加入潜在关联物体  TODO:为什么要把maxProIou和其他ProIou关联。 答：本程序就是把同时匹配的物体，作为被updateObject3d的物体的关联物体。
+                     AddPotentialAssociatedObjects(ObjectMaps, MaxAssoObjId_byProIou, ObjectMaps[vAssoObjIds_byProIou[j]]->mnId);
+                }
+            }
+        }
+    }
+    // Projected box data association END ---------------------------------------------------------------------------------------
+
+    // ************************************************
+    //          STEP 4. t-test data association       *
+    // ************************************************
+    // step 4.1 Read t-distribution boundary value.
+    float tTestData[122][9] = {0};
+    ifstream infile;
+    std::string filePath = WORK_SPACE_PATH + "/data/t_test.txt";
+    infile.open(filePath);
+    for (int i = 0; i < 122; i++)
+    {
+        for (int j = 0; j < 9; j++)
+        {
+            infile >> tTestData[i][j];
+        }
+    }
+    infile.close();
+
+    // step 4.2 t-test.
+    bool bAssoByTtest = false;
+    int nAssoByTId = -1;
+    vector<int> vObjByTId;
+    vector<int> vObjByTIdLower; // potential association.
+    if(Ttest_flag)//if((flag != "NA") && (flag != "IoU") && (flag != "NP"))
+    {
+        for (int i = (int)ObjectMaps.size() - 1; i >= 0; i--)
+        {
+            Object_Map* obj3d = ObjectMaps[i];
+            if (mclass_id != obj3d->mnClass)
+                continue;
+
+            if (obj3d->bad_3d)
+                continue;
+
+            // t-test results in 3 directions.
+            float t_test;
+            float t_test_x, t_test_y, t_test_z;
+
+            // Degrees of freedom.
+            int df = (int)obj3d->mvObject_2ds.size();
+            // 场景复杂下才启用
+            if (df <= 8)
+                continue;
+
+            // Iou.
+            float fIou = Converter::bboxOverlapratio(RectCurrent, obj3d->mRect_byProjectPoints);
+            float fIou2 = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3d->mRect_byProjectPoints);
+            fIou = max(fIou, fIou2);
+
+            // The distance from points to the object center.
+            float dis_x, dis_y, dis_z;
+            cv::Mat pos_points = mPos_world;
+            dis_x = abs(obj3d->mAveCenter3D.at<float>(0, 0) - pos_points.at<float>(0, 0));
+            dis_y = abs(obj3d->mAveCenter3D.at<float>(1, 0) - pos_points.at<float>(1, 0));
+            dis_z = abs(obj3d->mAveCenter3D.at<float>(2, 0) - pos_points.at<float>(2, 0));
+
+            // t-test.
+            // notes: 对应论文中公式5
+            t_test_x = dis_x / (obj3d->mCenterStandar_x / sqrt(df));
+            t_test_y = dis_y / (obj3d->mCenterStandar_y / sqrt(df));
+            t_test_z = dis_z / (obj3d->mCenterStandar_z / sqrt(df));
+
+            // Satisfy t test.  // 5->0.05.
+            // notes: curr_t_test < t_{n-1, \alpha /2} 详见t test单样本双侧临界表
+            if ((t_test_x < tTestData[min((df - 1), 121)][5]) &&
+                (t_test_y < tTestData[min((df - 1), 121)][5]) &&
+                (t_test_z < tTestData[min((df - 1), 121)][5]))
+            {
+                vObjByTId.push_back(i);
+            }
+            // If the T-test is not satisfied, but the IOU is large, reducing the significance.
+            else if (fIou > 0.25)
+            {
+                // 显著性降低为0.001，容许值更大一些
+                if ((t_test_x < tTestData[min((df - 1), 121)][8]) &&
+                    (t_test_y < tTestData[min((df - 1), 121)][8]) &&
+                    (t_test_z < tTestData[min((df - 1), 121)][8]))
+                {
+                    vObjByTId.push_back(i);
+                }
+
+                else if ((fIou > 0.25) && ((t_test_x + t_test_y + t_test_z) / 3 < 10))
+                {
+                    vObjByTId.push_back(i);
+                }
+                else
+                {
+                    vObjByTIdLower.push_back(i);
+                }
+            }
+            else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
+            {
+                obj3d->ComputeProjectRectFrame(*mpCurrentFrame);
+
+                float fIou_force = Converter::bboxOverlapratio(RectCurrent, obj3d->mRect_byProjectPoints);
+                float fIou2_force = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3d->mRect_byProjectPoints);
+                fIou_force = max(fIou_force, fIou2_force);
+
+                if (fIou_force > 0.25)
+                    vObjByTIdLower.push_back(i);
+            }
+        }
+
+        // step 4.2 update data association and record potential associated objects.
+        if (bAssoByMotionIou || bAssoByNp || bAssoByProjectIou)
+        {
+            int ReId;
+            if (bAssoByMotionIou)
+                ReId = AssoObjId_byIou;
+            if (bAssoByNp)
+                ReId = AssoObjId_byNP;
+            if (bAssoByProjectIou)
+                ReId = MaxAssoObjId_byProIou;
+            // 疑问： vObjByTId和vObjByTIdLower有什么区别？
+            if (vObjByTId.size() >= 1)
+            {
+                for (int j = 0; j < vObjByTId.size(); j++)
+                {
+                    if (vObjByTId[j] == ReId)
+                        continue;
+
+                    AddPotentialAssociatedObjects(ObjectMaps, ReId, ObjectMaps[vObjByTId[j]]->mnId);
+                }
+            }
+
+            if (vObjByTIdLower.size() >= 0)
+            {
+                for (int j = 0; j < vObjByTIdLower.size(); j++)
+                {
+                    if (vObjByTIdLower[j] == ReId)
+                        continue;
+
+                    AddPotentialAssociatedObjects(ObjectMaps, ReId, ObjectMaps[vObjByTIdLower[j]]->mnId);
+                }
+            }
+        }
+        else
+        {
+            if (vObjByTId.size() >= 1)
+            {
+                for (int i = 0; i < vObjByTId.size(); i++)
+                {
+                    bool bFlag = ObjectMaps[vObjByTId[i]]->UpdateToObject3D(this, *mpCurrentFrame, t_test); // 3 是指 T 方法.
+
+                    if (bFlag)
+                    {
+                        bAssoByTtest = true;
+                        nAssoByTId = vObjByTId[i];
+
+                        if (vObjByTId.size() > i)
+                        {
+                            for (int j = i + 1; j < vObjByTId.size(); j++)
+                            {
+                                AddPotentialAssociatedObjects(ObjectMaps, nAssoByTId, ObjectMaps[vObjByTId[j]]->mnId);
+                            }
+                        }
+
+                        if (vObjByTIdLower.size() >= 0)
+                        {
+                            for (int j = 0; j < vObjByTIdLower.size(); j++)
+                            {
+                                if (vObjByTIdLower[j] == nAssoByTId)
+                                    continue;
+
+                                AddPotentialAssociatedObjects(ObjectMaps, nAssoByTId, ObjectMaps[vObjByTIdLower[j]]->mnId);
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    // t-test data association END ---------------------------------------------------------------------------------------
 
     // *************************************************
     //             STEP 4. create a new object         *
     // *************************************************
-    //if (bAssoByIou || bAssoByNp || bAssoByProject || bAssoByT)
-        return false;
+    //if (bAssoByMotionIou || bAssoByNp || bAssoByProjectIou || bAssoByTtest)
+    //    return true;
+     if (bAssoByMotionIou )
+        return MotionIou;
+     if ( bAssoByNp)
+        return NoPara;
+     if ( bAssoByProjectIou)
+        return ProIou;
+     if (bAssoByTtest)
+        return t_test;
+     return 0;
 }
 
 int Object_2D::creatObject()
 {
     unique_lock<mutex> lock(mMutexObjMapPoints);   //目的: 不让mBox_cvRect被修改, 以免造成程序错乱.
     const cv::Mat ColorImage = mpCurrentFrame->mColorImage.clone();
-    bool associate = Object2D_DataAssociationWith_everyObject3D();    // data association.
+    int associate = Object2D_DataAssociationWith_Object3D();    // data association with object3d in map. 如果关联失败， 则声称一个新的物体
+    switch (associate) {
+                case MotionIou:   cout << "关联方式：MotionIou. " << endl; return 0;
+                case NoPara:    cout << "关联方式：NoPara. " << endl;  return 0;
+                case ProIou:    cout << "关联方式：ProIou. " << endl;  return 0;
+                case t_test:    cout << "关联方式：t_test. " << endl;  return 0;
+    }
     if(associate)
         return 0;  //关联成功
 
     // If the object appears at the edge of the image, ignore.
-    if ((this->mBox_yoloSE.x < 10) || (this->mBox_yoloSE.y < 10) ||
-        (this->mBox_yoloSE.x + this->mBox_yoloSE.width > ColorImage.cols - 10) ||
-        (this->mBox_yoloSE.y + this->mBox_yoloSE.height > ColorImage.rows - 10))
+    // 如果检测框位置不好，则不生成新的物体
+    if ((this->mBox_cvRect.x < 10) || (this->mBox_cvRect.y < 10) ||
+        (this->mBox_cvRect.x + this->mBox_cvRect.width > ColorImage.cols - 10) ||
+        (this->mBox_cvRect.y + this->mBox_cvRect.height > ColorImage.rows - 10))
     {
         this->bad = true;
         return -1;  //检测框 位置不好
     }
 
     // create a 3d object in the map.
-    std::cout<<"【debug】开始创建新物体"<<std::endl;
+
     Object_Map *Object3D = new Object_Map;  //zhang 生成新物体
     Object3D->mvObject_2ds.push_back(this);
     const vector<Object_Map*> ObjectMaps  = mpMap->GetObjects();
     Object3D->mnId = ObjectMaps.size();
     Object3D->mnClass = mclass_id;
+    std::cout<<"【debug】开始创建新物体,>>>>>>>>,id:"<< ObjectMaps.size()<<",>>>>>>>>,";
     Object3D->mnConfidence_foractive = 1;
     Object3D->mnAddedID = mpCurrentFrame->mnId;
     Object3D->mnLastAddID = mpCurrentFrame->mnId;
     Object3D->mnLastLastAddID = mpCurrentFrame->mnId;
     Object3D->mLastRect = mBox_cvRect;
     //Object3D->mPredictRect = obj->mBoxRect;       // for iou.
-    std::cout<<"【debug】新物体 初始化"<<std::endl;
     // add properties of the point and save it to the object.
+    Object3D->mvpMapObjectMappoints_NewForActive.clear();
     for (size_t i = 0; i < mvMapPonits.size(); i++)
     {
         MapPoint *pMP = mvMapPonits[i];
@@ -731,263 +712,237 @@ int Object_2D::creatObject()
 
         // save to the object.
         Object3D->mvpMapObjectMappoints.push_back(pMP);
+        Object3D->mvpMapObjectMappoints_NewForActive.push_back(pMP);
     }
-    std::cout<<"【debug】新物体 复制特征点"<<std::endl;
 
     mnId = Object3D->mnId;
 
     // save this 2d object to current frame (associates with a 3d object in the map).
     mpCurrentFrame->mvObject_2ds.push_back(this);
     //mpCurrentFrame->AppearNewObject = true;
-    std::cout<<"【debug】新物体 存入obj2d"<<std::endl;
 
     // update object map.
-    Object3D->IsolationForestDeleteOutliers();
-    std::cout<<"【debug】新物体 isolation"<<std::endl;
+    //Object3D->IsolationForestDeleteOutliers();
     Object3D->ComputeMeanAndDeviation_3D();
-    std::cout<<"【debug】新物体 计算均值"<<std::endl;
     //mpMap->mvObjectMap.push_back(ObjectMapSingle);
     mpMap->AddObject(Object3D);
-    std::cout<<"【debug】新物体 存入map"<<std::endl;
+    std::cout<<"存入map"<<std::endl;
 
     return 1;  //创建物体成功
 }
 
 //  nonparametric test.
-int Object_2D::NoParaDataAssociation(Object_Map *Object3D,  cv::Mat &image)
+int Object_2D::NoParaDataAssociation(Object_Map *Object3D)
 {
-    //// step 1. sample size.
-    //// 2d object ponits in the frame -- m.
-    //int m = (int)Obj_c_MapPonits.size();
-    //int OutPointNum1 = 0;
-    //for (int ii = 0; ii < (int)Obj_c_MapPonits.size(); ii++)
-    //{
-    //    MapPoint *p1 = Obj_c_MapPonits[ii];
-    //    if (p1->isBad() || p1->out_point)
-    //    {
-    //        OutPointNum1++;
-    //        continue;
-    //    }
-    //}
-    //m = m - OutPointNum1;
-    //
-    //// 3d object points in the object map -- n.
-    //int n = (int)ObjectMapSingle->mvpMapObjectMappoints.size();
-    //int OutPointNum2 = 0;
-    //for (int ii = 0; ii < (int)ObjectMapSingle->mvpMapObjectMappoints.size(); ii++) // 帧中物体.
-    //{
-    //    MapPoint *p2 = ObjectMapSingle->mvpMapObjectMappoints[ii];
-    //    if (p2->isBad() || p2->out_point)
-    //    {
-    //        OutPointNum2++;
-    //        continue;
-    //    }
-    //}
-    //n = n - OutPointNum2;
-    //
-    //// 0: skip the nonparametric test and continue with the subsequent t-test.
-    //if (m < 20)
-    //    return 0;
-    //
-    //// 2: association failed, compare next object.
-    //if (n < 20)
-    //    return 2;
-    //
-    //// Homogenization to avoid too many points of map object; n = 3 * m.
-    //// 均匀化防止地图点过多
-    //bool bSampleMapPoints = true;
-    //vector<float> x_pt_map_sample;
-    //vector<float> y_pt_map_sample;
-    //vector<float> z_pt_map_sample;
-    //if (bSampleMapPoints)
-    //{
-    //    int step = 1;
-    //    if (n > 3 * m)
-    //    {
-    //        n = 3 * m;
-    //        step = (int)ObjectMapSingle->mvpMapObjectMappoints.size() / n;
-    //
-    //        vector<float> x_pt;
-    //        vector<float> y_pt;
-    //        vector<float> z_pt;
-    //        for (int jj = 0; jj < (int)ObjectMapSingle->mvpMapObjectMappoints.size(); jj++)
-    //        {
-    //            MapPoint *p2 = ObjectMapSingle->mvpMapObjectMappoints[jj];
-    //            if (p2->isBad() || p2->out_point)
-    //            {
-    //                continue;
-    //            }
-    //
-    //            cv::Mat x3D2 = p2->GetWorldPos();
-    //            x_pt.push_back(x3D2.at<float>(0, 0));
-    //            y_pt.push_back(x3D2.at<float>(1, 0));
-    //            z_pt.push_back(x3D2.at<float>(2, 0));
-    //        }
-    //        // 注意：这里是分开维度进行排序，相当于把点拆解了
-    //        sort(x_pt.begin(), x_pt.end());
-    //        sort(y_pt.begin(), y_pt.end());
-    //        sort(z_pt.begin(), z_pt.end());
-    //
-    //        for (int i = 0; i < x_pt.size(); i += step)
-    //        {
-    //            x_pt_map_sample.push_back(x_pt[i]);
-    //            y_pt_map_sample.push_back(y_pt[i]);
-    //            z_pt_map_sample.push_back(z_pt[i]);
-    //        }
-    //        n = x_pt_map_sample.size();
-    //    }
-    //    else
-    //    {
-    //        for (int jj = 0; jj < (int)ObjectMapSingle->mvpMapObjectMappoints.size(); jj++) // 地图中物体.
-    //        {
-    //            MapPoint *p2 = ObjectMapSingle->mvpMapObjectMappoints[jj];
-    //            if (p2->isBad() || p2->out_point)
-    //            {
-    //                continue;
-    //            }
-    //
-    //            cv::Mat x3D2 = p2->GetWorldPos();
-    //            x_pt_map_sample.push_back(x3D2.at<float>(0, 0));
-    //            y_pt_map_sample.push_back(x3D2.at<float>(1, 0));
-    //            z_pt_map_sample.push_back(x3D2.at<float>(2, 0));
-    //        }
-    //
-    //        n = x_pt_map_sample.size();
-    //    }
-    //}
-    //
-    //float w_x_12 = 0.0;
-    //float w_y_12 = 0.0;
-    //float w_z_12 = 0.0;
-    //float w_x_21 = 0.0;
-    //float w_y_21 = 0.0;
-    //float w_z_21 = 0.0;
-    //float w_x_00 = 0.0;
-    //float w_y_00 = 0.0;
-    //float w_z_00 = 0.0;
-    //float w_x = 0.0;
-    //float w_y = 0.0;
-    //float w_z = 0.0;
-    //
-    //for (int ii = 0; ii < (int)Obj_c_MapPonits.size(); ii++)
-    //{
-    //    MapPoint *p1 = Obj_c_MapPonits[ii];
-    //    if (p1->isBad() || p1->out_point)
-    //        continue;
-    //
-    //    cv::Mat x3D1 = p1->GetWorldPos();
-    //    double x1 = x3D1.at<float>(0, 0);
-    //    double y1 = x3D1.at<float>(1, 0);
-    //    double z1 = x3D1.at<float>(2, 0);
-    //
-    //    // TODO: 感觉这块有点问题，没有进行排序
-    //    if (!bSampleMapPoints)
-    //    {
-    //        for (int jj = 0; jj < (int)ObjectMapSingle->mvpMapObjectMappoints.size(); jj++)
-    //        {
-    //            MapPoint *p2 = ObjectMapSingle->mvpMapObjectMappoints[jj];
-    //            if (p2->isBad() || p2->out_point)
-    //                continue;
-    //
-    //            cv::Mat x3D2 = p2->GetWorldPos();
-    //            double x2 = x3D2.at<float>(0, 0);
-    //            double y2 = x3D2.at<float>(1, 0);
-    //            double z2 = x3D2.at<float>(2, 0);
-    //
-    //            // notes: p1为物体帧点，p2为地图上的点
-    //            if (x1 > x2)
-    //                w_x_12++;
-    //            else if (x1 < x2)
-    //                w_x_21++;
-    //            else if (x1 == x2)
-    //                w_x_00++;
-    //
-    //            if (y1 > y2)
-    //                w_y_12++;
-    //            else if (y1 < y2)
-    //                w_y_21++;
-    //            else if (y1 == y2)
-    //                w_y_00++;
-    //
-    //            if (z1 > z2)
-    //                w_z_12++;
-    //            else if (z1 < z2)
-    //                w_z_21++;
-    //            else if (z1 == z2)
-    //                w_z_00++;
-    //        }
-    //    }
-    //
-    //    if (bSampleMapPoints)
-    //    {
-    //        for (int jj = 0; jj < (int)x_pt_map_sample.size(); jj++)
-    //        {
-    //            double x2 = x_pt_map_sample[jj];
-    //            double y2 = y_pt_map_sample[jj];
-    //            double z2 = z_pt_map_sample[jj];
-    //
-    //            // 这里x_pt_map_sample实际上是排序过的，下面相当于对物体帧上的点进行排序
-    //            if (x1 > x2)
-    //                w_x_12++;
-    //            else if (x1 < x2)
-    //                w_x_21++;
-    //            else if (x1 == x2)
-    //                w_x_00++;
-    //
-    //            if (y1 > y2)
-    //                w_y_12++;
-    //            else if (y1 < y2)
-    //                w_y_21++;
-    //            else if (y1 == y2)
-    //                w_y_00++;
-    //
-    //            if (z1 > z2)
-    //                w_z_12++;
-    //            else if (z1 < z2)
-    //                w_z_21++;
-    //            else if (z1 == z2)
-    //                w_z_00++;
-    //        }
-    //    }
-    //}
-    //
-    //// step 2. compute the rank sum.
-    //// notes: 注意，当我们计算若干等值元素的排名时，会用这些元素排名的平均值作为它们在整个序列中的排名。
-    //// 这就是为什么要加 w_x_00 / 2 的原因
-    //// w_x_12 + w_x_00 / 2 为 m对应的排序； w_x_21 + w_x_00 / 2 为 n对应的排序
-    //// W = min(W_p, W_q)
-    //w_x = min(w_x_12 + m * (m + 1) / 2, w_x_21 + n * (n + 1) / 2) + w_x_00 / 2;
-    //w_y = min(w_y_12 + m * (m + 1) / 2, w_y_21 + n * (n + 1) / 2) + w_y_00 / 2;
-    //w_z = min(w_z_12 + m * (m + 1) / 2, w_z_21 + n * (n + 1) / 2) + w_z_00 / 2;
-    //
-    //// step 3. compute the critical value.
-    //// TODO: 修改为wiki上的标准形式
-    //// notes: 这里的公式其实不太对，代码中的公式为r1 = r_l = m + s * sqrt(\sigma)
-    //// 其中\sigma = m * n * (m + n + 1) / 12
-    //// 但是这种情况下是有重复秩的，\sigma应该用论文上的公式才对
-    //// 不过论文上公式和wiki上也并不一致
-    //// 给的注释即s的值好像也不太对，标准正态分布表中对应80%是0.85, 对应1.28的是90%
-    //// 对应 1.96的是 97.5%
-    //float r1 = 0.5 * m * (m + n + 1) - 1.282 * sqrt(m * n * (m + n + 1) / 12); // 80%：1.282  85%:1.96
-    //float r2 = 0.5 * m * (m + n + 1) + 1.282 * sqrt(m * n * (m + n + 1) / 12); // 80%：1.282  85%:1.96
-    //
-    //// step 4. whether the 3 directions meet the nonparametric test.
-    //bool old_np = false;
-    //int add = 0;
-    //if (w_x > r1 && w_x < r2)
-    //    add++;
-    //if (w_y > r1 && w_y < r2)
-    //    add++;
-    //if (w_z > r1 && w_z < r2)
-    //    add++;
-    //
-    //if (add == 3)
-    //    old_np = true;  // Nonparametric Association succeeded.
-    //
-    //if (old_np == 1)
-    //    return 1;       // success.
-    //else
-    //    return 2;       // failure.
+    // step 1. sample size.
+    // 2d object ponits in the frame -- m.
+    // 2d物体中的点的数量
+    int m = (int)mvMapPonits.size();
+    int OutPointNum1 = 0;
+    for (int i = 0; i < (int)mvMapPonits.size(); i++)
+    {
+        MapPoint *p1 = mvMapPonits[i];
+        if (p1->isBad())
+        {
+            OutPointNum1++;
+            continue;
+        }
+    }
+    m = m - OutPointNum1;
+
+    // 3d object points in the object map -- n.
+    // 3d物体中的点的数量
+    int n = (int)Object3D->mvpMapObjectMappoints.size();
+    int OutPointNum2 = 0;
+    for (int i = 0; i < (int)Object3D->mvpMapObjectMappoints.size(); i++) // 帧中物体.
+    {
+        MapPoint *p2 = Object3D->mvpMapObjectMappoints[i];
+        if (p2->isBad())
+        {
+            OutPointNum2++;
+            continue;
+        }
+    }
+    n = n - OutPointNum2;
+
+    // 0: skip the nonparametric test and continue with the subsequent t-test.
+    // 0： 如果2d point很少，则不进行np假设验证
+    if (m < 20)
+        return 0;
+
+    // 2: association failed, compare next object.
+    // 2： 如果3d point很少，则无法进行np假设检验（可能是因为3d point样本太少，导致无法计算均值和方差），认为关联失败
+    if (n < 20)
+        return 2;
+
+    // Homogenization to avoid too many points of map object; n = 3 * m.
+    // 对3dpoint，均匀化，防止地图点过多
+    bool bSampleMapPoints = true;
+    // 三个维度上，均匀化后的3d point坐标的集合
+    vector<float> x_pt_map_sample;
+    vector<float> y_pt_map_sample;
+    vector<float> z_pt_map_sample;
+    // 均匀化的操作
+    if (bSampleMapPoints)
+    {
+        int step = 1;
+        if (n > 3 * m)   // 如果3d point是 2d point的三倍多。则进行均匀化，
+        {
+            n = 3 * m;
+            step = (int)Object3D->mvpMapObjectMappoints.size() / n;
+            // 三个维度上，未均匀化的3d point坐标的集合
+            vector<float> x_pt;
+            vector<float> y_pt;
+            vector<float> z_pt;
+            for (int i = 0; i < (int)Object3D->mvpMapObjectMappoints.size(); i++)
+            {
+                MapPoint *p2 = Object3D->mvpMapObjectMappoints[i];
+                if (p2->isBad())
+                {
+                    continue;
+                }
+
+                cv::Mat x3D2 = p2->GetWorldPos();
+                x_pt.push_back(x3D2.at<float>(0, 0));
+                y_pt.push_back(x3D2.at<float>(1, 0));
+                z_pt.push_back(x3D2.at<float>(2, 0));
+            }
+            // 注意：这里是分开维度进行排序，相当于把点拆解了
+            sort(x_pt.begin(), x_pt.end());
+            sort(y_pt.begin(), y_pt.end());
+            sort(z_pt.begin(), z_pt.end());
+            for (int i = 0; i < x_pt.size(); i += step)
+            {
+                x_pt_map_sample.push_back(x_pt[i]);
+                y_pt_map_sample.push_back(y_pt[i]);
+                z_pt_map_sample.push_back(z_pt[i]);
+            }
+            n = x_pt_map_sample.size();
+        }
+        else    // 如果3d point 不到 2d point的三倍多。则不进行均匀化，
+        {
+            for (int jj = 0; jj < (int)Object3D->mvpMapObjectMappoints.size(); jj++) // 地图中物体.
+            {
+                MapPoint *p2 = Object3D->mvpMapObjectMappoints[jj];
+                if (p2->isBad())
+                {
+                    continue;
+                }
+
+                cv::Mat x3D2 = p2->GetWorldPos();
+                x_pt_map_sample.push_back(x3D2.at<float>(0, 0));
+                y_pt_map_sample.push_back(x3D2.at<float>(1, 0));
+                z_pt_map_sample.push_back(x3D2.at<float>(2, 0));
+            }
+
+            n = x_pt_map_sample.size();
+        }
+    }
+
+    float w_x_2d_bigger_3d = 0.0;
+    float w_y_2d_bigger_3d = 0.0;
+    float w_z_2d_bigger_3d = 0.0;
+    float w_x_3d_bigger_2d = 0.0;
+    float w_y_3d_bigger_2d = 0.0;
+    float w_z_3d_bigger_2d = 0.0;
+    float w_x_3d_equal_2d = 0.0;
+    float w_y_3d_equal_2d = 0.0;
+    float w_z_3d_equal_2d = 0.0;
+    float w_x = 0.0;
+    float w_y = 0.0;
+    float w_z = 0.0;
+
+    // 三个维度上，2d point坐标的集合
+    for (int ii = 0; ii < (int)mvMapPonits.size(); ii++)
+    {
+        MapPoint *p1 = mvMapPonits[ii];
+        if (p1->isBad() )
+            continue;
+
+        cv::Mat x3D1 = p1->GetWorldPos();
+        double x_2d = x3D1.at<float>(0, 0);
+        double y_2d = x3D1.at<float>(1, 0);
+        double z_2d = x3D1.at<float>(2, 0);
+
+        // TODO: 感觉这块有点问题，没有进行排序
+        if (!bSampleMapPoints)
+        {
+            //从Object3D->mvpMapObjectMappoints重新提取point,进行
+        }
+
+        // 将3d point
+        if (bSampleMapPoints)
+        {
+            for (int jj = 0; jj < (int)x_pt_map_sample.size(); jj++)
+            {
+                double x_3d = x_pt_map_sample[jj];
+                double y_3d = y_pt_map_sample[jj];
+                double z_3d = z_pt_map_sample[jj];
+
+                // 这里x_pt_map_sample实际上是排序过的，下面相当于对物体帧上的点进行排序
+                // 记录2dpoint和3dpoint, 大小比较的次数. 例如所有的 2dpoint都大于3dpoint, 则w_x_2d_bigger_3d等于 n*m
+                if (x_2d > x_3d)
+                    w_x_2d_bigger_3d++;
+                else if (x_2d < x_3d)
+                    w_x_3d_bigger_2d++;
+                else if (x_2d == x_3d)
+                    w_x_3d_equal_2d++;
+
+                if (y_2d > y_3d)
+                    w_y_2d_bigger_3d++;
+                else if (y_2d < y_3d)
+                    w_y_3d_bigger_2d++;
+                else if (y_2d == y_3d)
+                    w_y_3d_equal_2d++;
+
+                if (z_2d > z_3d)
+                    w_z_2d_bigger_3d++;
+                else if (z_2d < z_3d)
+                    w_z_3d_bigger_2d++;
+                else if (z_2d == z_3d)
+                    w_z_3d_equal_2d++;
+            }
+        }
+    }
+
+    // step 2. `compute the rank sum.`
+    // notes: 注意，当我们计算若干等值元素的排名时，会用这些元素排名的平均值作为它们在整个序列中的排名。
+    // 这就是为什么要加 w_x_00 / 2 的原因
+    // w_x_12 + w_x_00 / 2 为 m对应的排序； w_x_21 + w_x_00 / 2 为 n对应的排序. 感觉不对
+    // W = min(W_p, W_q)
+    // zhang: w = (n*n - R)   + n(n+1)/2
+    w_x = min(w_x_2d_bigger_3d + m * (m + 1) / 2, w_x_3d_bigger_2d + n * (n + 1) / 2) + w_x_3d_equal_2d / 2;
+    w_y = min(w_y_2d_bigger_3d + m * (m + 1) / 2, w_y_3d_bigger_2d + n * (n + 1) / 2) + w_y_3d_equal_2d / 2;
+    w_z = min(w_z_2d_bigger_3d + m * (m + 1) / 2, w_z_3d_bigger_2d + n * (n + 1) / 2) + w_z_3d_equal_2d / 2;
+
+    // step 3. compute the critical value.
+    // TODO: 修改为wiki上的标准形式
+    // notes: 这里的公式其实不太对，代码中的公式为r1 = r_l = m + s * sqrt(\sigma)
+    // 其中\sigma = m * n * (m + n + 1) / 12
+    // 但是这种情况下是有重复秩的，\sigma应该用论文上的公式才对
+    // 不过论文上公式和wiki上也并不一致
+    // 给的注释即s的值好像也不太对，标准正态分布表中对应80%是0.85, 对应1.28的是90%
+    // 对应 1.96的是 97.5%
+    float r1 = 0.5 * m * (m + n + 1) - 1.282 * sqrt(m * n * (m + n + 1) / 12); // 80%：1.282  85%:1.96
+    float r2 = 0.5 * m * (m + n + 1) + 1.282 * sqrt(m * n * (m + n + 1) / 12); // 80%：1.282  85%:1.96
+
+    // step 4. whether the 3 directions meet the nonparametric test.
+    bool old_np = false;
+    int add = 0;
+    if (w_x > r1 && w_x < r2)
+        add++;
+    if (w_y > r1 && w_y < r2)
+        add++;
+    if (w_z > r1 && w_z < r2)
+        add++;
+
+    if (add == 3)
+        old_np = true;  // Nonparametric Association succeeded.
+
+    if (old_np == 1)
+        return 1;       // success.
+    else
+        return 2;       // failure.
 } // Object_2D::NoParaDataAssociation() END ------------------------------------------------------------
 
 void Object_2D::AddObjectPoint(ORB_SLAM2::MapPoint *pMP) {
@@ -997,6 +952,22 @@ void Object_2D::AddObjectPoint(ORB_SLAM2::MapPoint *pMP) {
     const cv::Mat PointPosWorld = pMP->GetWorldPos();                 // world frame.
     sum_pos_3d += PointPosWorld;  //深拷贝
 }
+
+void Object_2D::AddPotentialAssociatedObjects( vector<Object_Map*> obj3ds, int AssoId, int beAssoId){
+    map<int, int>::iterator sit;
+    sit = obj3ds[AssoId]->mReObj.find(obj3ds[beAssoId]->mnId);
+    if (sit != obj3ds[AssoId]->mReObj.end())
+    {
+        int sit_sec = sit->second;
+        obj3ds[AssoId]->mReObj.erase(obj3ds[beAssoId]->mnId);
+        obj3ds[AssoId]->mReObj.insert(make_pair(obj3ds[beAssoId]->mnId, sit_sec + 1));
+    }
+    else
+        obj3ds[AssoId]->mReObj.insert(make_pair(obj3ds[beAssoId]->mnId, 1));
+}
+
+
+
 
 
 
@@ -1080,6 +1051,7 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
         if ((x_pt.size() == 0) || (y_pt.size() == 0) || (z_pt.size() == 0)) {
             this->bad_3d = true;
+            std::cout<<"object->bad 点数为0" <<std::endl;
             return;
         }
 
@@ -1245,13 +1217,332 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
 
 
-
+// 移除object3d中的outliers，重新优化物体的坐标和尺度
+// 疑问： 这和ComputeMeanAndStandard有什么区别？
+// 答：似乎是专属于biForest下的ComputeMeanAndStandard
+// remove outliers and refine the object position and scale by IsolationForest.
 void Object_Map::IsolationForestDeleteOutliers(){
+    if(!iforest_flag)
+        return;
 
+    //if ((this->mnClass == 75) || (this->mnClass == 64) || (this->mnClass == 65))
+    //    return;
+
+    float th = 0.6;
+    if (this->mnClass == 62)
+        th = 0.65;
+
+    // notes: 相对于传统的srand()，std::mt19937拥有更好的性能。
+    //std::mt19937 rng(12345);
+    std::vector<std::array<float, 3>> data; // uint32_t
+
+    if (mvpMapObjectMappoints.size() < 30)
+        return;
+
+    // 将point的坐标，从cv::mat转为std::array
+    for (size_t i = 0; i < mvpMapObjectMappoints.size(); i++)
+    {
+        MapPoint *pMP = mvpMapObjectMappoints[i];
+        cv::Mat pos = pMP->GetWorldPos();
+
+        std::array<float, 3> temp;
+        temp[0] = pos.at<float>(0);
+        temp[1] = pos.at<float>(1);
+        temp[2] = pos.at<float>(2);
+        data.push_back(temp);
+    }
+
+    // 删除很多 被注释的内容
+
+
+    // STEP 3 构建随机森林 筛选器
+    iforest::IsolationForest<float, 3> forest; // uint32_t
+    if (!forest.Build(50, 12345, data, ((int)mvpMapObjectMappoints.size() / 2)))
+                 //数的数量, ??, 输入的数据,  采样的数量(此处是data的一半)
+    {
+        std::cerr << "Failed to build Isolation Forest.\n";
+        return;
+    }
+    std::vector<double> anomaly_scores;
+
+    // STEP 4 计算Anomaly_score, 并将大于阈值的point, 标记为outlier
+    if (!forest.GetAnomalyScores(data, anomaly_scores))
+    {
+        std::cerr << "Failed to calculate anomaly scores.\n";
+        return;
+    }
+    std::vector<int> outlier_ids;
+    for (uint32_t i = 0; i < (int)mvpMapObjectMappoints.size(); i++)
+    {
+        // 如果Anomaly_score大于阈值, 则认为是outlier
+        if (anomaly_scores[i] > th)
+            outlier_ids.push_back(i);
+    }
+
+    if (outlier_ids.empty())
+        return;
+
+    // step 5. 将 outliers 从object3d的mvpMapObjectMappoints 中移除.
+    int id_Mappoint = -1;
+    int id_MOutpoint_out = 0;
+    unique_lock<mutex> lock(mMutexMapPoints); // lock.
+    vector<MapPoint *>::iterator pMP;
+    for (pMP = mvpMapObjectMappoints.begin();
+         pMP != mvpMapObjectMappoints.end();)
+    {
+        // pMP和numMappoint, 从头开始递加, 依次检阅
+        id_Mappoint++;
+
+        cv::Mat pos = (*pMP)->GetWorldPos();
+
+        if (id_Mappoint == outlier_ids[id_MOutpoint_out])
+        {
+            id_MOutpoint_out++;
+            pMP = mvpMapObjectMappoints.erase(pMP);
+            mSumPointsPos -= pos;
+        }
+        else
+        {
+            ++pMP;
+        }
+    }
 }
 
-bool Object_Map::UpdateObject3D(Object_2D* Object_2d, cv::Mat &image, int Flag){
+// MotionIou 1,  NoPara 2,  t_test 3,  ProIou 4
+// return false的原因: class id不匹配; IOU太小；  Frame id没有递增;
+bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag){
+    if (Object_2d->mclass_id != mnClass)
+        return false;
 
+    const cv::Mat Rcw = mCurrentFrame.mTcw.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = mCurrentFrame.mTcw.rowRange(0, 3).col(3);
+
+    // step 1. whether the box projected into the image changes greatly after the new point cloud is associated.
+    if ((Flag != MotionIou) && (Flag != ProIou))
+    // 此步只用于 NoPara 和 t_test
+    // 因为以下,类似于IOU的匹配部分. 而NoPara和t_test之前认为IOU匹配度不好, 所以要再次验证IOU是否匹配.
+    {
+        // notes：ProjectRect1表示物体地图上的目标框投影; ProjectRect2表示融入当前帧的目标框投影
+        cv::Rect ProjectRect_3D;
+        cv::Rect ProjectRect_3Dand2D;
+
+        // projected bounding box1.
+        this->ComputeProjectRectFrame(mCurrentFrame);
+        ProjectRect_3D = this->mRect_byProjectPoints;
+
+        // mixed points of frame object and map object.
+        vector<float> x_pt;
+        vector<float> y_pt;
+        // notes: Obj_c_MapPonits为物体上的3D点，mvpMapObjectMappoints为物体地图上的点
+        for (int i = 0; i < Object_2d->mvMapPonits.size(); ++i)
+        {
+            MapPoint *pMP = Object_2d->mvMapPonits[i];
+            cv::Mat PointPosWorld = pMP->GetWorldPos();
+            cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+            const float xc = PointPosCamera.at<float>(0);
+            const float yc = PointPosCamera.at<float>(1);
+            const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+            float u = mCurrentFrame.fx * xc * invzc + mCurrentFrame.cx;
+            float v = mCurrentFrame.fy * yc * invzc + mCurrentFrame.cy;
+
+            x_pt.push_back(u);
+            y_pt.push_back(v);
+        }
+        for (int j = 0; j < mvpMapObjectMappoints.size(); ++j)
+        {
+            MapPoint *pMP = mvpMapObjectMappoints[j];
+            cv::Mat PointPosWorld = pMP->GetWorldPos();
+            cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+            const float xc = PointPosCamera.at<float>(0);
+            const float yc = PointPosCamera.at<float>(1);
+            const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+            float u = mCurrentFrame.fx * xc * invzc + mCurrentFrame.cx;
+            float v = mCurrentFrame.fy * yc * invzc + mCurrentFrame.cy;
+
+            x_pt.push_back(u);
+            y_pt.push_back(v);
+        }
+
+        // rank.
+        sort(x_pt.begin(), x_pt.end());
+        sort(y_pt.begin(), y_pt.end());
+        float x_min = x_pt[0];
+        float x_max = x_pt[x_pt.size() - 1];
+        float y_min = y_pt[0];
+        float y_max = y_pt[y_pt.size() - 1];
+
+        if (x_min < 0)
+            x_min = 0;
+        if (y_min < 0)
+            y_min = 0;
+        if (x_max > mCurrentFrame.mColorImage.cols)
+            x_max = mCurrentFrame.mColorImage.cols;
+        if (y_max > mCurrentFrame.mColorImage.rows)
+            y_max = mCurrentFrame.mColorImage.rows;
+
+        // projected bounding box2.
+        ProjectRect_3Dand2D = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+
+        // 4. 计算 Iou
+        float fIou = Converter::bboxOverlapratio(ProjectRect_3D, ProjectRect_3Dand2D);
+        float fIou2 = Converter::bboxOverlapratioFormer(ProjectRect_3Dand2D, Object_2d->mBox_cvRect);
+        if ((fIou < 0.5) && (fIou2 < 0.8))  //fIou2不能小于0.8,是因为
+            return false;
+    }
+
+    // step 2. update the ID of the last frame
+    // 更新last和lastlast的 frame id 和 物体检测框
+    if (mnLastAddID != (int)mCurrentFrame.mnId)
+    {
+        mnLastLastAddID = mnLastAddID;
+        mnLastAddID = mCurrentFrame.mnId;
+        mLastLastRect = mLastRect;
+        mLastRect = Object_2d->mBox_cvRect;
+        mnConfidence_foractive++;
+        mvObject_2ds.push_back(Object_2d);
+    }
+    else
+        return false;
+
+    Object_2d->mnId = mnId;
+
+    // step 3. Add the point cloud of the frame object to the map object
+    // 融合
+    for (size_t j = 0; j < Object_2d->mvMapPonits.size(); ++j)
+    {
+        MapPoint *pMP = Object_2d->mvMapPonits[j];
+
+        cv::Mat pointPos = pMP->GetWorldPos();
+        cv::Mat mDis = mAveCenter3D - pointPos;
+        float fDis = sqrt(mDis.at<float>(0) * mDis.at<float>(0) + mDis.at<float>(1) * mDis.at<float>(1) + mDis.at<float>(2) * mDis.at<float>(2));
+
+        float th = 1.0;
+        if (mvObject_2ds.size() > 5)
+            th = 0.9;
+
+        if (fDis > th * mCuboid3D.mfRMax)
+            continue;
+
+        pMP->object_mnId = mnId;
+        pMP->object_class = mnClass;
+
+        // 记录此point被此object3d看见的次数
+        map<int, int>::iterator sit;
+        sit = pMP->viewdCount_forObjectId.find(this->mnId);
+        if (sit != pMP->viewdCount_forObjectId.end())
+        {
+            int sit_sec = sit->second;
+            pMP->viewdCount_forObjectId.erase(this->mnId);   //zhang报错
+            pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, sit_sec + 1));
+        }
+        else
+        {
+            pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, 1));
+        }
+
+
+        // notes: 检查有无重复地图点，并添加新的地图点
+        {
+            unique_lock<mutex> lock(mMutexMapPoints);
+            bool new_point = true;
+            mvpMapObjectMappoints_NewForActive.clear();
+            // old points.
+            for (size_t m = 0; m < mvpMapObjectMappoints.size(); ++m)
+            {
+                cv::Mat obj_curr_pos = pMP->GetWorldPos();
+                cv::Mat obj_map_pos = mvpMapObjectMappoints[m]->GetWorldPos();
+
+                if (cv::countNonZero(obj_curr_pos - obj_map_pos) == 0)
+                {
+                    mvpMapObjectMappoints[m]->feature_uvCoordinate = pMP->feature_uvCoordinate;
+                    new_point = false;
+                    break;
+                }
+            }
+            // new point.
+            if (new_point)
+            {
+                mvpMapObjectMappoints.push_back(pMP);
+
+                mvpMapObjectMappoints_NewForActive.push_back(pMP);
+
+                cv::Mat x3d = pMP->GetWorldPos();
+                mSumPointsPos += x3d;
+            }
+        }
+    }
+
+    // step 4. the historical point cloud is projected into the image, and the points not in the box(should not on the edge) are removed.
+    // 将历史point投影到图像中，如果不在box中，则提出
+    if ((Object_2d->mBox_cvRect.x > 25) && (Object_2d->mBox_cvRect.y > 25) &&
+        (Object_2d->mBox_cvRect.x + Object_2d->mBox_cvRect.width < mCurrentFrame.mColorImage.cols - 25) &&
+        (Object_2d->mBox_cvRect.y + Object_2d->mBox_cvRect.height < mCurrentFrame.mColorImage.rows - 25))
+    {
+        unique_lock<mutex> lock(mMutexMapPoints); // lock.
+        vector<MapPoint *>::iterator pMP;
+        for (pMP = mvpMapObjectMappoints.begin();
+             pMP != mvpMapObjectMappoints.end();)
+        {
+            // 在map中找到当前物体点上的物体类别
+            int sit_sec = 0;
+            map<int , int>::iterator sit;
+            sit = (*pMP)->viewdCount_forObjectId.find(mnId);
+            if (sit != (*pMP)->viewdCount_forObjectId.end())
+            {
+                sit_sec = sit->second;
+            }
+            if (sit_sec > 8)
+            {
+                ++pMP;
+                continue;
+            }
+
+            cv::Mat PointPosWorld = (*pMP)->GetWorldPos();
+            cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+            const float xc = PointPosCamera.at<float>(0);
+            const float yc = PointPosCamera.at<float>(1);
+            const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+            float u = mCurrentFrame.fx * xc * invzc + mCurrentFrame.cx;
+            float v = mCurrentFrame.fy * yc * invzc + mCurrentFrame.cy;
+
+            if ((u > 0 && u < mCurrentFrame.mColorImage.cols) && (v > 0 && v < mCurrentFrame.mColorImage.rows))
+            {
+                if (!Object_2d->mBox_cvRect.contains(cv::Point2f(u, v)))
+                {
+                    pMP = mvpMapObjectMappoints.erase(pMP);
+                    mSumPointsPos -= PointPosWorld;
+                }
+                else
+                {
+                    ++pMP;
+                }
+            }
+            else
+            {
+                ++pMP;
+            }
+        }
+    }
+
+    // step 5. update object mean.
+
+    this->ComputeMeanAndDeviation_3D();
+
+    // step 6. i-Forest.
+    this->IsolationForestDeleteOutliers();
+
+    mCurrentFrame.mvObject_2ds.push_back(Object_2d);
+    std::cout   <<"与旧物体融合成功，cude h:" <<this->mCuboid3D.height
+                <<", cude w:" <<this->mCuboid3D.width
+                <<", cude l:" <<this->mCuboid3D.lenth
+                <<std::endl;
+    return true;
 }
 
 void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
@@ -1356,7 +1647,7 @@ void Object_Map::ComputeProjectRectFrame(Frame &Frame)
     if (y_max > Frame.mColorImage.rows)
         y_max = Frame.mColorImage.rows;
 
-    mRectProject_forDataAssociate2D = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+    mRect_byProjectPoints = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
 }
 
 

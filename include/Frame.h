@@ -169,7 +169,7 @@ public:
 
     // Current and Next Frame id.
     static long unsigned int nNextId;
-    long unsigned int mnId;
+    int mnId;//long unsigned int mnId;
 
     // Reference Keyframe.
     KeyFrame* mpReferenceKF;

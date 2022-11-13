@@ -243,9 +243,24 @@ void FrameDrawer::Update(Tracking *pTracker)
 // [active slam]
 cv::Mat FrameDrawer::DrawQuadricImage()
 {
+
     cv::Mat imRGB = mQuadricIm.clone();
+    // Projection Matrix K[R|t].  相机帧到世界的变化关系
+    cv::Mat Pcw(3, 4, CV_32F);
+    if(mTcw.size().height!=4){
+        std::cout<<"相机位姿为空" <<std::endl;
+        return imRGB;
+    }
+    const cv::Mat Rcw = mTcw.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = mTcw.rowRange(0, 3).col(3);
+    Rcw.copyTo(Pcw.rowRange(0, 3).colRange(0, 3));
+    tcw.copyTo(Pcw.rowRange(0, 3).col(3));
+    cv::Mat Pfw(3, 4, CV_32F);
+    Pfw = mK * Pcw;
+
     const std::vector<Object_Map*> obj_3ds_new = mpMap->GetObjects();
     for(int i = (int)obj_3ds_new.size() - 1; i >= 0; i--){
+
         //cv::Mat DrawQuadricProject( cv::Mat &im,
         //                        const cv::Mat &P,
         //                        const cv::Mat &axe,
@@ -261,6 +276,8 @@ cv::Mat FrameDrawer::DrawQuadricImage()
         //                                    Twq,
         //                                    obj_3ds_new[i]->mnClass);
         Object_Map* obj = obj_3ds_new[i];
+        if(obj->bad_3d)
+            continue;
 
         // 尺寸
         cv::Mat axe = cv::Mat::zeros(3, 1, CV_32F);
@@ -270,15 +287,6 @@ cv::Mat FrameDrawer::DrawQuadricImage()
 
         // object pose (world).
         cv::Mat Twq = obj->mCuboid3D.pose_mat;//Converter::toCvMat(obj_3ds_new[i]->mCuboid3D.pose);
-
-        // Projection Matrix K[R|t].  相机帧到世界的变化关系
-        cv::Mat Pcw(3, 4, CV_32F);
-        const cv::Mat Rcw = mTcw.rowRange(0, 3).colRange(0, 3);
-        const cv::Mat tcw = mTcw.rowRange(0, 3).col(3);
-        Rcw.copyTo(Pcw.rowRange(0, 3).colRange(0, 3));
-        tcw.copyTo(Pcw.rowRange(0, 3).col(3));
-        cv::Mat Pfw(3, 4, CV_32F);
-        Pfw = mK * Pcw;
 
         // draw params
         cv::Scalar sc = colors[ obj->mnClass % 6];

@@ -223,7 +223,7 @@ public:
 
 private:
     std::string mStrSettingPath;
-    bool mbObjectIni = false;          // initialize the object map.
+    bool mbObjectIni = false;          // 物体地图是否初始化成功  initialize the object map.
     int mnObjectIniFrameID;
 
 };

@@ -86,7 +86,7 @@
   + todo： 把cuboidCenter改为实时计算，而非存储
 
 
-+ // 1 Iou, 2 NP, 3 t-test，4 project. for debug.
++ // 1 MotionIou, 2 NP, 3 t-test，4 project. for debug.
   
 + 把物体的共视关系也添加到 转头中
 ``
