@@ -26,7 +26,7 @@
 #include "MapDrawer.h"
 #include "Tracking.h"
 #include "System.h"
-
+#include "MapPublisher.h"
 #include <mutex>
 
 namespace ORB_SLAM2
@@ -40,7 +40,7 @@ class System;
 class Viewer
 {
 public:
-    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, const string &strSettingPath);
+    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, MapPublisher* mpMapPublisher, Tracking *pTracking, const string &strSettingPath);
 
     // Main thread function. Draw points, keyframes, the current camera pose and the last processed
     // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
@@ -64,6 +64,7 @@ private:
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
     Tracking* mpTracker;
+    MapPublisher* mpMapPublisher;
 
     // 1/fps in ms
     double mT;
@@ -80,6 +81,20 @@ private:
     bool mbStopped;
     bool mbStopRequested;
     std::mutex mMutexStop;
+
+    //active slam
+    int run_pangolin;
+    int run_rviz;
+    int read_local_object;
+    int show_object3d_frame;
+
+    void read_local_object_file();
+    void cmpute_corner(Object_Map* object);
+    // demo.
+    string mflag;
+    //nbv test
+    std::vector<ORB_SLAM2::Object_Map*> vObjects;
+    float mfx, mfy, mcx, mcy;
 
 };
 

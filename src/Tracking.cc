@@ -43,10 +43,10 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
+Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, MapPublisher*  pMapPublisher):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0),  mpMapPublisher(pMapPublisher)
 {
     // Load camera parameters from settings file
     mStrSettingPath = strSettingPath;
@@ -354,6 +354,7 @@ void Tracking::Track()
                 mVelocity = cv::Mat();
 
             mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+            mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
             // Clean VO matches
             for(int i=0; i<mCurrentFrame.N; i++)
@@ -492,6 +493,7 @@ void Tracking::StereoInitialization()
         mpMap->mvpKeyFrameOrigins.push_back(pKFini);
 
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+        mpMapPublisher->SetCurrentCameraPose(mCurrentFrame.mTcw);
 
         mState=OK;
     }
@@ -979,7 +981,7 @@ void Tracking::CreatObject_intrackmotion(){
             Object3D->mnId = nGoodObjId;             // 3d objects in the map.
             Object3D->mnClass = obj2d->mclass_id;      // object class.
             Object3D->mnConfidence_foractive = 1;              // object confidence = mObjectFrame.size().
-            Object3D->mnAddedID = mCurrentFrame.mnId;        // added id.
+            Object3D->mnAddedID_nouse = mCurrentFrame.mnId;        // added id.
             Object3D->mnLastAddID = mCurrentFrame.mnId;      // last added id.
             Object3D->mnLastLastAddID = mCurrentFrame.mnId;  // last last added id.
             Object3D->mLastRect = obj2d->mBox_cvRect;             // last rect.
@@ -989,7 +991,7 @@ void Tracking::CreatObject_intrackmotion(){
 
             std::cout<<"【debug】INIT物体 存入特征点"<<std::endl;
             // add properties of the point and save it to the object.
-            Object3D->mvpMapObjectMappoints_NewForActive.clear();
+
             for (size_t i = 0; i < obj2d->mvMapPonits.size(); i++)
             {
                 if(obj2d->mvMapPonits[i]->isBad())
@@ -1042,11 +1044,15 @@ void Tracking::CreatObject_intrackmotion(){
                 continue;
 
             // object appeared in the last 30 frames.
-            if (obj3d->mnLastAddID > mCurrentFrame.mnId - 30)
-                obj3d->ComputeProjectRectFrame(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
-            else
-            {
-                obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
+            if(ProIou_only30_flag) {
+                if (obj3d->mnLastAddID > mCurrentFrame.mnId - 30)
+                    obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
+                else {
+                    obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
+                }
+            }
+            else{
+                obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
             }
         }
 

@@ -85,6 +85,12 @@ void LocalMapping::Run()
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+            //[active slam]
+            UpdateObject();
+            MergePotentialAssObjs();
+            WhetherOverlapObject();
+
         }
         else if(Stop())
         {
@@ -756,5 +762,126 @@ bool LocalMapping::isFinished()
     unique_lock<mutex> lock(mMutexFinish);
     return mbFinished;
 }
+
+
+//[active slam]
+//更新地图中物体的均值和方差
+void LocalMapping::UpdateObject()
+{
+    unique_lock<mutex> lock(mMutexObject);
+
+    const vector<Object_Map*> &vObjs = mpMap->GetObjects();
+
+    if(vObjs.empty())
+        return;
+
+    for(int i = 0; i < (int)vObjs.size(); ++i)
+    {
+        Object_Map* Obj = vObjs[i];
+
+        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true))
+        {
+            continue;
+        }
+
+        //Obj->IsolationForestDeleteOutliers();
+        Obj->ComputeMeanAndDeviation_3D();
+    }
+    // todo remove objects with too few observations.(see tracking thread)
+}
+
+
+// 融合潜在关联的物体[在ReObj中的？] merge potentially associated objects.
+void LocalMapping::MergePotentialAssObjs()
+{
+    unique_lock<mutex> lock(mMutexObject);
+
+    const vector<Object_Map*> &vObjs = mpMap->GetObjects();
+
+    if(vObjs.empty())
+        return;
+
+    for(int i = 0; i < (int)vObjs.size(); ++i)
+    {
+        Object_Map* Obj = vObjs[i];
+
+        if(Obj->bad_3d)
+            continue;
+
+        // localmap thread
+        if (Obj->mvObject_2ds.size() >= 10)
+        {
+            if(Obj->mReObj.size() > 0)
+            {
+                Obj->SearchAndMergeMapObjs_fll(mpMap);
+            }
+        }
+    }
+}
+
+
+// 检查地图中全部的obj3d, 查看他们两两 是否重叠
+// 决定是否要融合两个重叠的物体   determine whether two objects overlap.
+void LocalMapping::WhetherOverlapObject()
+{
+    unique_lock<mutex> lock(mMutexObject);
+
+    const vector<Object_Map*> &obj_3ds = mpMap->GetObjects();
+
+    if(obj_3ds.empty())
+        return;
+
+    for(int i = 0; i < (int)obj_3ds.size(); ++i)
+    {
+        Object_Map* Obj = obj_3ds[i];
+
+        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true) || (Obj->mvObject_2ds.size() < 10))
+        {
+            continue;
+        }
+
+        for(int j = 0; j < (int)obj_3ds.size(); ++j)
+        {
+            if(i == j)
+                continue;
+
+            Object_Map* Obj2 = obj_3ds[j];
+
+            if((Obj2->mvpMapObjectMappoints.size() < 10) || (Obj2->bad_3d == true) || (Obj2->mvObject_2ds.size() < 10))
+            {
+                continue;
+            }
+
+            //两个物体中心的距离
+            float dis_x = abs(Obj->mCuboid3D.cuboidCenter(0) - Obj2->mCuboid3D.cuboidCenter(0));
+            float dis_y = abs(Obj->mCuboid3D.cuboidCenter(1) - Obj2->mCuboid3D.cuboidCenter(1));
+            float dis_z = abs(Obj->mCuboid3D.cuboidCenter(2) - Obj2->mCuboid3D.cuboidCenter(2));
+
+            //两个物体的平均长宽高
+            float sum_lenth_half = Obj->mCuboid3D.lenth/2 + Obj2->mCuboid3D.lenth/2;
+            float sum_width_half = Obj->mCuboid3D.width/2 + Obj2->mCuboid3D.width/2;
+            float sum_height_half = Obj->mCuboid3D.height/2 + Obj2->mCuboid3D.height/2;
+
+            //两个物体的体积
+            float fVolume = (Obj->mCuboid3D.lenth * Obj->mCuboid3D.width) * Obj->mCuboid3D.height;
+            float fVolume2 = (Obj2->mCuboid3D.lenth * Obj2->mCuboid3D.width) * Obj2->mCuboid3D.height;
+
+            //如果..., 说明两个物体重叠
+            if((dis_x < sum_lenth_half) && (dis_y < sum_width_half) && (dis_z < sum_height_half))
+            {
+                 //计算overlap in 3 directions.
+                float overlap_x = sum_lenth_half - dis_x;
+                float overlap_y = sum_width_half - dis_y;
+                float overlap_z = sum_height_half - dis_z;
+                float overlap_volume = (overlap_x * overlap_y) * overlap_z;
+
+                // 对两个重叠的物体的多种处理方法:融合,均分,摒弃其中一个,等
+                Obj->DealTwoOverlapObjs_fll(Obj2, overlap_x, overlap_y, overlap_z);
+            }
+        }
+    }
+}
+
+
 
 } //namespace ORB_SLAM

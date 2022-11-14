@@ -200,6 +200,7 @@ void FrameDrawer::DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText)
 void FrameDrawer::Update(Tracking *pTracker)
 {
     unique_lock<mutex> lock(mMutex);
+    CurFrameId = pTracker->mCurrentFrame.mnId;
     pTracker->mImGray.copyTo(mIm);
     mvCurrentKeys=pTracker->mCurrentFrame.mvKeys;
     N = mvCurrentKeys.size();
@@ -276,6 +277,9 @@ cv::Mat FrameDrawer::DrawQuadricImage()
         //                                    Twq,
         //                                    obj_3ds_new[i]->mnClass);
         Object_Map* obj = obj_3ds_new[i];
+        // 只显示过去20帧的物体, 不认会错乱
+        if((obj->mnLastAddID + 20) < CurFrameId)
+            continue;
         if(obj->bad_3d)
             continue;
 

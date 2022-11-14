@@ -65,13 +65,13 @@
   + 用在了Remove Outlier 和 MergeTwoFrameObj_2d中
 + 3D的 ComputeMeanAndStandard(); 用在了
   + 数据关联更新  DataAssociateUpdate_forobj2d  (有bug)
-  + 是否融合两个mapObject  WhetherMergeTwoMapObjs_forlocalmap(包含了MergeTwoMapObj 有bug)
-  + BigToSmall_forlocalmap
-  + 处理两个物体的重叠   DealTwoOverlapObjs_forlocalmap(包含了MergeTwoMapObj 有bug)
+  + 是否融合两个mapObject  SearchAndMergeMapObjs_fll(包含了MergeTwoMapObj 有bug)
+  + BigToSmall_fll
+  + 处理两个物体的重叠   DealTwoOverlapObjs_fll(包含了MergeTwoMapObj 有bug)
   
 + localmap线程用到的
-  + DealTwoOverlapObjs_forlocalmap  (包含了MergeTwoMapObj 有bug)
-  + WhetherMergeTwoMapObjs_forlocalmap  (包含了MergeTwoMapObj 有bug)
+  + DealTwoOverlapObjs_fll  (包含了MergeTwoMapObj 有bug)
+  + SearchAndMergeMapObjs_fll  (包含了MergeTwoMapObj 有bug)
   + ComputeMeanAndStandard()
 
 + 顺序

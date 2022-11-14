@@ -165,6 +165,7 @@ public:
     cv::Mat DrawYoloInfo(cv::Mat &im, bool bText);
     cv::Mat mTcw; // 相机帧到世界的变化关系  用于绘制物体在相机帧中的投影
     cv::Mat mK;   // Calibration matrix  用于绘制物体在相机帧中的投影
+    int CurFrameId = -1;
 };
 
 } //namespace ORB_SLAM

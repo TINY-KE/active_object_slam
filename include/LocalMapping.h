@@ -121,6 +121,14 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+    //[active slam]
+public:
+    void UpdateObject();            // update object.
+    void MergePotentialAssObjs();   // merge potentially associated objects.
+    void WhetherOverlapObject();    // determine whether two objects overlap.
+    std::mutex mMutexObject;
+
 };
 
 } //namespace ORB_SLAM

@@ -39,6 +39,8 @@ class Frame;
 class MapPoint
 {
 public:
+    MapPoint() {} //专用于nbv的test
+
     MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
     MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
 
@@ -148,7 +150,7 @@ protected:
 
 //[active slam]
 public:
-        //bool have_feature;
+        //bool have_feature;   没有用到
         //cv::KeyPoint feature;
         //bool object_view = false;
         int object_mnId;

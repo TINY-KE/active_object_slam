@@ -406,12 +406,13 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             //可视化 for debug
             cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
             cv::Scalar color = (200,0,0);
-            cv::rectangle(  mat_test,  RectCurrent, (0,0,255), 2);
-            cv::rectangle(  mat_test,  mBox_cvRect_FeaturePoints, (255,0,0), 2);
-            cv::rectangle(  mat_test,  obj3D->mRect_byProjectPoints, (0,255,0), 2);
+            cv::rectangle(  mat_test,  RectCurrent, cv::Scalar(255,0,0), 2);  //红
+            cv::rectangle(  mat_test,  mBox_cvRect_FeaturePoints, cv::Scalar(0,255,0), 2);  //绿
+            cv::rectangle(  mat_test,  obj3D->mRect_byProjectPoints, cv::Scalar(0,0,255), 2);//蓝
             cv::putText(mat_test, std::to_string(fIou), cv::Point(0,500), cv::FONT_HERSHEY_DUPLEX  ,1.0,(0,255,0), 2);
             cv::imshow("[ProIou]",mat_test);
-            std::cout<<"[ProIou] iou:"<<fIou <<std::endl;
+            std::cout<<"[ProIou] "<<fIou<<" iou1:"<<Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints)<<", iou2:"<<Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints) <<std::endl;
+
             // record the max IoU and map object id.
             // notes: 找到最大重叠目标框
             // TODO: 只要ProIou大于0.25就认为是，潜在的关联对象？？
@@ -540,6 +541,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 (t_test_z < tTestData[min((df - 1), 121)][5]))
             {
                 vObjByTId.push_back(i);
+                std::cout<<"[Ttest] yes 1 "<<std::endl;
             }
             // If the T-test is not satisfied, but the IOU is large, reducing the significance.
             else if (fIou > 0.25)
@@ -550,27 +552,32 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                     (t_test_z < tTestData[min((df - 1), 121)][8]))
                 {
                     vObjByTId.push_back(i);
+                    std::cout<<"[Ttest] yes 2 "<<std::endl;
                 }
 
                 else if ((fIou > 0.25) && ((t_test_x + t_test_y + t_test_z) / 3 < 10))
                 {
                     vObjByTId.push_back(i);
+                    std::cout<<"[Ttest] yes 3 "<<std::endl;
                 }
                 else
                 {
                     vObjByTIdLower.push_back(i);
+                    std::cout<<"[Ttest] yes 4 "<<std::endl;
                 }
             }
             else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
             {
-                obj3d->ComputeProjectRectFrame(*mpCurrentFrame);
+                obj3d->ComputeProjectRectFrameTo(*mpCurrentFrame);
 
                 float fIou_force = Converter::bboxOverlapratio(RectCurrent, obj3d->mRect_byProjectPoints);
                 float fIou2_force = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3d->mRect_byProjectPoints);
                 fIou_force = max(fIou_force, fIou2_force);
 
-                if (fIou_force > 0.25)
+                if (fIou_force > 0.25){
+                    std::cout<<"[Ttest] yes 5 "<<std::endl;
                     vObjByTIdLower.push_back(i);
+                }
             }
         }
 
@@ -666,6 +673,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
 int Object_2D::creatObject()
 {
     unique_lock<mutex> lock(mMutexObjMapPoints);   //目的: 不让mBox_cvRect被修改, 以免造成程序错乱.
+    unique_lock<mutex> lock2(mGlobalMutex);
     const cv::Mat ColorImage = mpCurrentFrame->mColorImage.clone();
     int associate = Object2D_DataAssociationWith_Object3D();    // data association with object3d in map. 如果关联失败， 则声称一个新的物体
     switch (associate) {
@@ -696,13 +704,13 @@ int Object_2D::creatObject()
     Object3D->mnClass = mclass_id;
     std::cout<<"【debug】开始创建新物体,>>>>>>>>,id:"<< ObjectMaps.size()<<",>>>>>>>>,";
     Object3D->mnConfidence_foractive = 1;
-    Object3D->mnAddedID = mpCurrentFrame->mnId;
+    Object3D->mnAddedID_nouse = mpCurrentFrame->mnId;
     Object3D->mnLastAddID = mpCurrentFrame->mnId;
     Object3D->mnLastLastAddID = mpCurrentFrame->mnId;
     Object3D->mLastRect = mBox_cvRect;
     //Object3D->mPredictRect = obj->mBoxRect;       // for iou.
     // add properties of the point and save it to the object.
-    Object3D->mvpMapObjectMappoints_NewForActive.clear();
+
     for (size_t i = 0; i < mvMapPonits.size(); i++)
     {
         MapPoint *pMP = mvMapPonits[i];
@@ -722,7 +730,8 @@ int Object_2D::creatObject()
     //mpCurrentFrame->AppearNewObject = true;
 
     // update object map.
-    //Object3D->IsolationForestDeleteOutliers();
+    Object3D->ComputeMeanAndDeviation_3D();
+    Object3D->IsolationForestDeleteOutliers();
     Object3D->ComputeMeanAndDeviation_3D();
     //mpMap->mvObjectMap.push_back(ObjectMapSingle);
     mpMap->AddObject(Object3D);
@@ -974,8 +983,9 @@ void Object_2D::AddPotentialAssociatedObjects( vector<Object_Map*> obj3ds, int A
 
 
 
-
-
+// ************************************
+// object3d 通用函数部分 *
+// ************************************
 void Object_Map::ComputeMeanAndDeviation_3D() {
     mSumPointsPos = cv::Mat::zeros(3,1,CV_32F);
     // remove bad points.
@@ -1214,9 +1224,6 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
 }
 
-
-
-
 // 移除object3d中的outliers，重新优化物体的坐标和尺度
 // 疑问： 这和ComputeMeanAndStandard有什么区别？
 // 答：似乎是专属于biForest下的ComputeMeanAndStandard
@@ -1299,6 +1306,7 @@ void Object_Map::IsolationForestDeleteOutliers(){
         {
             id_MOutpoint_out++;
             pMP = mvpMapObjectMappoints.erase(pMP);
+            std::cout<<"[iforest debug] mSumPointsPos size:"<< mSumPointsPos.size() <<", pos size:"<< pos.size() <<std::endl;
             mSumPointsPos -= pos;
         }
         else
@@ -1308,9 +1316,152 @@ void Object_Map::IsolationForestDeleteOutliers(){
     }
 }
 
+void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
+{
+    unique_lock<mutex> lock(mMutex);
+
+    // Rotation matrix.
+    float cp = cos(mCuboid3D.rotP);
+    float sp = sin(mCuboid3D.rotP);
+    float sr = sin(mCuboid3D.rotR);
+    float cr = cos(mCuboid3D.rotR);
+    float sy = sin(mCuboid3D.rotY);
+    float cy = cos(mCuboid3D.rotY);
+    Eigen::Matrix<double, 3, 3> REigen;
+    REigen << cp * cy, (sr * sp * cy) - (cr * sy), (cr * sp * cy) + (sr * sy),
+        cp * sy, (sr * sp * sy) + (cr * cy), (cr * sp * sy) - (sr * cy),
+        -sp, sr * cp, cr * cp;
+    cv::Mat Ryaw = Converter::toCvMat(REigen);
+
+    // Transformation matrix.
+    cv::Mat Twobj = cv::Mat::eye(4, 4, CV_32F);
+    const cv::Mat Rcw = Twobj.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = Twobj.rowRange(0, 3).col(3);
+
+    cv::Mat R_result = Rcw * Ryaw;
+
+    Twobj.at<float>(0, 0) = R_result.at<float>(0, 0);
+    Twobj.at<float>(0, 1) = R_result.at<float>(0, 1);
+    Twobj.at<float>(0, 2) = R_result.at<float>(0, 2);
+    Twobj.at<float>(0, 3) = mCuboid3D.cuboidCenter[0];
+
+    Twobj.at<float>(1, 0) = R_result.at<float>(1, 0);
+    Twobj.at<float>(1, 1) = R_result.at<float>(1, 1);
+    Twobj.at<float>(1, 2) = R_result.at<float>(1, 2);
+    Twobj.at<float>(1, 3) = mCuboid3D.cuboidCenter[1];
+
+    Twobj.at<float>(2, 0) = R_result.at<float>(2, 0);
+    Twobj.at<float>(2, 1) = R_result.at<float>(2, 1);
+    Twobj.at<float>(2, 2) = R_result.at<float>(2, 2);
+    Twobj.at<float>(2, 3) = mCuboid3D.cuboidCenter[2];
+
+    Twobj.at<float>(3, 0) = 0;
+    Twobj.at<float>(3, 1) = 0;
+    Twobj.at<float>(3, 2) = 0;
+    Twobj.at<float>(3, 3) = 1;
+
+    // note no yaw.
+    cv::Mat Twobj_without_yaw = cv::Mat::eye(4, 4, CV_32F);
+    Twobj_without_yaw.at<float>(0, 3) = mCuboid3D.cuboidCenter[0];//mAveCenter3D.at<float>(0);
+    Twobj_without_yaw.at<float>(1, 3) = mCuboid3D.cuboidCenter[1];
+    Twobj_without_yaw.at<float>(2, 3) = mCuboid3D.cuboidCenter[2];//mAveCenter3D.at<float>(2);
+
+    // SE3.[origin]
+    //g2o::SE3Quat obj_pose = Converter::toSE3Quat(Twobj);
+    //g2o::SE3Quat obj_pose_without_yaw = Converter::toSE3Quat(Twobj_without_yaw);
+    //this->mCuboid3D.pose = obj_pose;
+    //this->mCuboid3D.pose_without_yaw = obj_pose_without_yaw;
+    this->mCuboid3D.pose_mat = Twobj;
+    this->mCuboid3D.pose_noyaw_mat = Twobj_without_yaw;
+}
+
+void Object_Map::ComputeProjectRectFrameTo(Frame &Frame)
+{
+    const cv::Mat Rcw = Frame.mTcw.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = Frame.mTcw.rowRange(0, 3).col(3);
+    vector<float> x_pt;
+    vector<float> y_pt;
+    for (int j = 0; j < mvpMapObjectMappoints.size(); j++)
+    {
+        MapPoint *pMP = mvpMapObjectMappoints[j];
+        cv::Mat PointPosWorld = pMP->GetWorldPos();
+
+        cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+        const float xc = PointPosCamera.at<float>(0);
+        const float yc = PointPosCamera.at<float>(1);
+        const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+        float u = Frame.fx * xc * invzc + Frame.cx;
+        float v = Frame.fy * yc * invzc + Frame.cy;
+
+        x_pt.push_back(u);
+        y_pt.push_back(v);
+
+    }
+
+    if (x_pt.size() == 0)
+        return;
+
+    sort(x_pt.begin(), x_pt.end());
+    sort(y_pt.begin(), y_pt.end());
+    float x_min = x_pt[0];
+    float x_max = x_pt[x_pt.size() - 1];
+    float y_min = y_pt[0];
+    float y_max = y_pt[y_pt.size() - 1];
+
+    if (x_min < 0)
+        x_min = 0;
+    if (y_min < 0)
+        y_min = 0;
+    if (x_max > Frame.mColorImage.cols)
+        x_max = Frame.mColorImage.cols;
+    if (y_max > Frame.mColorImage.rows)
+        y_max = Frame.mColorImage.rows;
+
+    mRect_byProjectPoints = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+}
+
+
+void Object_Map::UpdateCoView(Object_Map *Obj_CoView)
+{
+    int nObjId = Obj_CoView->mnId;
+
+    map<int, int>::iterator sit;
+    sit = this->mmAppearSametime.find(nObjId);
+
+    if (sit != this->mmAppearSametime.end())
+    {
+        int sit_sec = sit->second;
+        this->mmAppearSametime.erase(nObjId);
+        this->mmAppearSametime.insert(make_pair(nObjId, sit_sec + 1));
+    }
+    else
+        this->mmAppearSametime.insert(make_pair(nObjId, 1));   // first co-view.
+}
+
+vector<MapPoint* > Object_Map::GetObjectMappoints(){
+    //unique_lock<mutex> lock(mMutex); mvpMapObjectMappoints_NewForActive
+    unique_lock<mutex> lock(mMutexMapPoints);
+    return vector<MapPoint* >(mvpMapObjectMappoints.begin(), mvpMapObjectMappoints.end());
+}
+
+vector<MapPoint* > Object_Map::GetNewObjectMappoints(){
+    //unique_lock<mutex> lock(mMutex); mvpMapObjectMappoints_NewForActive
+    unique_lock<mutex> lock(mMutexMapPoints);
+    return vector<MapPoint* >(mvpMapObjectMappoints_NewForActive.begin(), mvpMapObjectMappoints_NewForActive.end());
+}
+
+
+
+// ************************************
+// object3d track部分 *
+// ************************************
+
 // MotionIou 1,  NoPara 2,  t_test 3,  ProIou 4
 // return false的原因: class id不匹配; IOU太小；  Frame id没有递增;
 bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag){
+
     if (Object_2d->mclass_id != mnClass)
         return false;
 
@@ -1327,7 +1478,7 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
         cv::Rect ProjectRect_3Dand2D;
 
         // projected bounding box1.
-        this->ComputeProjectRectFrame(mCurrentFrame);
+        this->ComputeProjectRectFrameTo(mCurrentFrame);
         ProjectRect_3D = this->mRect_byProjectPoints;
 
         // mixed points of frame object and map object.
@@ -1449,7 +1600,6 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
         {
             unique_lock<mutex> lock(mMutexMapPoints);
             bool new_point = true;
-            mvpMapObjectMappoints_NewForActive.clear();
             // old points.
             for (size_t m = 0; m < mvpMapObjectMappoints.size(); ++m)
             {
@@ -1545,110 +1695,6 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
     return true;
 }
 
-void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
-{
-    unique_lock<mutex> lock(mMutex);
-
-    // Rotation matrix.
-    float cp = cos(mCuboid3D.rotP);
-    float sp = sin(mCuboid3D.rotP);
-    float sr = sin(mCuboid3D.rotR);
-    float cr = cos(mCuboid3D.rotR);
-    float sy = sin(mCuboid3D.rotY);
-    float cy = cos(mCuboid3D.rotY);
-    Eigen::Matrix<double, 3, 3> REigen;
-    REigen << cp * cy, (sr * sp * cy) - (cr * sy), (cr * sp * cy) + (sr * sy),
-        cp * sy, (sr * sp * sy) + (cr * cy), (cr * sp * sy) - (sr * cy),
-        -sp, sr * cp, cr * cp;
-    cv::Mat Ryaw = Converter::toCvMat(REigen);
-
-    // Transformation matrix.
-    cv::Mat Twobj = cv::Mat::eye(4, 4, CV_32F);
-    const cv::Mat Rcw = Twobj.rowRange(0, 3).colRange(0, 3);
-    const cv::Mat tcw = Twobj.rowRange(0, 3).col(3);
-    cv::Mat R_result = Rcw * Ryaw;
-
-    Twobj.at<float>(0, 0) = R_result.at<float>(0, 0);
-    Twobj.at<float>(0, 1) = R_result.at<float>(0, 1);
-    Twobj.at<float>(0, 2) = R_result.at<float>(0, 2);
-    Twobj.at<float>(0, 3) = mCuboid3D.cuboidCenter[0];
-
-    Twobj.at<float>(1, 0) = R_result.at<float>(1, 0);
-    Twobj.at<float>(1, 1) = R_result.at<float>(1, 1);
-    Twobj.at<float>(1, 2) = R_result.at<float>(1, 2);
-    Twobj.at<float>(1, 3) = mCuboid3D.cuboidCenter[1];
-
-    Twobj.at<float>(2, 0) = R_result.at<float>(2, 0);
-    Twobj.at<float>(2, 1) = R_result.at<float>(2, 1);
-    Twobj.at<float>(2, 2) = R_result.at<float>(2, 2);
-    Twobj.at<float>(2, 3) = mCuboid3D.cuboidCenter[2];
-
-    Twobj.at<float>(3, 0) = 0;
-    Twobj.at<float>(3, 1) = 0;
-    Twobj.at<float>(3, 2) = 0;
-    Twobj.at<float>(3, 3) = 1;
-
-    // note no yaw.
-    cv::Mat Twobj_without_yaw = cv::Mat::eye(4, 4, CV_32F);
-    Twobj_without_yaw.at<float>(0, 3) = mCuboid3D.cuboidCenter[0];//mAveCenter3D.at<float>(0);
-    Twobj_without_yaw.at<float>(1, 3) = mCuboid3D.cuboidCenter[1];
-    Twobj_without_yaw.at<float>(2, 3) = mCuboid3D.cuboidCenter[2];//mAveCenter3D.at<float>(2);
-
-    // SE3.[origin]
-    //g2o::SE3Quat obj_pose = Converter::toSE3Quat(Twobj);
-    //g2o::SE3Quat obj_pose_without_yaw = Converter::toSE3Quat(Twobj_without_yaw);
-    //this->mCuboid3D.pose = obj_pose;
-    //this->mCuboid3D.pose_without_yaw = obj_pose_without_yaw;
-    this->mCuboid3D.pose_mat = Twobj;
-    this->mCuboid3D.pose_noyaw_mat = Twobj_without_yaw;
-}
-
-void Object_Map::ComputeProjectRectFrame(Frame &Frame)
-{
-    const cv::Mat Rcw = Frame.mTcw.rowRange(0, 3).colRange(0, 3);
-    const cv::Mat tcw = Frame.mTcw.rowRange(0, 3).col(3);
-    vector<float> x_pt;
-    vector<float> y_pt;
-    for (int j = 0; j < mvpMapObjectMappoints.size(); j++)
-    {
-        MapPoint *pMP = mvpMapObjectMappoints[j];
-        cv::Mat PointPosWorld = pMP->GetWorldPos();
-
-        cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
-
-        const float xc = PointPosCamera.at<float>(0);
-        const float yc = PointPosCamera.at<float>(1);
-        const float invzc = 1.0 / PointPosCamera.at<float>(2);
-
-        float u = Frame.fx * xc * invzc + Frame.cx;
-        float v = Frame.fy * yc * invzc + Frame.cy;
-
-        x_pt.push_back(u);
-        y_pt.push_back(v);
-
-    }
-
-    if (x_pt.size() == 0)
-        return;
-
-    sort(x_pt.begin(), x_pt.end());
-    sort(y_pt.begin(), y_pt.end());
-    float x_min = x_pt[0];
-    float x_max = x_pt[x_pt.size() - 1];
-    float y_min = y_pt[0];
-    float y_max = y_pt[y_pt.size() - 1];
-
-    if (x_min < 0)
-        x_min = 0;
-    if (y_min < 0)
-        y_min = 0;
-    if (x_max > Frame.mColorImage.cols)
-        x_max = Frame.mColorImage.cols;
-    if (y_max > Frame.mColorImage.rows)
-        y_max = Frame.mColorImage.rows;
-
-    mRect_byProjectPoints = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
-}
 
 
 bool Object_Map::WhetherOverlap(Object_Map *CompareObj)
@@ -1669,21 +1715,707 @@ bool Object_Map::WhetherOverlap(Object_Map *CompareObj)
         return false;
 }
 
-void Object_Map::UpdateCoView(Object_Map *Obj_CoView)
+
+// ************************************
+// object3d localmap部分 *
+// ************************************
+void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
 {
-    int nObjId = Obj_CoView->mnId;
-
     map<int, int>::iterator sit;
-    sit = this->mmAppearSametime.find(nObjId);
-
-    if (sit != this->mmAppearSametime.end())
+    std:;vector<Object_Map*> obj_3ds = mpMap->GetObjects();
+    for (sit = mReObj.begin(); sit != mReObj.end(); sit++)
     {
-        int sit_sec = sit->second;
-        this->mmAppearSametime.erase(nObjId);
-        this->mmAppearSametime.insert(make_pair(nObjId, sit_sec + 1));
+        int nObjId = sit->first;
+        Object_Map* obj_ass = obj_3ds[nObjId];
+        if (sit->second < 3)
+            continue;
+
+        if (obj_ass->bad_3d)
+            continue;
+
+        // 通过双样本Ttest测试，验证是否是同一个物体
+        bool bDoubelTtest = this->DoubleSampleTtest_fll(obj_ass);
+        bool bSametime = true;
+
+        // make sure they don't appear at the same time.
+        // 查询是否两个物体同时出现.
+        map<int, int>::iterator sit2;
+        sit2 = mmAppearSametime.find(nObjId);
+        if (sit2 != mmAppearSametime.end())
+        {
+            continue;
+        }
+        else
+            bSametime = false;
+
+        // 如果满足, 不同时出现,且通过双样本Ttest,则融为一体. 保留被观测次数多的一方(obj2d多的一方)
+        if((!bSametime || bDoubelTtest))
+        {
+            int nAppearTimes1 = mvObject_2ds.size();
+            int nAppearTimes2 = obj_ass->mvObject_2ds.size();
+
+            if (nAppearTimes1 > nAppearTimes2)
+            {
+                this->MergeTwoMapObjs_fll(obj_ass);
+                this->ComputeMeanAndDeviation_3D();
+                this->IsolationForestDeleteOutliers();
+                obj_ass->bad_3d = true;
+            }
+            else
+            {
+                obj_ass->MergeTwoMapObjs_fll(this);
+                obj_ass->ComputeMeanAndDeviation_3D();
+                obj_ass->IsolationForestDeleteOutliers();
+                this->bad_3d = true;
+            }
+        }
+    }
+}
+
+bool Object_Map::DoubleSampleTtest_fll(ORB_SLAM2::Object_Map *RepeatObj) {
+    // Read t-distribution boundary value.
+    float tTestData[122][9] = {0};
+    ifstream infile;
+    std::string filePath = WORK_SPACE_PATH + "/data/t_test.txt";
+    infile.open(filePath);
+    for (int i = 0; i < 122; i++)
+    {
+        for (int j = 0; j < 9; j++)
+        {
+            infile >> tTestData[i][j];
+        }
+    }
+    infile.close();
+
+    int ndf1 = this->mvObject_2ds.size();
+    float fMean1_x = this->mAveCenter3D.at<float>(0, 0);
+    float fMean1_y = this->mAveCenter3D.at<float>(1, 0);
+    float fMean1_z = this->mAveCenter3D.at<float>(2, 0);
+    float fCenterStandar1_x = this->mCenterStandar_x;
+    float fCenterStandar1_y = this->mCenterStandar_y;
+    float fCenterStandar1_z = this->mCenterStandar_z;
+
+    int ndf2 = RepeatObj->mvObject_2ds.size();
+    float fMean2_x = RepeatObj->mAveCenter3D.at<float>(0, 0);
+    float fMean2_y = RepeatObj->mAveCenter3D.at<float>(1, 0);
+    float fMean2_z = RepeatObj->mAveCenter3D.at<float>(2, 0);
+    float fCenterStandar2_x = RepeatObj->mCenterStandar_x;
+    float fCenterStandar2_y = RepeatObj->mCenterStandar_y;
+    float fCenterStandar2_z = RepeatObj->mCenterStandar_z;
+
+    // Combined standard deviation.
+    float d_x = sqrt( ( ( (ndf1-1)*fMean1_x*fMean1_x + (ndf2-1)*fMean2_x*fMean2_x ) / (ndf1 + ndf2 - 2) ) * (1/ndf1 + 1/ndf2) );
+    float d_y = sqrt( ( ( (ndf1-1)*fMean1_y*fMean1_y + (ndf2-1)*fMean2_y*fMean2_y ) / (ndf1 + ndf2 - 2) ) * (1/ndf1 + 1/ndf2) );
+    float d_z = sqrt( ( ( (ndf1-1)*fMean1_z*fMean1_z + (ndf2-1)*fMean2_z*fMean2_z ) / (ndf1 + ndf2 - 2) ) * (1/ndf1 + 1/ndf2) );
+
+    // t-test
+    float t_test_x = ( fMean1_x -fMean2_x ) / d_x;
+    float t_test_y = ( fMean1_y -fMean2_y ) / d_y;
+    float t_test_z = ( fMean1_z -fMean2_z ) / d_z;
+
+    // Satisfy t test in 3 directions.
+    if ((t_test_x < tTestData[min((ndf1 + ndf2 - 2), 121)][5]) &&
+        (t_test_y < tTestData[min((ndf1 + ndf2 - 2), 121)][5]) &&
+        (t_test_z < tTestData[min((ndf1 + ndf2 - 2), 121)][5]))
+    {
+        return true;
     }
     else
-        this->mmAppearSametime.insert(make_pair(nObjId, 1));   // first co-view.
+        return false;
+}
+
+void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
+{
+    // step 1. update points.
+    for (int i = 0; i < RepeatObj->mvpMapObjectMappoints.size(); i++)
+    {
+        MapPoint *pMP = RepeatObj->mvpMapObjectMappoints[i];
+
+        cv::Mat pointPos = pMP->GetWorldPos();
+        Eigen::Vector3d scale = Converter::toSE3Quat(this->mCuboid3D.pose_mat).inverse() * Converter::toVector3d(pointPos);
+        if ((abs(scale[0]) > 1.1 * this->mCuboid3D.lenth / 2) ||
+            (abs(scale[1]) > 1.1 * this->mCuboid3D.width / 2) ||
+            (abs(scale[2]) > 1.1 * this->mCuboid3D.height / 2))
+        {
+            continue;
+        }
+
+        pMP->object_mnId = mnId;
+        pMP->object_class = mnClass;
+
+        map<int, int>::iterator sit;
+        sit = pMP->viewdCount_forObjectId.find(pMP->object_mnId);
+        if (sit != pMP->viewdCount_forObjectId.end())
+        {
+            int sit_sec = sit->second;
+            pMP->viewdCount_forObjectId.erase(pMP->object_mnId);
+            pMP->viewdCount_forObjectId.insert(make_pair(pMP->object_mnId, sit_sec + 1));
+        }
+        else
+        {
+            pMP->viewdCount_forObjectId.insert(make_pair(pMP->object_mnId, 1));
+        }
+        {
+            unique_lock<mutex> lock(mMutexMapPoints);
+            bool new_point = true;
+            // old points.
+            for (size_t m = 0; m < mvpMapObjectMappoints.size(); ++m)
+            {
+                cv::Mat obj_curr_pos = pMP->GetWorldPos();
+                cv::Mat obj_map_pos = mvpMapObjectMappoints[m]->GetWorldPos();
+
+                if (cv::countNonZero(obj_curr_pos - obj_map_pos) == 0)
+                {
+                    mvpMapObjectMappoints[m]->feature_uvCoordinate = pMP->feature_uvCoordinate;
+                    new_point = false;
+
+                    break;
+                }
+            }
+            // new points.
+            if (new_point)
+            {
+                mvpMapObjectMappoints.push_back(pMP);
+                mvpMapObjectMappoints_NewForActive.push_back(pMP);
+                cv::Mat x3d = pMP->GetWorldPos();
+                mSumPointsPos += x3d;
+            }
+        }
+    }
+
+    // step 2. update frame objects.
+    for (int j = 0; j < RepeatObj->mvObject_2ds.size(); j++)
+    {
+        Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+
+        ObjectFrame->mnId = mnId;
+        mnConfidence_foractive++;
+
+        mvObject_2ds.push_back(ObjectFrame);
+    }
+
+    // step 3. update the co-view relationship
+    {
+        map<int, int>::iterator sit;
+        for (sit = RepeatObj->mmAppearSametime.begin(); sit != RepeatObj->mmAppearSametime.end(); sit++)
+        {
+            int nObjId = sit->first;
+            int sit_sec = sit->second;
+
+            map<int, int>::iterator sit2;
+            sit2 = mmAppearSametime.find(nObjId);
+            if (sit2 != mmAppearSametime.end())
+            {
+                int sit_sec2 = sit2->second;
+                mmAppearSametime.erase(nObjId);
+                mmAppearSametime.insert(make_pair(nObjId, sit_sec2 + sit_sec));
+            }
+            else
+                mmAppearSametime.insert(make_pair(nObjId, 1));
+        }
+    }
+
+    // step 4. update the last observed frame.
+    int nOriginLastAddID = mnLastAddID;
+    int nOriginLastLatsAddID = mnLastLastAddID;
+    cv::Rect OriginLastRect = mLastRect;
+    // this object appeared recently.
+    if (mnLastAddID > RepeatObj->mnLastAddID)
+    {
+        if (nOriginLastLatsAddID < RepeatObj->mnLastAddID)
+        {
+            mnLastLastAddID = RepeatObj->mnLastAddID;
+            mLastLastRect = RepeatObj->mvObject_2ds[  RepeatObj->mvObject_2ds.size()-1  ]->mBox_cvRect;
+        }
+    }
+    // RepeatObj appeared recently.
+    else
+    {
+        mnLastAddID = RepeatObj->mnLastAddID;
+        mLastRect = RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 1]->mBox_cvRect;
+
+        if (nOriginLastAddID > RepeatObj->mnLastLastAddID)
+        {
+            mnLastLastAddID = nOriginLastAddID;
+            mLastLastRect = OriginLastRect;
+        }
+        else
+        {
+            mnLastLastAddID = RepeatObj->mnLastLastAddID;
+            mLastLastRect = RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect;
+        }
+    }
+
+    // step 5. update direction.
+    // TODO: 修改类型编号
+    if (  (mnClass == 73) /*book*/ || (mnClass == 64) /*mouse*/ || (mnClass == 65)  /*remote*/
+        || (mnClass == 66) /*keybord*/ || (mnClass == 56) /*chair*/      )
+    {
+        if(RepeatObj->mvAngleTimesAndScore.size() > 0)
+        {
+            for (auto &row_repeat : RepeatObj->mvAngleTimesAndScore)
+            {
+                bool new_measure = true;
+
+                if(this->mvAngleTimesAndScore.size() > 0)
+                {
+                    for (auto &row_this : this->mvAngleTimesAndScore)
+                    {
+                        if(row_repeat[0] == row_this[0])
+                        {
+                            row_this[1] += row_repeat[1];
+
+                            row_this[2] = row_this[2] * ((row_this[1] - row_repeat[1]) / row_this[1]) +
+                                        row_repeat[2] * (row_repeat[1] / row_this[1]);
+
+                            row_this[3] = row_this[3] * ((row_this[1] - row_repeat[1]) / row_this[1]) +
+                                        row_repeat[3] * (row_repeat[1] / row_this[1]);
+
+                            row_this[4] = row_this[4] * ((row_this[1] - row_repeat[1]) / row_this[1]) +
+                                        row_repeat[4] * (row_repeat[1] / row_this[1]);
+
+                            new_measure = false;
+                            break;
+                        }
+                    }
+                }
+
+                if(new_measure == true)
+                {
+                    this->mvAngleTimesAndScore.push_back(row_repeat);
+                }
+            }
+        }
+
+        if(this->mvAngleTimesAndScore.size() > 0)
+        {
+            int best_num = 0;
+            float best_score = 0.0;
+            for(int i = 0; i < min(6, (int)this->mvAngleTimesAndScore.size()); i++)
+            {
+                float fScore = this->mvAngleTimesAndScore[i][2];
+                if(fScore > best_score)
+                {
+                    best_score = fScore;
+                    best_num = i;
+                }
+            }
+
+            this->mCuboid3D.rotY = this->mvAngleTimesAndScore[best_num][0];
+            this->mCuboid3D.mfErrorParallel = this->mvAngleTimesAndScore[best_num][3];
+            this->mCuboid3D.mfErroeYaw = this->mvAngleTimesAndScore[best_num][4];
+            this->Update_Twobj();
+        }
+    }
+}
+
+
+// 融合两个重叠的物体. 要经过iou、volume、AppearSametime、yolo class， 四关考验
+void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float overlap_x, float overlap_y, float overlap_z) {
+    bool bIou = false;       // false: Iou is large.
+    bool bVolume = false;    // false: small volume difference.
+    bool bSame_time = false; // false: doesn't simultaneous appearance.
+    bool bClass = false;     // false: different classes.
+
+    //两个物体的体积
+    float fThis_obj_volume = (mCuboid3D.lenth * mCuboid3D.width) * mCuboid3D.height;
+    float fOverlap_obj_volume = (OverlapObj->mCuboid3D.lenth * OverlapObj->mCuboid3D.width) * OverlapObj->mCuboid3D.height;
+
+    // 体积Iou,是否大于0.3
+    float overlap_volume = (overlap_x * overlap_y) * overlap_z;
+    if ((overlap_volume / (fThis_obj_volume + fOverlap_obj_volume - overlap_volume)) >= 0.3)
+        bIou = true;
+    else
+        bIou = false;
+
+    //体积差异是否过大, 体积相差超过两倍,
+    // compute the volume difference
+    if ((fThis_obj_volume > 2 * fOverlap_obj_volume) || (fOverlap_obj_volume > 2 * fThis_obj_volume))
+        bVolume = true;
+    else
+        bVolume = false;
+
+    // 如果两个物体同时出现的次数大于3,
+    // whether simultaneous appearance.
+    map<int, int>::iterator sit;
+    sit = mmAppearSametime.find(OverlapObj->mnId);
+    if (sit != mmAppearSametime.end())
+    {
+        if (sit->second > 3)
+            bSame_time = true;
+        else
+            bSame_time = false;
+    }
+    else
+        bSame_time = false;
+
+    // class 是否相同
+    if (mnClass == OverlapObj->mnClass)
+        bClass = true;
+    else
+        bClass = false;
+
+
+    // case 1: IOU is large, the volume difference is small, doesn't simultaneous appearance, same class --> the same object, merge them.
+    // iou大, 体积接近, 多次同时出现, class相同,  则认为是同一个物体
+    // 此种情况下，将两个物体融合
+    if ((bIou == true) && (bVolume == false) && (bSame_time == false) && (bClass == true))
+    {
+        if (this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size())
+        {
+            this->MergeTwoMapObjs_fll(OverlapObj);
+            OverlapObj->bad_3d = true;
+        }
+        else
+        {
+            OverlapObj->MergeTwoMapObjs_fll(this);
+            this->bad_3d = true;
+        }
+    }
+
+    // case 2: may be a false detection.
+    // 此种情况下，将错误识别的物体删除
+    else if ((bVolume == true) && (bSame_time == false) && (bClass == true))
+    {
+        if ((this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size()) && (fThis_obj_volume > fOverlap_obj_volume))
+            OverlapObj->bad_3d = true;
+        else if ((this->mvObject_2ds.size() < OverlapObj->mvObject_2ds.size()) && (fThis_obj_volume < fOverlap_obj_volume))
+            this->bad_3d = true;
+    }
+
+    // case 3: divide the overlap area of two objects equally.  (No significant effect.)
+    // 此种情况下，将重叠部分均分
+    else if ((bIou == true) && (bVolume == false) && (bSame_time == true) && (bClass == true))
+    {
+        this->DivideEquallyTwoObjs_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
+        OverlapObj->DivideEquallyTwoObjs_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
+
+        this->ComputeMeanAndDeviation_3D();
+        OverlapObj->ComputeMeanAndDeviation_3D();
+    }
+
+    // case 4: big one gets smaller, the smaller one stays the same. (No significant effect.)
+    // 重叠小, 体积相差大,多次同时出现,class不同.  说明是大物体,体积太大的了,挤占了小物体的空间
+    // 此种情况下，缩小 大物体的体积
+    else if ((bIou == false) && (bVolume == true) && (bSame_time == true) && (bClass == false))
+    {
+        if (fThis_obj_volume > fOverlap_obj_volume)
+            this->BigToSmall_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
+        else if (fThis_obj_volume < fOverlap_obj_volume)
+            OverlapObj->BigToSmall_fll(this, overlap_x, overlap_y, overlap_z);
+    }
+
+    // case 5:
+    // 以上情况都处理完了, 剩下里面,如果还有, iou大, 多次同时出现, class相同的情况, 认为是同一个物体,进行融合
+    else if((bIou == true) && (bSame_time == false) && (bClass == true))
+    {
+        if (this->mvObject_2ds.size()/2 >= OverlapObj->mvObject_2ds.size())
+        {
+            this->MergeTwoMapObjs_fll(OverlapObj);
+            OverlapObj->bad_3d = true;
+        }
+        else if(OverlapObj->mvObject_2ds.size()/2 >= this->mvObject_2ds.size())
+        {
+            OverlapObj->MergeTwoMapObjs_fll(this);
+            this->bad_3d = true;
+        }
+    }
+    // TODO: case ...... and so on ......
+}
+
+// big one gets smaller, the smaller one stays the same. (No significant effect! Almost no use.)
+void Object_Map::BigToSmall_fll(Object_Map *SmallObj, float overlap_x, float overlap_y, float overlap_z)
+{
+    // in which direction does the overlap occur.
+    bool bxMin = false;
+    bool bxMax = false;
+    bool byMin = false;
+    bool byMax = false;
+    bool bzMin = false;
+    bool bzMax = false;
+
+    // x_min
+    if ((SmallObj->mCuboid3D.x_min > this->mCuboid3D.x_min) && (SmallObj->mCuboid3D.x_min < this->mCuboid3D.x_max))
+        bxMin = true;
+    // x_max
+    if ((SmallObj->mCuboid3D.x_max > this->mCuboid3D.x_min) && (SmallObj->mCuboid3D.x_max < this->mCuboid3D.x_max))
+        bxMax = true;
+    // y_min
+    if ((SmallObj->mCuboid3D.y_min > this->mCuboid3D.y_min) && (SmallObj->mCuboid3D.y_min < this->mCuboid3D.y_max))
+        byMin = true;
+    // y_max
+    if ((SmallObj->mCuboid3D.y_max > this->mCuboid3D.y_min) && (SmallObj->mCuboid3D.y_max < this->mCuboid3D.y_max))
+        byMax = true;
+    // z_min
+    if ((SmallObj->mCuboid3D.z_min > this->mCuboid3D.z_min) && (SmallObj->mCuboid3D.z_min < this->mCuboid3D.z_max))
+        bzMin = true;
+    // z_max
+    if ((SmallObj->mCuboid3D.z_max > this->mCuboid3D.z_min) && (SmallObj->mCuboid3D.z_max < this->mCuboid3D.z_max))
+        bzMax = true;
+
+    // false: one direction，ture: two directions.
+    bool bx = false;
+    bool by = false;
+    bool bz = false;
+    // x
+    if ((bxMin = true) && (bxMax = true))
+        bx = true;
+    else
+        bx = false;
+    // y
+    if ((byMin = true) && (byMax = true))
+        by = true;
+    else
+        by = false;
+    // z
+    if ((bzMin = true) && (bzMax = true))
+        bz = true;
+    else
+        bz = false;
+
+    // Which direction to eliminate?
+    int nFlag; // 0:x   1:y   2:z   3: surround
+
+    // x
+    if ((bx == false) && (by == true) && (bz == true))
+        nFlag = 0;
+    // y
+    if ((bx == true) && (by == false) && (bz == true))
+        nFlag = 1;
+    // z
+    if ((bx == true) && (by == true) && (bz == false))
+        nFlag = 2;
+
+    if ((bx == false) && (by == false) && (bz == true))
+    {
+        if (min(overlap_x, overlap_y) == overlap_x)
+            nFlag = 0;
+        else if (min(overlap_x, overlap_y) == overlap_y)
+            nFlag = 1;
+    }
+
+    if ((bx == false) && (by == true) && (bz == false))
+    {
+        if (min(overlap_x, overlap_z) == overlap_x)
+            nFlag = 0;
+        else if (min(overlap_x, overlap_z) == overlap_z)
+            nFlag = 2;
+    }
+
+    if ((bx == true) && (by == false) && (bz == false))
+    {
+        if (min(overlap_y, overlap_z) == overlap_y)
+            nFlag = 1;
+        else if (min(overlap_y, overlap_z) == overlap_z)
+            nFlag = 2;
+    }
+
+    //     7------6
+    //    /|     /|
+    //   / |    / |
+    //  4------5  |
+    //  |  3---|--2
+    //  | /    | /
+    //  0------1
+    {
+        unique_lock<mutex> lock(mMutexMapPoints); // lock.
+
+        // remove points in the overlap volume.
+        vector<MapPoint *>::iterator pMP;
+        for (pMP = mvpMapObjectMappoints.begin();
+             pMP != mvpMapObjectMappoints.end();)
+        {
+            cv::Mat PointPosWorld = (*pMP)->GetWorldPos();
+
+            // points in the smaller object.
+            if ((PointPosWorld.at<float>(0) > SmallObj->mCuboid3D.x_min) && (PointPosWorld.at<float>(0) < SmallObj->mCuboid3D.x_max) &&
+                (PointPosWorld.at<float>(1) > SmallObj->mCuboid3D.y_min) && (PointPosWorld.at<float>(1) < SmallObj->mCuboid3D.y_max) &&
+                (PointPosWorld.at<float>(2) > SmallObj->mCuboid3D.z_min) && (PointPosWorld.at<float>(2) < SmallObj->mCuboid3D.z_max))
+                pMP = mvpMapObjectMappoints.erase(pMP);
+            else
+            {
+                ++pMP;
+            }
+        }
+    }
+
+    this->ComputeMeanAndDeviation_3D();
+}
+
+
+// BRIEF Divide the overlap area of two objects equally.  (No significant effect! Almost no use.)
+void Object_Map::DivideEquallyTwoObjs_fll(Object_Map *AnotherObj, float overlap_x, float overlap_y, float overlap_z)
+{
+    {
+        unique_lock<mutex> lock(mMutexMapPoints);
+
+        vector<MapPoint *>::iterator pMP;
+        for (pMP = mvpMapObjectMappoints.begin();
+             pMP != mvpMapObjectMappoints.end();)
+        {
+            cv::Mat PointPosWorld = (*pMP)->GetWorldPos();
+            float cuboidCenter0_ano = (AnotherObj->mCuboid3D.corner_2[0] + AnotherObj->mCuboid3D.corner_8[0])/2.0;
+            float cuboidCenter1_ano = (AnotherObj->mCuboid3D.corner_2[1] + AnotherObj->mCuboid3D.corner_8[1]) / 2.0;
+            float cuboidCenter2_ano = (AnotherObj->mCuboid3D.corner_2[2] + AnotherObj->mCuboid3D.corner_8[2])/2.0 ;
+            if (((PointPosWorld.at<float>(0) > cuboidCenter0_ano - (AnotherObj->mCuboid3D.lenth / 2 - overlap_x / 2)) &&
+                 (PointPosWorld.at<float>(0) < cuboidCenter0_ano + (AnotherObj->mCuboid3D.lenth / 2 - overlap_x / 2))) &&
+                ((PointPosWorld.at<float>(1) > cuboidCenter1_ano - (AnotherObj->mCuboid3D.width / 2 - overlap_y / 2)) &&
+                 (PointPosWorld.at<float>(1) < cuboidCenter1_ano + (AnotherObj->mCuboid3D.width / 2 - overlap_y / 2))) &&
+                ((PointPosWorld.at<float>(2) > cuboidCenter2_ano - (AnotherObj->mCuboid3D.height / 2 - overlap_z / 2)) &&
+                 (PointPosWorld.at<float>(2) < cuboidCenter2_ano + (AnotherObj->mCuboid3D.height / 2 - overlap_z / 2))))
+            {
+                pMP = mvpMapObjectMappoints.erase(pMP);
+            }
+
+            else
+            {
+                ++pMP;
+            }
+        }
+    }
+}
+
+
+
+
+// ************************************
+// object3d 信息熵计算部分 *
+// ************************************
+
+Object_Map::Object_Map() {
+    init_information_entroy();
+}
+
+void Object_Map::init_information_entroy() {
+        //mCuboid3D = object->mCuboid3D;
+        //mvpMapObjectMappoints = object->mvpMapObjectMappoints;
+
+        vector<double> InforEntroy_single(18, 0.693147) ;
+        vector<vector<double> > InforEntroy( 18, InforEntroy_single);   vInforEntroy = InforEntroy;
+
+        vector<double> grid_prob_single(18, 0.5) ;
+        vector<vector<double> > grid_prob( 18, grid_prob_single);   vgrid_prob = grid_prob;
+
+        vector<int> pointnum_eachgrid_single(18, 0.0) ;
+        vector<vector<int> >  pointnum_eachgrid(18, pointnum_eachgrid_single);        vpointnum_eachgrid = pointnum_eachgrid;
+    }
+
+
+
+void Object_Map::grid_index(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y){
+    Eigen::Vector3d v1(zero_vec(0),zero_vec(1),0.0), v2(point_vec(0),point_vec(1),0.0);
+    double cosValNew = v1.dot(v2) / (v1.norm()*v2.norm()); //通过向量的点乘, 计算角度cos值
+    double angleNew = acos(cosValNew) * 180 / M_PI;     //弧度角
+    if(point_vec(1) >= 0)
+        x = floor(angleNew/20.0);
+    else
+        x = floor((360.0-angleNew)/20.0);
+
+    y = floor(
+                (  (point_vec(2)  + mCuboid3D.height/2 ) /mCuboid3D.height) * 18
+            );
+    //std::cout<<"[计算y]"  <<point_vec(2)   <<", 中心z " <<  mCuboid3D.cuboidCenter[2] <<",  cube高度 "<< mCuboid3D.height/2 <<std::endl;
+}
+
+void Object_Map::compute_pointnum_eachgrid(){
+    float cuboidCenter0 = (mCuboid3D.corner_2[0] + mCuboid3D.corner_8[0])/2.0;
+    float cuboidCenter1 = (mCuboid3D.corner_2[1] + mCuboid3D.corner_8[1]) / 2.0;
+    float cuboidCenter2 = (mCuboid3D.corner_2[2] + mCuboid3D.corner_8[2])/2.0 ;
+    double center_x = cuboidCenter0;
+    double center_y = cuboidCenter1;
+    double center_z = cuboidCenter2;
+    //g2o::SE3Quat pose = mCuboid3D.pose;
+    //Eigen::Isometry3d T_w2o = fromSE3Quat(mCuboid3D.pose);
+    cv::Mat T_w2o_mat = mCuboid3D.pose_mat;
+    //Eigen::MatrixXd T_w2o_eigen = Eigen::toEigenMatrixXd(T_w2o_mat);
+    Eigen::Isometry3d T_w2o = ORB_SLAM2::Converter::toSE3Quat(T_w2o_mat);
+    Eigen::Vector3d zero_vec( 1,0,0);
+    zero_vec = T_w2o* zero_vec;
+    for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
+        cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
+        Eigen::Vector3d point_vec( point_pose.at<float>(0)-center_x, point_pose.at<float>(1)-center_y, point_pose.at<float>(2)-center_z);
+        int x = -1 , y = -1;
+        grid_index(zero_vec, point_vec,  x,  y);
+        if( x>=0 && x<=18 && y>=0 && y<=18 ) {
+            vpointnum_eachgrid[x][y] += 1;
+        }
+        else{
+            std::cout<<"compute grid index: ERROR:i "<<i<<", x "<<x<<", y "<<y<<std::endl;
+        }
+    }
+}
+
+void Object_Map::compute_occupied_prob(){
+
+    for(int x=0; x<18; x++){
+        int num = accumulate(vpointnum_eachgrid[x].begin(), vpointnum_eachgrid[x].end(), 0);
+        if(num > threshold){
+            //当前列的观测到认为有效，即当前列的grid，认为是free或occupied
+            for(int y=0; y<18; y++){
+                double lnv_p ;
+                if(vpointnum_eachgrid[x][y] == 0){
+                    //free
+                    //lnv_p = log(vgrid_prob[x][y]) + log(P_free) -log(0.5);
+                    // 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
+                    lnv_p = log(0.5) + log(P_free) -log(0.5);
+                }
+                else{
+                    //occupied
+                    //lnv_p = log(vgrid_prob[x][y]) + log(P_occ) -log(0.5);
+                    // 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
+                    lnv_p = log(0.5) + log(P_occ) -log(0.5);
+                }
+                vgrid_prob[x][y] = exp(lnv_p);
+            }
+        }
+        else{
+            ///当前列的观测到认为无效，即当前列的grid，认为是unknown
+             for(int y=0; y<18; y++)
+                 //unkonwn
+                 vgrid_prob[x][y] = 0.5;
+        }
+
+    }
+}
+
+double Object_Map::information_entroy(const double &p){
+    return -1*p*log(p) - (1-p)*log(1-p);
+}
+
+void Object_Map::compute_information_entroy(){
+    compute_pointnum_eachgrid();
+    compute_occupied_prob();
+    //计算各grid的信息熵
+    for(int x=0; x<18; x++)
+        for(int y=0; y<18; y++)
+            vInforEntroy[x][y] = information_entroy(vgrid_prob[x][y]);
+
+    //计算主向量
+    double main_x, main_y, main_z;
+    for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
+        cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
+        main_x +=  point_pose.at<float>(0);
+        main_y +=  point_pose.at<float>(1);
+        main_z +=  point_pose.at<float>(2);
+    }
+    double normalize = sqrt( main_x*main_x + main_y*main_y + main_z*main_z );
+    main_x = main_x/normalize;
+    main_y = main_y/normalize;
+    main_z = main_z/normalize;
+    mMainDirection =  Eigen::Vector3d(main_x, main_y, main_z);
+
+    //记录栅格的状态
+}
+
+
+
+double Object_Map::get_information_entroy(){
+    double entroy = 0;
+    for(int x=0; x<18; x++)
+        for(int y=0; y<18; y++){
+            entroy += vInforEntroy[x][y];
+        }
+    return entroy/(18.0*18.0);
 }
 
 }

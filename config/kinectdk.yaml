@@ -47,9 +47,15 @@ ThDepth: 40.0
 # Deptmap values factor  ？？
 DepthMapFactor: 1000.0
 
-# 0: no constraint, first frame is vertical to ground; 1: use ground truth; 2: use imu
-ConstraintType: 0
-
+# 1: robot_camera tf; 2: use imu
+ConstraintType: 1
+Trobot_camera.qx: -0.506
+Trobot_camera.qy: 0.507
+Trobot_camera.qz: -0.493
+Trobot_camera.qw: 0.494
+Trobot_camera.tx: 0.008
+Trobot_camera.ty: -0.032
+Trobot_camera.tz: 1.145
 
 
 

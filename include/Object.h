@@ -22,6 +22,7 @@
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 #include "isolation_forest.h"
 
+
 extern std::string WORK_SPACE_PATH;
 extern bool MotionIou_flag;
 extern bool NoPara_flag;
@@ -29,6 +30,7 @@ extern bool ProIou_flag;
 extern bool Ttest_flag;
 extern bool iforest_flag;
 extern bool little_mass_flag;
+extern bool ProIou_only30_flag;
 
 namespace ORB_SLAM2
 {
@@ -152,31 +154,6 @@ public:
     Eigen::Vector3d cuboidCenter;       // the center of the Cube, not the center of mass of the object
     float x_min, x_max, y_min, y_max, z_min, z_max;     // the boundary in XYZ direction.
 
-    //// 8 vertices.
-    //vector<double>  corner_1 {0, 0, 0};
-    //vector<double>  corner_2 {0, 0, 0};
-    //vector<double>  corner_3 {0, 0, 0};
-    //vector<double>  corner_4 {0, 0, 0};
-    //vector<double>  corner_5 {0, 0, 0};
-    //vector<double>  corner_6 {0, 0, 0};
-    //vector<double>  corner_7 {0, 0, 0};
-    //vector<double>  corner_8 {0, 0, 0};
-    //
-    //// 8 vertices (without rotation).
-    //vector<double>  corner_1_w {0, 0, 0};
-    //vector<double>  corner_2_w {0, 0, 0};
-    //vector<double>  corner_3_w {0, 0, 0};
-    //vector<double>  corner_4_w {0, 0, 0};
-    //vector<double>  corner_5_w {0, 0, 0};
-    //vector<double>  corner_6_w {0, 0, 0};
-    //vector<double>  corner_7_w {0, 0, 0};
-    //vector<double>  corner_8_w {0, 0, 0};
-    //
-    //float x_min, x_max, y_min, y_max, z_min, z_max;     // the boundary in XYZ direction.
-    //vector<double>  cuboidCenter {0, 0, 0};      // the center of the Cube, not the center of mass of the object
-    //float  cuboidCenter0,  cuboidCenter1,  cuboidCenter2;
-
-
     float lenth;
     float width;
     float height;
@@ -198,9 +175,7 @@ public:
 
 class Object_Map{
 public:
-    Object_Map(){
-        //init_information_entroy();
-    }
+    Object_Map();
 
 public:
     std::vector<Object_2D*> mvObject_2ds;  //在各frame中的object_2d
@@ -209,8 +184,8 @@ public:
     cv::Rect mLastRect;
     cv::Rect mLastLastRect;
     //cv::Rect mPredictRect;
-    cv::Rect mRect_byProjectPoints;
-    int mnAddedID;
+    cv::Rect mRect_byProjectPoints;    //投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
+    int mnAddedID_nouse;
     int mnLastAddID;
     int mnLastLastAddID;
 
@@ -239,64 +214,65 @@ public:
     std::map<int, int> mReObj;          // potential associated objects.  记录潜在的
     std::map<int, int> mmAppearSametime;// 共视关系: 两个物体在同一帧中被观测到, 则认为两个物体被共视. 第二项代表被共视的次数. 次数越多, 越有可能是同一个物体
 
-    //std::vector<Vector5f> mvAngleTimesAndScore;    // Score of sampling angle.
+    std::vector<Eigen::Matrix<float,5,1>, Eigen::aligned_allocator<Eigen::Matrix<float,5,1>> > mvAngleTimesAndScore;    // Score of sampling angle.
 
     void ComputeMeanAndDeviation_3D();
     void IsolationForestDeleteOutliers();
     bool UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag);
-    void Update_Twobj();      // update object pose.
-//
-    void ComputeProjectRectFrame(Frame &Frame);  //将obj3d中的point投影到目标frame中，计算obj3d在目标frame中的投影边界框.从而查看obje3d,能够关联目标frame中物体
-//    void WhetherMergeTwoMapObjs_forlocalmap(Map *mpMap);
-//    void MergeTwoMapObjs_forlocalmap(Object_Map *RepeatObj);
-//    bool DoubleSampleTtest(Object_Map *RepeatObj);
-//    void DealTwoOverlapObjs_forlocalmap(Object_Map *OverlapObj, float overlap_x, float overlap_y, float overlap_z);
-    bool WhetherOverlap(Object_Map *CompareObj);
-//    void BigToSmall_forlocalmap(Object_Map *SmallObj, float overlap_x, float overlap_y, float overlap_z);
-//    void DivideEquallyTwoObjs_forlocalmap(Object_Map *AnotherObj, float overlap_x, float overlap_y, float overlap_z);
-//
-//    // void UpdateObjScale(Eigen::Vector3d Scale);    // for optimization.
+    void Update_Twobj();      // 原UpdateObjPose  更新物体在世界下的坐标
+    void ComputeProjectRectFrameTo(Frame &Frame);  //将obj3d中的point投影到目标frame中，计算obj3d在目标frame中的投影边界框.从而查看obje3d,能够关联目标frame中物体
 
+    bool WhetherOverlap(Object_Map *CompareObj);
+
+//   void UpdateObjScale(Eigen::Vector3d Scale);    // for optimization.
     void UpdateCoView(Object_Map *Obj_CoView);
+
 protected:
     std::mutex mMutexMapPoints;
     std::mutex mMutex;
 
-//public:
-//    void init_information_entroy();
+//localmap 部分   fll指forlocalmap
+public:
+    void SearchAndMergeMapObjs_fll(Map *mpMap);
+    void MergeTwoMapObjs_fll(Object_Map *RepeatObj);
+    bool DoubleSampleTtest_fll(Object_Map *RepeatObj);
+    void DealTwoOverlapObjs_fll(Object_Map *OverlapObj, float overlap_x, float overlap_y, float overlap_z);
+    void BigToSmall_fll(Object_Map *SmallObj, float overlap_x, float overlap_y, float overlap_z);
+    void DivideEquallyTwoObjs_fll(Object_Map *AnotherObj, float overlap_x, float overlap_y, float overlap_z);
 
-    //vector< MapPoint*> mvpMapObjectMappoints;
-    //Cuboid3D mCuboid3D;
+
+//信息熵 部分
+public:
+    void init_information_entroy();
 
     int threshold = 3;  //用于判定, 某列grid是否有效
 
-    //Vector3D mMainDirection;  //通过特征点计算的主方向,用于view的 ie
+    Eigen::Vector3d mMainDirection;  //通过特征点计算的主方向,用于view的 ie
 
     //传感器模型
     double P_occ=0.6;
     double P_free=0.4;
     double P_prior=0.5;
 
-    //占据状态值
-
-    //
     vector<vector<double> > vInforEntroy;  // 没用.  用于存储18*18个栅格的信息熵
     vector<vector<double> > vgrid_prob;  //用于存储18*18个栅格的占据概率
     vector<vector<int> > vpointnum_eachgrid;   //存储18*18个栅格中,各自的grid数量
 
-    //void grid_index(const Vector3d &zero_vec, const Vector3d &point_vec, int& x, int& y);
+    void grid_index(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y);
 
-    //void compute_pointnum_eachgrid();
-    //
-    //void compute_occupied_prob();
-    //
-    //double information_entroy(const double &p);
-    //
-    //void compute_information_entroy();
-    //
-    //double get_information_entroy();
+    void compute_pointnum_eachgrid();
 
+    void compute_occupied_prob();
 
+    double information_entroy(const double &p);
+
+    void compute_information_entroy();
+
+    double get_information_entroy();
+
+    vector<MapPoint* >  GetObjectMappoints();
+
+    vector<MapPoint* >  GetNewObjectMappoints();
 protected:
     std::mutex mMutexPose;
 

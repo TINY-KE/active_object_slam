@@ -36,6 +36,7 @@
 #include <tf/transform_datatypes.h> 
 #include "Converter.h"
 #include "System.h"
+#include "yolo_label.h"
 
 // darknet_ros_msgs
 #include <darknet_ros_msgs/BoundingBoxes.h>
@@ -49,8 +50,29 @@ bool ProIou_flag = true;
 bool Ttest_flag = true;
 bool iforest_flag = true;
 bool little_mass_flag = true;
-
+bool ProIou_only30_flag = true;
 using namespace std;
+
+std::vector<int> yolo_class;
+std::vector<string> yolo_id = {
+        "person人类",  //0
+        "bicycle自行车", "car汽车", "motorcycle", "airplane", "bus",   //1
+        "train", "truck", "boat", "traffic light",   "fire hydrant", //6
+        "stop sign停止标", "parking meter", "bench", "bird", "cat", //11
+        "dog", "horse", "sheep", "cow",  "elephant", //16
+        "bear", "zebra", "giraffe", "backpack背包", "umbrella雨伞", //21
+        "handbag手提包", "tie领带", "suitcase手提箱", "frisbee",  "skis", //26
+        "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", //31
+        "skateboard", "surfboard",  "tennis racket", "bottle瓶子", "wine glass酒杯", //36
+        "cup杯子", "fork", "knife", "spoon", "bowl碗", //41
+        "banana香蕉", "apple苹果",   "sandwich三明治", "orange橙子", "broccoli", //46
+        "carrot", "hot dog热狗", "pizza", "donut", "cake蛋糕", //51
+        "chair椅子", "couch沙发",  "potted plant盆栽", "bed床", "dining table餐桌",//56
+        "toilet", "tv电视", "laptop笔记本电脑", "mouse鼠标", "remote遥控器", //61
+        "keyboard键盘", "cell phone手机",  "microwave微波炉", "oven烤箱", "toaster烤面包机", //66
+        "sink水槽", "refrigerator冰箱", "book书", "clock钟", "vase花瓶", //71
+        "scissors", "teddy bear泰迪熊",  "hair drier", "toothbrush"};//76
+//yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
 
 class ImageGrabber
 {
@@ -69,6 +91,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "RGBD");
     ros::start();
     string yamlfile, sensor; bool semanticOnline, rosBagFlag;
+    //(1)从ros param中获取参数
     ros::param::param<std::string>("~WORK_SPACE_PATH", WORK_SPACE_PATH, "/home/zhjd/active_eao/src/active_eao/");
     ros::param::param<bool>("~MotionIou_flag", MotionIou_flag, true);
     ros::param::param<bool>("~NoPara_flag", NoPara_flag, false);
@@ -76,7 +99,7 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~Ttest_flag", Ttest_flag, false);
     ros::param::param<bool>("~iforest_flag", iforest_flag, false);
     ros::param::param<bool>("~little_mass_flag", little_mass_flag, false);
-
+    ros::param::param<bool>("~ProIou_only30_flag", ProIou_only30_flag, false);
     const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";
     ros::param::param<std::string>("~yamlfile", yamlfile, "TUM3_ros.yaml"); /*kinectdk.yaml  TUM3.yaml TUM3_ros.yaml kinectdk_720.yaml*/
     const std::string YamlFile = WORK_SPACE_PATH + "/config/" + yamlfile;
@@ -84,7 +107,15 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~online", semanticOnline, "true");
     ORB_SLAM2::System SLAM(VocFile,  YamlFile,  ORB_SLAM2::System::RGBD,  true);
 
+    //(2)从yaml中获取参数
+    cv::FileStorage fSettings(YamlFile, cv::FileStorage::READ);
+    fSettings["yolo_class"] >> yolo_class;
+    std::cout<<"[Yolo Class Input] sum:"<<yolo_class.size()<<", type: ";
+    for(auto iter=yolo_class.begin(); iter!=yolo_class.end(); iter++)
+        std::cout<<yolo_id[*iter]<<", ";
+    std::cout<<std::endl;
 
+    //(3)接受ros topic
     ImageGrabber igb(&SLAM);
     ros::NodeHandle nh;
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/rgb/image_raw", 1);
@@ -99,7 +130,7 @@ int main(int argc, char **argv)
     // Stop all threads
     SLAM.Shutdown();
 
-    // Save camera trajectory
+    // (4)Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 
     ros::shutdown();
@@ -168,11 +199,8 @@ vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::Boundi
             // 0: person; 24: handbag?24应该是backpack背包,26是handbag手提包; 28: suitcase; 39: bottle; 56: chair;
             // 57: couch; 58:potted plant; 59: bed; 60: dining table; 62: tv;
             // 63: laptop; 66: keyboard; 67: phone; 73: book;
-            //if (/*objInfo.id != 0 &&*/ objInfo.id != 24 && objInfo.id != 28 && objInfo.id != 39 && objInfo.id != 56 && objInfo.id != 57 && objInfo.id != 58 && objInfo.id != 59 && objInfo.id != 60 && objInfo.id != 62 && objInfo.id != 63 && objInfo.id != 66 && objInfo.id != 67 && objInfo.id != 73
-            ///* 自己添加 */ && objInfo.id != 72 /* refrigerator */  && objInfo.id != 11 /* stop sign */
-            //&& objInfo.id != 77 /*teddy bear*/
-            //)
-            if (objInfo.id != 77)
+            std::vector<int>::iterator iter = std::find( yolo_class.begin(),  yolo_class.end(), objInfo.id);
+            if(iter == yolo_class.end())
                 continue;
             BoxSE box;
             box.m_class = objInfo.id;

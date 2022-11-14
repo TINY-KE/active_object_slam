@@ -16,5 +16,4 @@ static const char *class_names[] = {
         "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear",
         "hair drier", "toothbrush"};
 
-
 #endif //ROS_EVO_YOLO_LABEL_H

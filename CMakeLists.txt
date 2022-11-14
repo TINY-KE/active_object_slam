@@ -112,6 +112,7 @@ add_library(${PROJECT_NAME}_lib SHARED
    src/Initializer.cc
    src/Viewer.cc
    src/Object.cpp
+   src/MapPublisher.cc
 
 )
 

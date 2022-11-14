@@ -62,14 +62,14 @@
 + 只要ProIou大于0.25就认为是，潜在的关联对象？？
 + ProIou=4 //Debug=4
 +  Read t-distribution boundary value.  为什么t分布有二维值
-+ obj3d->ComputeProjectRectFrame(*mpCurrentFrame);
++ obj3d->ComputeProjectRectFrameTo(*mpCurrentFrame);
 + object3d的ComputeMeanAndStandard和IsolationForestDeleteOutliers有什么区别？？
   + this->ComputeMeanAndStandard();
   + this->IsolationForestDeleteOutliers();
   + 这两者的顺序，怎么时而前，时而后
   + iforest不处理  75 64 65， 为什么？ 62的iforest阈值不同。
   + #pragma once
-  + iforest 关闭后,试试效果
+  + iforest 关闭后,试试效果pro iou debug: iou
 + MotionIou的速度估计有问题
 + if ((fIou < 0.5) && (fIou2 < 0.8))  这个指标 是提升了,还是下降了??
 + mSumPointsPos += x3d;  这些能不能去掉， 改为一个统一计算均值中心坐标的函数
@@ -77,6 +77,28 @@
 + 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于10, 且与地图中的其他物体过于重合 ,则设置为bad_3d
 + mmAppearSametime 和 PotentialAssociatedObjects 的区别。 在active slam中的用途
 + 怎么匹配失败了。 用前几帧 测试一下。
++ 彩色纹理的正态分布
++ 为什么字ProIou中, 只将过去30帧的物体,投影过来
+// object appeared in the last 30 frames.
+            if (obj3d->mnLastAddID > mCurrentFrame.mnId - 30)
+                obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
+            else
+            {
+                obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
+            }
+  + 是不是为了在localmap中解决合格问题
+  + ProIou 可以看到, 很多物体的Pro Rect很差
+  + 暂时通过ProIou_only30_flag 关闭这个选项
++ MergeTwoMapObjs_fll中1.1的系数 要不要扩大到1.2
++ mvpMapObjectMappoints[m]->feature_uvCoordinate = pMP->feature_uvCoordinate; 中, 万一被融合物体中的pMP,更老旧怎么办???
++ 去掉mnConfidence_foractive, 直接用object2d的size代替?
++ 均分和bigToSmall,几乎没效果
++ GetNewObjectMappoints() 为什么点这么少啊??
++ object3d中的mRect_byProjectPoints 是投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
+### 0 要做的事情:
++ 后端剔除物体的原因. 是不是因为看到的点太少了?
++ 估计方向
+
 
 ### 0 未来可以微调的参数
 + 剔除物体检测框时的预设参数
@@ -171,13 +193,13 @@
   + 用在了Remove Outlier 和 MergeTwoFrameObj_2d中
 + 3D的 ComputeMeanAndStandard(); 用在了
   + 数据关联更新  DataAssociateUpdate_forobj2d  (有bug)
-  + 是否融合两个mapObject  WhetherMergeTwoMapObjs_forlocalmap(包含了MergeTwoMapObj 有bug)
-  + BigToSmall_forlocalmap
-  + 处理两个物体的重叠   DealTwoOverlapObjs_forlocalmap(包含了MergeTwoMapObj 有bug)
+  + 是否融合两个mapObject  SearchAndMergeMapObjs_fll(包含了MergeTwoMapObj 有bug)
+  + BigToSmall_fll
+  + 处理两个物体的重叠   DealTwoOverlapObjs_fll(包含了MergeTwoMapObj 有bug)
   
 + localmap线程用到的
-  + DealTwoOverlapObjs_forlocalmap  (包含了MergeTwoMapObj 有bug)
-  + WhetherMergeTwoMapObjs_forlocalmap  (包含了MergeTwoMapObj 有bug)
+  + DealTwoOverlapObjs_fll  (包含了MergeTwoMapObj 有bug)
+  + SearchAndMergeMapObjs_fll  (包含了MergeTwoMapObj 有bug)
   + ComputeMeanAndStandard()
 
 + 顺序
