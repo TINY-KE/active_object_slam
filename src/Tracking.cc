@@ -806,7 +806,7 @@ void Tracking::CreatObject_intrackmotion(){
 							edge_length_threshold);		// length threshold, 30 pixels.
 
         // step 5. save object lines.
-        //obj->mObjLinesEigen = ObjectLinesAfterMerge;  //linedebug
+        obj->mObjLinesEigen = ObjectLinesAfterMerge;  //linedebug
         mCurrentFrame.vObjsLines.push_back(ObjectLinesAfterMerge);   /* vObjsLines的容量等于objs_2d.size()，  如果vObjsLines某一位为空，则代表这个物体没有关联到line。 */
     }
 
@@ -2040,260 +2040,260 @@ cv::Point2f Tracking::WorldToImg(cv::Mat &PointPosWorld)
 
 void Tracking::SampleObjYaw(Object_Map* obj3d)
 {
-    //int numMax = 0;
-    //float fError = 0.0;
-    //float fErrorYaw;
-    //float minErrorYaw = 360.0;
-    //float sampleYaw = 0.0;
-    //int nAllLineNum = obj3d->mvObject_2ds.back()->mObjLinesEigen.rows();  //获取obj3d最新的一帧中获取到的线段的数量
-    //
-    //// 将90°分为30份。前15份为反转，后15份正转。
-    //for(int i = 0; i < 30; i++)
-    //{
-    //    // initial angle.
-    //    float roll, pitch, yaw;
-    //    roll = 0.0;
-    //    pitch = 0.0;
-    //    yaw = 0.0;
-    //    float error = 0.0;
-    //    float errorYaw = 0.0;
-    //
-    //    // 1 -> 15: -45° - 0°
-    //    // 16 -> 30: 0° - 45°
-    //    if(i < 15)
-    //        yaw = (0.0 - i*3.0)/180.0 * M_PI;
-    //    else
-    //        yaw = (0.0 + (i-15)*3.0)/180.0 * M_PI;
-    //
-    //    // 此角度下，物体在自身坐标系下的位姿
-    //    // object pose in object frame. (Ryaw)
-    //    float cp = cos(pitch);
-    //    float sp = sin(pitch);
-    //    float sr = sin(roll);
-    //    float cr = cos(roll);
-    //    float sy = sin(yaw);
-    //    float cy = cos(yaw);
-    //    Eigen::Matrix<double,3,3> REigen;
-    //    REigen<<   cp*cy, (sr*sp*cy)-(cr*sy), (cr*sp*cy)+(sr*sy),
-    //            cp*sy, (sr*sp*sy)+(cr*cy), (cr*sp*sy)-(sr*cy),
-    //                -sp,    sr*cp,              cr * cp;
-    //    cv::Mat Ryaw = Converter::toCvMat(REigen);
-    //
-    //    // 物体坐标系下，没有yaw的corner坐标
-    //    // 8 vertices of the 3D box, world --> object frame.
-    //    cv::Mat corner_1 = Converter::toCvMat(obj3d->mCuboid3D.corner_1_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_2 = Converter::toCvMat(obj3d->mCuboid3D.corner_2_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_3 = Converter::toCvMat(obj3d->mCuboid3D.corner_3_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_4 = Converter::toCvMat(obj3d->mCuboid3D.corner_4_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_5 = Converter::toCvMat(obj3d->mCuboid3D.corner_5_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_6 = Converter::toCvMat(obj3d->mCuboid3D.corner_6_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_7 = Converter::toCvMat(obj3d->mCuboid3D.corner_7_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    cv::Mat corner_8 = Converter::toCvMat(obj3d->mCuboid3D.corner_8_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //
-    //    // 世界坐标系下，有yaw的corner坐标
-    //    // rotate in object frame  + object frame --> world frame.
-    //    corner_1 = Ryaw * corner_1 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_2 = Ryaw * corner_2 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_3 = Ryaw * corner_3 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_4 = Ryaw * corner_4 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_5 = Ryaw * corner_5 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_6 = Ryaw * corner_6 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_7 = Ryaw * corner_7 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //    corner_8 = Ryaw * corner_8 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
-    //
-    //    // step 1. uv坐标
-    //    // project 8 vertices to image.
-    //    cv::Point2f point1, point2, point3, point4, point5, point6, point7, point8;
-    //    point1 = WorldToImg(corner_1);
-    //    point2 = WorldToImg(corner_2);
-    //    point3 = WorldToImg(corner_3);
-    //    point4 = WorldToImg(corner_4);
-    //    point5 = WorldToImg(corner_5);
-    //    point6 = WorldToImg(corner_6);
-    //    point7 = WorldToImg(corner_7);
-    //    point8 = WorldToImg(corner_8);
-    //
-    //    // step 2. 计算cube 3条边的角度
-    //    // angle of 3 edges(lenth, width, height).
-    //    float angle1;
-    //    float angle2;
-    //    float angle3;
-    //    // left -> right.
-    //    if(point6.x > point5.x)
-    //        angle1 = atan2(point6.y - point5.y, point6.x - point5.x);
-    //    else
-    //        angle1 = atan2(point5.y - point6.y, point5.x - point6.x);
-    //    float lenth1 = sqrt((point6.y - point5.y) * (point6.y - point5.y) + (point6.x - point5.x) * (point6.x - point5.x));
-    //
-    //    if(point7.x > point6.x)
-    //        angle2 = atan2(point7.y - point6.y, point7.x - point6.x);
-    //    else
-    //        angle2 = atan2(point6.y - point7.y, point6.x - point7.x);
-    //    float lenth2 = sqrt((point7.y - point6.y) * (point7.y - point6.y) + (point7.x - point6.x) * (point7.x - point6.x));
-    //
-    //    if(point6.x > point2.x)
-    //        angle3 = atan2(point6.y - point2.y, point6.x - point2.x);
-    //    else
-    //        angle3 = atan2(point2.y - point6.y, point2.x - point6.x);
-    //    float lenth3 = sqrt((point6.y - point2.y) * (point6.y - point2.y) + (point6.x - point2.x) * (point6.x - point2.x));
-    //
-    //    // step 3. 计算最新一帧中 线段 和 cube边 的角度偏差
-    //    // 为什么只用最新一帧?? 万一不满足之前帧的中线段 怎么办?
-    //    // compute angle between detected lines and cube edges.
-    //    int num = 0;  // number parallel lines.
-    //    for(int line_id = 0; line_id < obj3d->mvObject_2ds.back()->mObjLinesEigen.rows(); line_id++)
-    //    {
-    //        // angle of detected lines.
-    //        double x1 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 0);
-    //        double y1 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 1);
-    //        double x2 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 2);
-    //        double y2 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 3);
-    //        float angle = atan2(y2 - y1, x2 - x1);
-    //
-    //        // lenth.
-    //        float lenth = sqrt((y2 - y1)*(y2 - y1) + (x2 - x1)*(x2 - x1));
-    //
-    //        // angle between line and 3 edges.
-    //        float dis_angle1 = abs(angle * 180/M_PI - angle1 * 180/M_PI);
-    //        float dis_angle2 = abs(angle * 180/M_PI - angle2 * 180/M_PI);
-    //        float dis_angle3 = abs(angle * 180/M_PI - angle3 * 180/M_PI);
-    //
-    //        float th = 5.0;             // threshold of the angle.
-    //        if(obj3d->mnClass == 56)   // chair.
-    //        {
-    //            if((dis_angle2 < th) || (dis_angle3 < th))
-    //                num++;
-    //            if(dis_angle1 < th)
-    //            {
-    //                num+=3;
-    //            }
-    //        }
-    //        else
-    //        {
-    //            // the shortest edge is lenth1.
-    //            if( min(min(lenth1, lenth2), lenth3) == lenth1)
-    //            {
-    //                // error with other two edges.
-    //                if((dis_angle2 < th) || (dis_angle3 < th))
-    //                {
-    //                    num++;
-    //                    if(dis_angle2 < th)
-    //                        error += dis_angle2;
-    //                    if(dis_angle3 < th)
-    //                        error += dis_angle3;
-    //                }
-    //
-    //                // angle error.
-    //                errorYaw+=min(dis_angle2, dis_angle3);
-    //            }
-    //            // the shortest edge is lenth2.
-    //            if( min(min(lenth1, lenth2), lenth3) == lenth2)
-    //            {
-    //                if((dis_angle1 < th) || (dis_angle3 < th))
-    //                {
-    //                    num++;
-    //                    if(dis_angle1 < th)
-    //                        error += dis_angle1;
-    //                    if(dis_angle3 < th)
-    //                        error += dis_angle3;
-    //                }
-    //                errorYaw+=min(dis_angle3, dis_angle1);
-    //            }
-    //            // the shortest edge is lenth3.
-    //            if( min(min(lenth1, lenth2), lenth3) == lenth3)
-    //            {
-    //                if((dis_angle1 < th) || (dis_angle2 < th))
-    //                {
-    //                    num++;
-    //                    if(dis_angle1 < th)
-    //                        error += dis_angle1;
-    //                    if(dis_angle2 < th)
-    //                        error += dis_angle2;
-    //                }
-    //                errorYaw+=min(dis_angle2, dis_angle1);
-    //            }
-    //        }
-    //    }
-    //    if(num == 0)
-    //    {
-    //        num = 1;
-    //        errorYaw = 10.0;
-    //    }
-    //
-    //    // record the angle with max number parallel lines.
-    //    if(num > numMax)
-    //    {
-    //        numMax = num;
-    //        sampleYaw = yaw;
-    //
-    //        fError = error; // no used in this version.
-    //        // average angle error.
-    //        fErrorYaw = (errorYaw/(float)num)/10.0;
-    //    }
-    //}
-    //
-    //// step 4. 得分等于，(平行线的数量/图片中线段数量)* (10 - fErrorYaw) /10
-    //// scoring.
-    //float fScore;
-    //fScore = ((float)numMax / (float)nAllLineNum) * (1.0 - 0.1 * fErrorYaw);
-    //if(isinf(fScore))
-    //    fScore = 0.0;
-    //
-    //// 存储下 各个角度的得分和次数
-    //// measurement： yaw, times, score, angle, angle error.
-    //Eigen::Matrix<float,5,1> AngleTimesAndScore;
-    //AngleTimesAndScore[0] = sampleYaw;
-    //AngleTimesAndScore[1] = 1.0;
-    //AngleTimesAndScore[2] = fScore;
-    //AngleTimesAndScore[3] = fError;     // no used in this version.
-    //AngleTimesAndScore[4] = fErrorYaw;
-    //
-    //// update multi-frame measurement.
-    //bool bNewMeasure = true;
-    //for (auto &row : obj3d->mvAngleTimesAndScore)
-    //{
-    //    if(row[0] == AngleTimesAndScore[0])
-    //    {
-    //        row[1] += 1.0;
-    //        row[2] = AngleTimesAndScore[2] * (1/row[1]) + row[2] * (1 - 1/row[1]);
-    //        row[3] = AngleTimesAndScore[3] * (1/row[1]) + row[3] * (1 - 1/row[1]);
-    //        row[4] = AngleTimesAndScore[4] * (1/row[1]) + row[4] * (1 - 1/row[1]);
-    //
-    //        bNewMeasure = false;
-    //    }
-    //}
-    //if(bNewMeasure == true)
-    //{
-    //    obj3d->mvAngleTimesAndScore.push_back(AngleTimesAndScore);
-    //}
-    //
-    //
-    //// step 5. rank: 将mvAngleTimesAndScore按照次数从大到小进行排序
-    ////index = 1;
-    //std::sort(obj3d->mvAngleTimesAndScore.begin(), obj3d->mvAngleTimesAndScore.end(), VIC);
-    // //for (auto &row : obj3d->mvAngleTimesAndScore)
-    // //{
-    // //    std::cout << row[0] * 180.0 / M_PI  << "\t" <<  row[1] << "\t" <<  row[2] << std::endl;
-    // //}
-    //
-    //// score最高的是the best yaw.
-    //// 那为什么上面还要按次数排序? 答:使得score相同是, 次数最高的优先被选取
-    //int best_num = 0;
-    //float best_score = 0;
-    //for(int i = 0; i < std::min(3, (int)obj3d->mvAngleTimesAndScore.size()); i++)
-    //{
-    //    float fScore = obj3d->mvAngleTimesAndScore[i][2];
-    //    if(fScore >= best_score)
-    //    {
-    //        best_score = fScore;
-    //        best_num = i;
-    //    }
-    //}
-    //
-    //// step 6. update object yaw.
-    //obj3d->mCuboid3D.rotY = obj3d->mvAngleTimesAndScore[best_num][0];
-    //obj3d->mCuboid3D.mfErrorParallel = obj3d->mvAngleTimesAndScore[best_num][3];
-    //obj3d->mCuboid3D.mfErroeYaw = obj3d->mvAngleTimesAndScore[best_num][4];
+    int numMax = 0;
+    float fError = 0.0;
+    float fErrorYaw;
+    float minErrorYaw = 360.0;
+    float sampleYaw = 0.0;
+    int nAllLineNum = obj3d->mvObject_2ds.back()->mObjLinesEigen.rows();  //获取obj3d最新的一帧中获取到的线段的数量
+
+    // 将90°分为30份。前15份为反转，后15份正转。
+    for(int i = 0; i < 30; i++)
+    {
+        // initial angle.
+        float roll, pitch, yaw;
+        roll = 0.0;
+        pitch = 0.0;
+        yaw = 0.0;
+        float error = 0.0;
+        float errorYaw = 0.0;
+
+        // 1 -> 15: -45° - 0°
+        // 16 -> 30: 0° - 45°
+        if(i < 15)
+            yaw = (0.0 - i*3.0)/180.0 * M_PI;
+        else
+            yaw = (0.0 + (i-15)*3.0)/180.0 * M_PI;
+
+        // 此角度下，物体在自身坐标系下的位姿
+        // object pose in object frame. (Ryaw)
+        float cp = cos(pitch);
+        float sp = sin(pitch);
+        float sr = sin(roll);
+        float cr = cos(roll);
+        float sy = sin(yaw);
+        float cy = cos(yaw);
+        Eigen::Matrix<double,3,3> REigen;
+        REigen<<   cp*cy, (sr*sp*cy)-(cr*sy), (cr*sp*cy)+(sr*sy),
+                cp*sy, (sr*sp*sy)+(cr*cy), (cr*sp*sy)-(sr*cy),
+                    -sp,    sr*cp,              cr * cp;
+        cv::Mat Ryaw = Converter::toCvMat(REigen);
+
+        // 物体坐标系下，没有yaw的corner坐标
+        // 8 vertices of the 3D box, world --> object frame.
+        cv::Mat corner_1 = Converter::toCvMat(obj3d->mCuboid3D.corner_1_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_2 = Converter::toCvMat(obj3d->mCuboid3D.corner_2_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_3 = Converter::toCvMat(obj3d->mCuboid3D.corner_3_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_4 = Converter::toCvMat(obj3d->mCuboid3D.corner_4_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_5 = Converter::toCvMat(obj3d->mCuboid3D.corner_5_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_6 = Converter::toCvMat(obj3d->mCuboid3D.corner_6_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_7 = Converter::toCvMat(obj3d->mCuboid3D.corner_7_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        cv::Mat corner_8 = Converter::toCvMat(obj3d->mCuboid3D.corner_8_w) - Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+
+        // 世界坐标系下，有yaw的corner坐标
+        // rotate in object frame  + object frame --> world frame.
+        corner_1 = Ryaw * corner_1 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_2 = Ryaw * corner_2 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_3 = Ryaw * corner_3 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_4 = Ryaw * corner_4 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_5 = Ryaw * corner_5 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_6 = Ryaw * corner_6 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_7 = Ryaw * corner_7 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+        corner_8 = Ryaw * corner_8 + Converter::toCvMat(obj3d->mCuboid3D.cuboidCenter);
+
+        // step 1. uv坐标
+        // project 8 vertices to image.
+        cv::Point2f point1, point2, point3, point4, point5, point6, point7, point8;
+        point1 = WorldToImg(corner_1);
+        point2 = WorldToImg(corner_2);
+        point3 = WorldToImg(corner_3);
+        point4 = WorldToImg(corner_4);
+        point5 = WorldToImg(corner_5);
+        point6 = WorldToImg(corner_6);
+        point7 = WorldToImg(corner_7);
+        point8 = WorldToImg(corner_8);
+
+        // step 2. 计算cube 3条边的角度
+        // angle of 3 edges(lenth, width, height).
+        float angle1;
+        float angle2;
+        float angle3;
+        // left -> right.
+        if(point6.x > point5.x)
+            angle1 = atan2(point6.y - point5.y, point6.x - point5.x);
+        else
+            angle1 = atan2(point5.y - point6.y, point5.x - point6.x);
+        float lenth1 = sqrt((point6.y - point5.y) * (point6.y - point5.y) + (point6.x - point5.x) * (point6.x - point5.x));
+
+        if(point7.x > point6.x)
+            angle2 = atan2(point7.y - point6.y, point7.x - point6.x);
+        else
+            angle2 = atan2(point6.y - point7.y, point6.x - point7.x);
+        float lenth2 = sqrt((point7.y - point6.y) * (point7.y - point6.y) + (point7.x - point6.x) * (point7.x - point6.x));
+
+        if(point6.x > point2.x)
+            angle3 = atan2(point6.y - point2.y, point6.x - point2.x);
+        else
+            angle3 = atan2(point2.y - point6.y, point2.x - point6.x);
+        float lenth3 = sqrt((point6.y - point2.y) * (point6.y - point2.y) + (point6.x - point2.x) * (point6.x - point2.x));
+
+        // step 3. 计算最新一帧中 线段 和 cube边 的角度偏差
+        // 为什么只用最新一帧?? 万一不满足之前帧的中线段 怎么办?
+        // compute angle between detected lines and cube edges.
+        int num = 0;  // number parallel lines.
+        for(int line_id = 0; line_id < obj3d->mvObject_2ds.back()->mObjLinesEigen.rows(); line_id++)
+        {
+            // angle of detected lines.
+            double x1 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 0);
+            double y1 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 1);
+            double x2 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 2);
+            double y2 = obj3d->mvObject_2ds.back()->mObjLinesEigen(line_id, 3);
+            float angle = atan2(y2 - y1, x2 - x1);
+
+            // lenth.
+            float lenth = sqrt((y2 - y1)*(y2 - y1) + (x2 - x1)*(x2 - x1));
+
+            // angle between line and 3 edges.
+            float dis_angle1 = abs(angle * 180/M_PI - angle1 * 180/M_PI);
+            float dis_angle2 = abs(angle * 180/M_PI - angle2 * 180/M_PI);
+            float dis_angle3 = abs(angle * 180/M_PI - angle3 * 180/M_PI);
+
+            float th = 5.0;             // threshold of the angle.
+            if(obj3d->mnClass == 56)   // chair.
+            {
+                if((dis_angle2 < th) || (dis_angle3 < th))
+                    num++;
+                if(dis_angle1 < th)
+                {
+                    num+=3;
+                }
+            }
+            else
+            {
+                // the shortest edge is lenth1.
+                if( min(min(lenth1, lenth2), lenth3) == lenth1)
+                {
+                    // error with other two edges.
+                    if((dis_angle2 < th) || (dis_angle3 < th))
+                    {
+                        num++;
+                        if(dis_angle2 < th)
+                            error += dis_angle2;
+                        if(dis_angle3 < th)
+                            error += dis_angle3;
+                    }
+
+                    // angle error.
+                    errorYaw+=min(dis_angle2, dis_angle3);
+                }
+                // the shortest edge is lenth2.
+                if( min(min(lenth1, lenth2), lenth3) == lenth2)
+                {
+                    if((dis_angle1 < th) || (dis_angle3 < th))
+                    {
+                        num++;
+                        if(dis_angle1 < th)
+                            error += dis_angle1;
+                        if(dis_angle3 < th)
+                            error += dis_angle3;
+                    }
+                    errorYaw+=min(dis_angle3, dis_angle1);
+                }
+                // the shortest edge is lenth3.
+                if( min(min(lenth1, lenth2), lenth3) == lenth3)
+                {
+                    if((dis_angle1 < th) || (dis_angle2 < th))
+                    {
+                        num++;
+                        if(dis_angle1 < th)
+                            error += dis_angle1;
+                        if(dis_angle2 < th)
+                            error += dis_angle2;
+                    }
+                    errorYaw+=min(dis_angle2, dis_angle1);
+                }
+            }
+        }
+        if(num == 0)
+        {
+            num = 1;
+            errorYaw = 10.0;
+        }
+
+        // record the angle with max number parallel lines.
+        if(num > numMax)
+        {
+            numMax = num;
+            sampleYaw = yaw;
+
+            fError = error; // no used in this version.
+            // average angle error.
+            fErrorYaw = (errorYaw/(float)num)/10.0;
+        }
+    }
+
+    // step 4. 得分等于，(平行线的数量/图片中线段数量)* (10 - fErrorYaw) /10
+    // scoring.
+    float fScore;
+    fScore = ((float)numMax / (float)nAllLineNum) * (1.0 - 0.1 * fErrorYaw);
+    if(isinf(fScore))
+        fScore = 0.0;
+
+    // 存储下 各个角度的得分和次数
+    // measurement： yaw, times, score, angle, angle error.
+    Eigen::Matrix<float,5,1> AngleTimesAndScore;
+    AngleTimesAndScore[0] = sampleYaw;
+    AngleTimesAndScore[1] = 1.0;
+    AngleTimesAndScore[2] = fScore;
+    AngleTimesAndScore[3] = fError;     // no used in this version.
+    AngleTimesAndScore[4] = fErrorYaw;
+
+    // update multi-frame measurement.
+    bool bNewMeasure = true;
+    for (auto &row : obj3d->mvAngleTimesAndScore)
+    {
+        if(row[0] == AngleTimesAndScore[0])
+        {
+            row[1] += 1.0;
+            row[2] = AngleTimesAndScore[2] * (1/row[1]) + row[2] * (1 - 1/row[1]);
+            row[3] = AngleTimesAndScore[3] * (1/row[1]) + row[3] * (1 - 1/row[1]);
+            row[4] = AngleTimesAndScore[4] * (1/row[1]) + row[4] * (1 - 1/row[1]);
+
+            bNewMeasure = false;
+        }
+    }
+    if(bNewMeasure == true)
+    {
+        obj3d->mvAngleTimesAndScore.push_back(AngleTimesAndScore);
+    }
+
+
+    // step 5. rank: 将mvAngleTimesAndScore按照次数从大到小进行排序
+    //index = 1;
+    std::sort(obj3d->mvAngleTimesAndScore.begin(), obj3d->mvAngleTimesAndScore.end(), VIC);
+     //for (auto &row : obj3d->mvAngleTimesAndScore)
+     //{
+     //    std::cout << row[0] * 180.0 / M_PI  << "\t" <<  row[1] << "\t" <<  row[2] << std::endl;
+     //}
+
+    // score最高的是the best yaw.
+    // 那为什么上面还要按次数排序? 答:使得score相同是, 次数最高的优先被选取
+    int best_num = 0;
+    float best_score = 0;
+    for(int i = 0; i < std::min(3, (int)obj3d->mvAngleTimesAndScore.size()); i++)
+    {
+        float fScore = obj3d->mvAngleTimesAndScore[i][2];
+        if(fScore >= best_score)
+        {
+            best_score = fScore;
+            best_num = i;
+        }
+    }
+
+    // step 6. update object yaw.
+    obj3d->mCuboid3D.rotY = obj3d->mvAngleTimesAndScore[best_num][0];
+    obj3d->mCuboid3D.mfErrorParallel = obj3d->mvAngleTimesAndScore[best_num][3];
+    obj3d->mCuboid3D.mfErroeYaw = obj3d->mvAngleTimesAndScore[best_num][4];
 }
 
 

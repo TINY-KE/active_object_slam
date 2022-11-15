@@ -141,8 +141,8 @@ class Object_2D {
         static std::mutex mGlobalMutex; //未来会用在后端优化中,当前无用
 
     // line.
-    //public:
-    //    Eigen::MatrixXd mObjLinesEigen;   //用来保存2d中的line
+    public:
+        Eigen::MatrixXd mObjLinesEigen;   //用来保存2d中的line
 
 
 

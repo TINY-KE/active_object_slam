@@ -1916,24 +1916,23 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
     //    end = RepeatObj->mvObject_2ds.size()-10;
     //else
     //    end = 0;
-    //for (int j=RepeatObj->mvObject_2ds.size()-1; j>=end; j++)
-    //{   std::cout<<"1  ";
-    //    //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
-    //    //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
-    //    //if(RepeatObj->mvObject_2ds[j]->bad)
-    //    //    continue;
-    //    //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
-    //    //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
-    //    //std::cout<<"2  ";
-    //    //ObjectFrame = RepeatObj->mvObject_2ds[j];std::cout<<"3  ";
-    //    //ObjectFrame->mnId = mnId;std::cout<<"4  ";
-    //    Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
-    //    ObjectFrame->mnId = mnId;
-    //    mnConfidence_foractive++;std::cout<<"5  ";
-    //
-    //    AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
-    //    std::cout<<"6  "<<std::endl;
-    //}
+    for (int j=RepeatObj->mvObject_2ds.size()-1; j>=0; j--)
+    {
+        //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+        //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
+        //if(RepeatObj->mvObject_2ds[j]->bad)
+        //    continue;
+        //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
+        //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+        //std::cout<<"2  ";
+        //ObjectFrame = RepeatObj->mvObject_2ds[j];std::cout<<"3  ";
+        //ObjectFrame->mnId = mnId;std::cout<<"4  ";
+        //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+        //ObjectFrame->mnId = mnId;
+        mnConfidence_foractive++;
+
+        //AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
+    }
     std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 3>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
     // step 3. 将 RepeatObj共视关系,增加到当前obj3d中
