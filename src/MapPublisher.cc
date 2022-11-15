@@ -546,7 +546,7 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
             //std::cout<<"[nbv debug:2 ]"<<p.x<<" "<<p.y<<" "<<p.z <<std::endl;
             marker2.points.push_back(p);
         }
-        std::cout<<"[rviz debug:2 ]"<<marker2.points.size() <<std::endl;
+        //std::cout<<"[rviz debug:2 ]"<<marker2.points.size() <<std::endl;
         publisher.publish(marker2);
     }
 

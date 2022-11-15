@@ -94,10 +94,10 @@ int main(int argc, char **argv)
     //(1)从ros param中获取参数
     ros::param::param<std::string>("~WORK_SPACE_PATH", WORK_SPACE_PATH, "/home/zhjd/active_eao/src/active_eao/");
     ros::param::param<bool>("~MotionIou_flag", MotionIou_flag, true);
-    ros::param::param<bool>("~NoPara_flag", NoPara_flag, false);
-    ros::param::param<bool>("~ProIou_flag", ProIou_flag, false);
-    ros::param::param<bool>("~Ttest_flag", Ttest_flag, false);
-    ros::param::param<bool>("~iforest_flag", iforest_flag, false);
+    ros::param::param<bool>("~NoPara_flag", NoPara_flag, true);
+    ros::param::param<bool>("~ProIou_flag", ProIou_flag, true);
+    ros::param::param<bool>("~Ttest_flag", Ttest_flag, true);
+    ros::param::param<bool>("~iforest_flag", iforest_flag, true);
     ros::param::param<bool>("~little_mass_flag", little_mass_flag, false);
     ros::param::param<bool>("~ProIou_only30_flag", ProIou_only30_flag, false);
     const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";

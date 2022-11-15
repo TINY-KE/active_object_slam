@@ -158,14 +158,23 @@ private:
                                         "toothbrush"
                                         };
 public:
+    // color image
     cv::Mat mQuadricIm;
     bool mbshow_yolo_result;
+    cv::Mat GetQuadricImage();
     cv::Mat DrawQuadricImage();
+
+    // bounding box.
     std::vector<BoxSE> Dboxes;
     cv::Mat DrawYoloInfo(cv::Mat &im, bool bText);
     cv::Mat mTcw; // 相机帧到世界的变化关系  用于绘制物体在相机帧中的投影
     cv::Mat mK;   // Calibration matrix  用于绘制物体在相机帧中的投影
     int CurFrameId = -1;
+
+    // lines.
+    std::vector< KeyLine> Dkeylines_raw_nouse, Dkeylines_out_nouse;
+    double DTimeStamp_nouse;
+    std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd> >  DObjsLines;    // object lines.  std::vector<Eigen::MatrixXd>
 };
 
 } //namespace ORB_SLAM

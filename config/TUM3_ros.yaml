@@ -131,7 +131,7 @@ MAM.divide: 20
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0
-#        "bicycle自行车", "car汽车", "motorcycle", "airplane", "bus",   //1
+#        "`b`icycle自行车", "car汽车", "motorcycle", "airplane", "bus",   //1
 #        "train", "truck", "boat", "traffic light",   "fire hydrant", //6
 #        "stop sign停止标", "parking meter", "bench", "bird", "cat", //11
 #        "dog", "horse", "sheep", "cow",  "elephant", //16
@@ -151,4 +151,4 @@ MAM.divide: 20
 #yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
 #yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
 #yolo_class: [77]
-yolo_class: [77,73]
+yolo_class: [77,73,56,39]

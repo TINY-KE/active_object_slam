@@ -112,9 +112,14 @@ void Viewer::Run()
     Twc.SetIdentity();
 
     cv::namedWindow("Point, Line and Object Detection");
-    cv::moveWindow("Point, Line and Object Detection", 400, 260);
+    cv::moveWindow("Point, Line and Object Detection", 40, 40);
     cv::namedWindow("Quadric Projection");
-    cv::moveWindow("Quadric Projection", 400, 710);
+    cv::moveWindow("Quadric Projection", 40, 40+480*0.8);
+
+    cv::namedWindow("[MotionIou]");
+    cv::moveWindow("[MotionIou]", 40, 40+480*0.7+40+480*0.7);
+    cv::namedWindow("[ProIou]");
+    cv::moveWindow("[ProIou]", 40+640*0.55, 40+480*0.7+40+480*0.7);
 
     bool bFollow = true;
     bool bLocalizationMode = false;
@@ -186,7 +191,7 @@ void Viewer::Run()
 
         // [active slam] quadric image.
         if(show_object3d_frame) {
-            cv::Mat QuadricImage = mpFrameDrawer->DrawQuadricImage();
+            cv::Mat QuadricImage = mpFrameDrawer->GetQuadricImage();
             if (!QuadricImage.empty()) {
                 cv::Mat resizeimg;
                 cv::resize(QuadricImage, resizeimg, cv::Size(640 * 0.7, 480 * 0.7), 0, 0, cv::INTER_CUBIC);

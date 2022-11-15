@@ -95,9 +95,20 @@
 + 均分和bigToSmall,几乎没效果
 + GetNewObjectMappoints() 为什么点这么少啊??
 + object3d中的mRect_byProjectPoints 是投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
++ 计算最新一帧中 线段 和 cube边 的角度偏差      // 为什么只用最新一帧?? 万一不满足之前帧的中线段 怎么办?
+
 ### 0 要做的事情:
 + 后端剔除物体的原因. 是不是因为看到的点太少了?
 + 估计方向
++ 新的object点为什么 这么少?
++ 提取平面
++ 纹理的方差和均值
++ 今天一定要融合信息熵和方向估计
++ 为什么if(obj3d->mnLastAddID == mCurrentFrame.mnId)代表出现在当前帧
++ SampleObjYaw能不能整合到object3d中
++ MergeTwoMapObjs_forlocalmap中没有 关于object2d的筛选吗?
++ 后端融合时, 把obj2d添加过去有意义吗?
++ 
 
 
 ### 0 未来可以微调的参数

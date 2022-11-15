@@ -87,6 +87,7 @@ void LocalMapping::Run()
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
             //[active slam]
+
             UpdateObject();
             MergePotentialAssObjs();
             WhetherOverlapObject();

@@ -52,7 +52,38 @@ enum eAssociateFlag{
 class Object_2D {
 
     public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+    public:
         Object_2D();
+
+        //Object_2D(const Object_2D* obj2d){
+        //    std::cout<<"Object_2D  construct 2   ";
+        //    mclass_id = obj2d->mclass_id;
+        //    mScore = obj2d->mScore;
+        //    mleft = obj2d->mleft;
+        //    mright = obj2d->mright;
+        //    mtop = obj2d->mtop;
+        //    mbottom = obj2d->mbottom;
+        //    mWidth = obj2d->mWidth;
+        //    mHeight = obj2d->mHeight;
+        //    // 2d center.
+        //    mBoxCenter_2d = obj2d->mBoxCenter_2d;
+        //    // opencv Rect format.
+        //    mBox_cvRect = obj2d->mBox_cvRect;
+        //    mBox_cvRect_FeaturePoints = obj2d->mBox_cvRect_FeaturePoints;
+        //    this->mpCurrentFrame = obj2d->mpCurrentFrame;
+        //    this->mpMap = obj2d->mpMap;
+        //
+        //    //位姿
+        //    this->sum_pos_3d = obj2d->sum_pos_3d;
+        //    this->mPos_world = obj2d->mPos_world;
+        //    this->mvMapPonits = obj2d->mvMapPonits;
+        //    mReIdAndIou = obj2d->mReIdAndIou;
+        //
+        //    bad = false;
+        //    std::cout<<">>>   End"<<std::endl;
+        //};
         Object_2D(Map* mpMap, Frame *CurrentFrame, const BoxSE &box);
     public:
         //yolo
@@ -103,17 +134,27 @@ class Object_2D {
         void AddObjectPoint(MapPoint *pMP);
         void AddPotentialAssociatedObjects( vector<Object_Map*> obj3ds, int AssoId, int beAssoId);
 
-    //crash bug
     protected:
         std::mutex mMutexObjMapPoints;   //对特征点 处理时
         std::mutex mMutexPos;    // 对特征点簇的中心 处理时
     public:
         static std::mutex mGlobalMutex; //未来会用在后端优化中,当前无用
-        //cv::Mat GetWorldPos();
-        //cv::Mat Get_Sum_Points_Pos();
-        //void SetWorldPos(const cv::Mat &Pos);
+
+    // line.
+    //public:
+    //    Eigen::MatrixXd mObjLinesEigen;   //用来保存2d中的line
+
+
+
+
 
 };
+
+
+
+
+
+
 
 struct Cuboid3D{
     //     7------6
@@ -173,12 +214,17 @@ public:
     float mfErroeYaw;
 };
 
+
+
+
 class Object_Map{
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 public:
     Object_Map();
 
 public:
-    std::vector<Object_2D*> mvObject_2ds;  //在各frame中的object_2d
+    std::vector<Object_2D* > mvObject_2ds;  //在各frame中的object_2d  原mObjectFrame , Eigen::aligned_allocator<Object_2D*>
 
     //yolo检测框和观测帧的id, 用于iou数据关联
     cv::Rect mLastRect;
@@ -229,10 +275,11 @@ public:
 
 protected:
     std::mutex mMutexMapPoints;
-    std::mutex mMutex;
+
 
 //localmap 部分   fll指forlocalmap
 public:
+    static std::mutex mMutex_front_back;
     void SearchAndMergeMapObjs_fll(Map *mpMap);
     void MergeTwoMapObjs_fll(Object_Map *RepeatObj);
     bool DoubleSampleTtest_fll(Object_Map *RepeatObj);
@@ -275,8 +322,12 @@ public:
     vector<MapPoint* >  GetNewObjectMappoints();
 protected:
     std::mutex mMutexPose;
-
-
+    std::mutex mMutexObj2d;
+public:
+    void AddObj2d(Object_2D* Object_2d){
+        unique_lock<mutex> lock(mMutexObj2d);
+        this->mvObject_2ds.push_back(Object_2d);
+    }
 };
 
 

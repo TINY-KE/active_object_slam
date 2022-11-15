@@ -13,12 +13,12 @@ IF(NOT CMAKE_BUILD_TYPE)
 ENDIF()
 SET(CMAKE_BUILD_TYPE Debug)
 
-#set(CMAKE_CXX_STANDARD 17) # ok
+set(CMAKE_CXX_STANDARD 14) # ok
 
 set(CMAKE_CXX_FLAGS -DCV__ENABLE_C_API_CTORS) #OPENCV VERISON
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3 -march=native ")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O3 -march=native")
-
+#set (CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -fno-inline")
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -114,6 +114,21 @@ add_library(${PROJECT_NAME}_lib SHARED
    src/Object.cpp
    src/MapPublisher.cc
 
+   # line
+   src/line_detect/line_lbd_allclass.cpp
+   src/line_detect/libs/binary_descriptor.cpp
+   src/line_detect/libs/binary_descriptor_matcher.cpp
+   src/line_detect/libs/LSDDetector.cpp
+   src/line_detect/libs/lsd.cpp
+   src/line_detect/libs/bitarray.hpp
+   src/line_detect/libs/bitops.hpp
+   src/line_detect/libs/draw.cpp
+   src/line_detect/libs/precomp.hpp
+   src/line_detect/libs/types.hpp
+   # cube
+   src/detect_3d_cuboid/box_proposal_detail.cpp
+   src/detect_3d_cuboid/object_3d_util.cpp
+   src/detect_3d_cuboid/matrix_utils.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_lib
@@ -127,6 +142,10 @@ target_link_libraries(${PROJECT_NAME}_lib
    ${catkin_LIBRARIES}  #for ros
    ${PCL_LIBRARIES}
 
+   # line
+   ${PROJECT_SOURCE_DIR}/Thirdparty/EDLines/EDLinesLib.a
+   ${PROJECT_SOURCE_DIR}/Thirdparty/EDTest/EDLib.a
+   ${PROJECT_SOURCE_DIR}/Thirdparty/Line3Dpp/build/libline3Dpp.so
 )
 
 

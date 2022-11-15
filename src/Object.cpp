@@ -7,13 +7,18 @@
 namespace ORB_SLAM2
 {
 
+
 mutex Object_2D::mGlobalMutex;  //crash bug
+mutex Object_Map::mMutex_front_back;
 
+bool debug_iou_view = 0;
 Object_2D::Object_2D() {
-
+    std::cout<<"Object_2D  construct 1   ";
+    std::cout<<">>>   End"<<std::endl;
 }
 
 Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
+    std::cout<<"Object_2D  construct 3   ";
     mclass_id = box.m_class;
     mScore = box.m_score;
     mleft = box.x;
@@ -23,6 +28,7 @@ Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
     mWidth = box.width;
     mHeight = box.height;
     // 2d center.
+
     mBoxCenter_2d = cv::Point2f(box.x + box.width / 2, box.y + box.height / 2);
     // opencv Rect format.
     mBox_cvRect = cv::Rect(box.x, box.y, box.width, box.height);
@@ -32,6 +38,7 @@ Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
 
     //初始化位姿
     this->sum_pos_3d = cv::Mat::zeros(3, 1, CV_32F);
+    std::cout<<">>>   End"<<std::endl;
 }
 
 void Object_2D::AddYoloBoxes(const BoxSE &box) {
@@ -242,12 +249,16 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 float Iou = Converter::bboxOverlapratio(RectCurrent, RectPredict);
 
                 //可视化 for debug
-                cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
-                cv::Scalar color = (200,0,0);
-                cv::rectangle(  mat_test,  RectCurrent, (0,0,255), 2);
-                cv::rectangle(  mat_test,  RectPredict, (255,0,0), 2);
-                cv::putText(mat_test, std::to_string(Iou),cv::Point(0,500), cv::FONT_HERSHEY_DUPLEX  ,1.0,(0,255,0), 2);
-                cv::imshow("[MotionIou]",mat_test);
+                if(debug_iou_view){
+                    cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
+                    cv::Scalar color = (200, 0, 0);
+                    cv::rectangle(mat_test, RectCurrent, (0, 0, 255), 2);
+                    cv::rectangle(mat_test, RectPredict, (255, 0, 0), 2);
+                    cv::putText(mat_test, std::to_string(Iou), cv::Point(0, 500), cv::FONT_HERSHEY_DUPLEX, 1.0,
+                                (0, 255, 0), 2);
+                    cv::resize(mat_test, mat_test, cv::Size(640 * 0.5, 480 * 0.5), 0, 0, cv::INTER_CUBIC);
+                    cv::imshow("[MotionIou]", mat_test);
+                }
                 std::cout<<"[MotionIou] iou:"<<Iou <<std::endl;
                 if ((Iou > IouThreshold) && (Iou > IouMax))
                 {
@@ -404,15 +415,22 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             fIou = max(fIou, fIou2);
 
             //可视化 for debug
-            cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
-            cv::Scalar color = (200,0,0);
-            cv::rectangle(  mat_test,  RectCurrent, cv::Scalar(255,0,0), 2);  //红
-            cv::rectangle(  mat_test,  mBox_cvRect_FeaturePoints, cv::Scalar(0,255,0), 2);  //绿
-            cv::rectangle(  mat_test,  obj3D->mRect_byProjectPoints, cv::Scalar(0,0,255), 2);//蓝
-            cv::putText(mat_test, std::to_string(fIou), cv::Point(0,500), cv::FONT_HERSHEY_DUPLEX  ,1.0,(0,255,0), 2);
-            cv::imshow("[ProIou]",mat_test);
-            std::cout<<"[ProIou] "<<fIou<<" iou1:"<<Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints)<<", iou2:"<<Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints) <<std::endl;
-
+            if(debug_iou_view)
+            {
+                cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
+                cv::Scalar color = (200, 0, 0);
+                cv::rectangle(mat_test, RectCurrent, cv::Scalar(255, 0, 0), 2);  //红
+                cv::rectangle(mat_test, mBox_cvRect_FeaturePoints, cv::Scalar(0, 255, 0), 2);  //绿
+                cv::rectangle(mat_test, obj3D->mRect_byProjectPoints, cv::Scalar(0, 0, 255), 2);//蓝
+                cv::putText(mat_test, std::to_string(fIou), cv::Point(0, 500), cv::FONT_HERSHEY_DUPLEX, 1.0,
+                            (0, 255, 0), 2);
+                cv::resize(mat_test, mat_test, cv::Size(640 * 0.5, 480 * 0.5), 0, 0, cv::INTER_CUBIC);
+                cv::imshow("[ProIou]", mat_test);
+                std::cout << "[ProIou] " << fIou << " iou1:"
+                          << Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints) << ", iou2:"
+                          << Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints)
+                          << std::endl;
+            }
             // record the max IoU and map object id.
             // notes: 找到最大重叠目标框
             // TODO: 只要ProIou大于0.25就认为是，潜在的关联对象？？
@@ -672,7 +690,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
 
 int Object_2D::creatObject()
 {
-    unique_lock<mutex> lock(mMutexObjMapPoints);   //目的: 不让mBox_cvRect被修改, 以免造成程序错乱.
+    unique_lock<mutex> lock1(mMutexObjMapPoints);   //目的: 不让mBox_cvRect被修改, 以免造成程序错乱.
     unique_lock<mutex> lock2(mGlobalMutex);
     const cv::Mat ColorImage = mpCurrentFrame->mColorImage.clone();
     int associate = Object2D_DataAssociationWith_Object3D();    // data association with object3d in map. 如果关联失败， 则声称一个新的物体
@@ -1318,7 +1336,7 @@ void Object_Map::IsolationForestDeleteOutliers(){
 
 void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
 {
-    unique_lock<mutex> lock(mMutex);
+
 
     // Rotation matrix.
     float cp = cos(mCuboid3D.rotP);
@@ -1461,6 +1479,7 @@ vector<MapPoint* > Object_Map::GetNewObjectMappoints(){
 // MotionIou 1,  NoPara 2,  t_test 3,  ProIou 4
 // return false的原因: class id不匹配; IOU太小；  Frame id没有递增;
 bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag){
+    std::cout<<"UpdateToObject3D "<<Flag<<std::endl;
 
     if (Object_2d->mclass_id != mnClass)
         return false;
@@ -1554,7 +1573,7 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
         mLastLastRect = mLastRect;
         mLastRect = Object_2d->mBox_cvRect;
         mnConfidence_foractive++;
-        mvObject_2ds.push_back(Object_2d);
+        AddObj2d(Object_2d);//this->mvObject_2ds.push_back(Object_2d);
     }
     else
         return false;
@@ -1826,10 +1845,15 @@ bool Object_Map::DoubleSampleTtest_fll(ORB_SLAM2::Object_Map *RepeatObj) {
 
 void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
 {
-    // step 1. update points.
+    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 1>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+ // step 1. 将RepeatObj添加到当前obj3d中
+    // update points.
     for (int i = 0; i < RepeatObj->mvpMapObjectMappoints.size(); i++)
     {
         MapPoint *pMP = RepeatObj->mvpMapObjectMappoints[i];
+
+        if(pMP->isBad())
+            continue;
 
         cv::Mat pointPos = pMP->GetWorldPos();
         Eigen::Vector3d scale = Converter::toSE3Quat(this->mCuboid3D.pose_mat).inverse() * Converter::toVector3d(pointPos);
@@ -1845,6 +1869,7 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
 
         map<int, int>::iterator sit;
         sit = pMP->viewdCount_forObjectId.find(pMP->object_mnId);
+        // 该point被 此obj3d的次数 +1
         if (sit != pMP->viewdCount_forObjectId.end())
         {
             int sit_sec = sit->second;
@@ -1882,19 +1907,37 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
             }
         }
     }
+    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 2>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    std::cout<<"RepeatObj->mvObject_2ds.size(): "<<RepeatObj->mvObject_2ds.size()<<std::endl;
 
     // step 2. update frame objects.
-    for (int j = 0; j < RepeatObj->mvObject_2ds.size(); j++)
-    {
-        Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+    //int end;
+    //if( RepeatObj->mvObject_2ds.size() > 10)
+    //    end = RepeatObj->mvObject_2ds.size()-10;
+    //else
+    //    end = 0;
+    //for (int j=RepeatObj->mvObject_2ds.size()-1; j>=end; j++)
+    //{   std::cout<<"1  ";
+    //    //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+    //    //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
+    //    //if(RepeatObj->mvObject_2ds[j]->bad)
+    //    //    continue;
+    //    //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
+    //    //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+    //    //std::cout<<"2  ";
+    //    //ObjectFrame = RepeatObj->mvObject_2ds[j];std::cout<<"3  ";
+    //    //ObjectFrame->mnId = mnId;std::cout<<"4  ";
+    //    Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+    //    ObjectFrame->mnId = mnId;
+    //    mnConfidence_foractive++;std::cout<<"5  ";
+    //
+    //    AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
+    //    std::cout<<"6  "<<std::endl;
+    //}
+    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 3>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
-        ObjectFrame->mnId = mnId;
-        mnConfidence_foractive++;
-
-        mvObject_2ds.push_back(ObjectFrame);
-    }
-
-    // step 3. update the co-view relationship
+    // step 3. 将 RepeatObj共视关系,增加到当前obj3d中
+    // the co-view relationship
     {
         map<int, int>::iterator sit;
         for (sit = RepeatObj->mmAppearSametime.begin(); sit != RepeatObj->mmAppearSametime.end(); sit++)
@@ -1914,12 +1957,16 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
                 mmAppearSametime.insert(make_pair(nObjId, 1));
         }
     }
+    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
-    // step 4. update the last observed frame.
+    // step 4. 更新当前obj3d的最后观测帧的id
+    // update the last observed frame.
     int nOriginLastAddID = mnLastAddID;
     int nOriginLastLatsAddID = mnLastLastAddID;
     cv::Rect OriginLastRect = mLastRect;
+    // 如果此物体出现的更晚, 则不更新last.  查看lastlast是否需要更新
     // this object appeared recently.
+    //TODO: 以下的数字都是不是多得多减1  答:不是. 因为mnLastAddID = mCurrentFrame.mnId  所以LastAddID就是最新的一个观测帧
     if (mnLastAddID > RepeatObj->mnLastAddID)
     {
         if (nOriginLastLatsAddID < RepeatObj->mnLastAddID)
@@ -1928,23 +1975,31 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
             mLastLastRect = RepeatObj->mvObject_2ds[  RepeatObj->mvObject_2ds.size()-1  ]->mBox_cvRect;
         }
     }
+    // 如果RepeatObj出现的更晚, 则更新last
     // RepeatObj appeared recently.
     else
     {
         mnLastAddID = RepeatObj->mnLastAddID;
         mLastRect = RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 1]->mBox_cvRect;
 
+        //查看lastlast是否要更新:
+        //如果lastlast出现的更晚, 则不更新
         if (nOriginLastAddID > RepeatObj->mnLastLastAddID)
         {
             mnLastLastAddID = nOriginLastAddID;
             mLastLastRect = OriginLastRect;
         }
-        else
+        //如果RepeatObj的lastlast出现的更晚, 则更新
+        else if(RepeatObj->mvObject_2ds.size() >=  2 )
         {
             mnLastLastAddID = RepeatObj->mnLastLastAddID;
+            std::cout<<"[mergy debug]: size:" <<RepeatObj->mvObject_2ds.size() <<std::endl;
+            std::cout<<"[mergy debug]: width:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.width <<std::endl;
+            std::cout<<"[mergy debug]: height:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.height <<std::endl;
             mLastLastRect = RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect;
         }
     }
+    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 5>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
     // step 5. update direction.
     // TODO: 修改类型编号
@@ -2007,6 +2062,8 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
             this->Update_Twobj();
         }
     }
+        std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 6>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+
 }
 
 

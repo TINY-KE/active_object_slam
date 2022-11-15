@@ -116,9 +116,14 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
+Frame::Frame(const cv::Mat &imColor,const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,
+             line_lbd_detect* line_lbd_ptr_frame,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf,
+             const float &thDepth,const std::vector<BoxSE> & bbox)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
-     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
+     mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
+     // for colorimage linedetector bbox
+     mColorImage(imColor.clone()), mQuadricImage(imColor.clone()) , mpline_lbd_ptr_frame(line_lbd_ptr_frame), boxes(bbox)
+
 {
     // Frame ID
     mnId=nNextId++;
@@ -168,6 +173,17 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     mb = mbf/fx;
 
     AssignFeaturesToGrid();
+
+    // line detection.
+    mpline_lbd_ptr_frame->detect_raw_lines(imColor, keylines_raw);
+    mpline_lbd_ptr_frame->filter_lines(keylines_raw, keylines_out);
+    keylines_to_mat(keylines_out, all_lines_mat,1);
+	Eigen::MatrixXd all_lines_raw(all_lines_mat.rows,4);
+	for (int rr=0;rr<all_lines_mat.rows;rr++)
+		for (int cc=0;cc<4;cc++)
+		  	all_lines_raw(rr,cc) = all_lines_mat.at<float>(rr,cc);
+    all_lines_eigen = all_lines_raw;
+
 }
 
 

@@ -209,11 +209,19 @@ void FrameDrawer::Update(Tracking *pTracker)
     mbOnlyTracking = pTracker->mbOnlyTracking;
 
     //[active slam]
+    // key line
+    Dkeylines_raw_nouse = pTracker->mCurrentFrame.keylines_raw;
+    Dkeylines_out_nouse = pTracker->mCurrentFrame.keylines_out;
+    DTimeStamp_nouse = pTracker->mCurrentFrame.mTimeStamp;
+    DObjsLines = pTracker->mCurrentFrame.vObjsLines;// 物体中的线
+
+    // colo image
     //pTracker->mCurrentFrame.mColorImage.copyTo(mRGBIm);
     pTracker->mCurrentFrame.mQuadricImage.copyTo(mQuadricIm);
     Dboxes = pTracker->mCurrentFrame.boxes;
     this->mTcw = pTracker->mCurrentFrame.mTcw;
     this->mK = pTracker->mCurrentFrame.mK;
+    //[active slam end]
 
     if(pTracker->mLastProcessedState==Tracking::NOT_INITIALIZED)
     {
@@ -240,6 +248,12 @@ void FrameDrawer::Update(Tracking *pTracker)
     mState=static_cast<int>(pTracker->mLastProcessedState);    /* 关键： 更新mstate */
 }
 
+cv::Mat FrameDrawer::GetQuadricImage()
+{
+    cv::Mat imRGB;
+    mQuadricIm.copyTo(imRGB);
+    return imRGB;
+}
 
 // [active slam]
 cv::Mat FrameDrawer::DrawQuadricImage()
@@ -394,7 +408,25 @@ cv::Mat FrameDrawer::DrawYoloInfo(cv::Mat &im, bool bText)
                         2);
         }
 
+        // draw lines in the box
+        for(int obj_id = 0; obj_id < DObjsLines.size(); obj_id ++)
+        {
+            for(int line_id = 0; line_id < DObjsLines[obj_id].rows(); line_id++)
+            {
+                cv::Scalar lineColor;
+                int R = ( rand() % (int) ( 255 + 1 ) );
+                int G = ( rand() % (int) ( 255 + 1 ) );
+                int B = ( rand() % (int) ( 255 + 1 ) );
+                lineColor = cv::Scalar( R, G, B );
 
+                cv::line(   im,
+                            cv::Point2f( DObjsLines[obj_id](line_id, 0), DObjsLines[obj_id](line_id, 1)),
+                            cv::Point2f( DObjsLines[obj_id](line_id, 2), DObjsLines[obj_id](line_id, 3)),
+                            cv::Scalar( 255, 255, 0 ),
+                            //lineColor,
+                            2.0);
+            }
+        }
 
         // draw bounding box.
         cv::rectangle(  im,

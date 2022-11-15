@@ -33,6 +33,16 @@
 #include <opencv2/opencv.hpp>
 #include "Object.h"
 
+// line
+#include <line_lbd/line_descriptor.hpp>
+#include <line_lbd/line_lbd_allclass.h>
+//#include <opencv2/imgproc.hpp>
+//#include <opencv2/highgui.hpp>
+
+// cube slam.
+#include "detect_3d_cuboid/matrix_utils.h"
+#include "detect_3d_cuboid/detect_3d_cuboid.h"
+
 namespace ORB_SLAM2
 {
 #define FRAME_GRID_ROWS 48
@@ -56,7 +66,9 @@ public:
     Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
 
     // Constructor for RGB-D cameras.
-    Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imColor, const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+          ORBextractor* extractor, line_lbd_detect* line_lbd_ptr_frame, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf,
+          const float &thDepth, const std::vector<BoxSE> & bbox);
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
@@ -222,10 +234,20 @@ public:
     std::vector<Object_2D*> mvLastLastObject_2ds;   // last last frame.
     cv::Mat mColorImage;
     cv::Mat mQuadricImage;                          //在mColorImage的基础上,绘制了椭球
-    void addColorImg(const cv::Mat &color){
-        mColorImage = color.clone();
-        mQuadricImage = color.clone();
-    };
+    //void addColorImg(const cv::Mat &color){
+    //    mColorImage = color.clone();
+    //    mQuadricImage = color.clone();
+    //};
+
+    // line.
+    std::vector< KeyLine> keylines_raw, keylines_out;
+    cv::Mat all_lines_mat;
+    Eigen::MatrixXd all_lines_eigen;
+    std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd> > vObjsLines;
+    line_lbd_detect* mpline_lbd_ptr_frame;
+    //void addLineDetect(line_lbd_detect* line_lbd_ptr_frame){
+    //    mpline_lbd_ptr_frame = line_lbd_ptr_frame;
+    //};
 
 
 };
