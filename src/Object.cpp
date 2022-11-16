@@ -1920,18 +1920,18 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
     {
         //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
         //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
-        //if(RepeatObj->mvObject_2ds[j]->bad)
-        //    continue;
+        if(RepeatObj->mvObject_2ds[j]->bad)
+            continue;
         //auto ObjectFrame = new Object_2D(RepeatObj->mvObject_2ds[j]);
         //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
         //std::cout<<"2  ";
         //ObjectFrame = RepeatObj->mvObject_2ds[j];std::cout<<"3  ";
         //ObjectFrame->mnId = mnId;std::cout<<"4  ";
-        //Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
-        //ObjectFrame->mnId = mnId;
+        Object_2D *ObjectFrame = RepeatObj->mvObject_2ds[j];
+        ObjectFrame->mnId = mnId;
         mnConfidence_foractive++;
 
-        //AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
+        AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
     }
     std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 3>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 

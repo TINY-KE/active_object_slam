@@ -108,6 +108,8 @@
 + SampleObjYaw能不能整合到object3d中
 + MergeTwoMapObjs_forlocalmap中没有 关于object2d的筛选吗?
 + 后端融合时, 把obj2d添加过去有意义吗?
++ 丰富confidence的用法，用来解决后端带来的bug
+  + 似乎j--已经解决了这个问题
 + 
 
 
