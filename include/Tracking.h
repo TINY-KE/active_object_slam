@@ -54,6 +54,7 @@ namespace ORB_SLAM2
 
 class Viewer;
 class FrameDrawer;
+class MapPublisher;
 class Map;
 class LocalMapping;
 class LoopClosing;
@@ -150,8 +151,8 @@ protected:
     bool TrackLocalMap();
     void SearchLocalPoints();
 
-    bool NeedNewKeyFrame();
-    void CreateNewKeyFrame();
+    int NeedNewKeyFrame();
+    void CreateNewKeyFrame(bool CreateByObjs);
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.

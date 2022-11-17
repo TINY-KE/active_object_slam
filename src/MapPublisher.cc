@@ -121,6 +121,7 @@ MapPublisher::MapPublisher(Map* pMap):mpMap(pMap), mbCameraUpdated(false)
     //Configure Publisher
     publisher = nh.advertise<visualization_msgs::Marker>("objectmap", 1000);
     publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
+    pubCloud = nh.advertise<sensor_msgs::PointCloud2>("plane", 1000);
 
     publisher.publish(mPoints);
     publisher.publish(mReferencePoints);
@@ -141,11 +142,13 @@ void MapPublisher::Refresh()
         vector<MapPoint*> vRefMapPoints = mpMap->GetReferenceMapPoints();
         //vector<MapPlane*> vMapPlanes = mpMap ->GetAllMapPlanes();
         vector<Object_Map*> vMapObjects = mpMap -> GetObjects();
+        vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         PublishMapPoints(vMapPoints, vRefMapPoints);   
         PublishKeyFrames(vKeyFrames);
         //PublishPlane(vMapPlanes);
         PublishObject(vMapObjects);
         //PublishIE(vMapObjects);
+        DrawMapPlanesOld(vpMPlanes);
     }    
 }
 
@@ -643,5 +646,84 @@ void MapPublisher::ResetCamFlag()
     unique_lock<mutex> lock(mMutexCamera);
     mbCameraUpdated = false;
 }
+
+
+void MapPublisher::DrawMapPlanesOld(const vector<MapPlane *> &vpMPs)
+{
+    //if( DrawMapPlane_i == 10){
+    //    DrawMapPlane_i = 0;
+    //}
+    //else{
+    //    DrawMapPlane_i ++;
+    //    return;
+    //}
+    if (vpMPs.empty())
+        return;
+    //降维过滤器
+    pcl::VoxelGrid<PointT> voxel;
+    voxel.setLeafSize(0.002, 0.002, 0.002);
+
+    //带颜色的pcl point
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr  colored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
+    // color.
+    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+
+    for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
+    {
+
+        // 获得平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
+        cv::Mat groud = (cv::Mat_<float>(3, 1) << 0, 0, 1);  ;
+        cv::Mat pMP_normal = pMP->GetWorldPos();
+        float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
+                      groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
+                      groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
+        if ((angle < 0.5) && (angle > -0.5))
+            continue;
+
+        map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
+        float ir = pMP->mRed;
+        float ig = pMP->mGreen;
+        float ib = pMP->mBlue;
+        PointCloud::Ptr allCloudPoints(new PointCloud);
+        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; mit++)
+        {
+            KeyFrame *frame = mit->first;
+            int id = mit->second;
+            if (id >= frame->mnRealPlaneNum)
+            {
+                continue;
+            }
+            Eigen::Isometry3d T = ORB_SLAM2::Converter::toSE3Quat(frame->GetPose());
+            PointCloud::Ptr cloud(new PointCloud);
+            pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
+            *allCloudPoints += *cloud;
+        }
+        PointCloud::Ptr tmp(new PointCloud());
+        voxel.setInputCloud(allCloudPoints);
+        voxel.filter(*tmp);
+
+        vector<float> color = colors_bgr[pMP->mnId % 6];
+        for (int i = 0; i <  tmp->points.size(); i++)
+        {
+          pcl::PointXYZRGB  p;
+          p.x=tmp->points[i].x;
+          p.y=tmp->points[i].y;
+          p.z=tmp->points[i].z;
+          p.r = color[2];
+          p.g = color[1];
+          p.b = color[0];
+          colored_pcl_ptr->points.push_back(p);
+        }
+        colored_pcl_ptr->width = 1;
+        colored_pcl_ptr->height += tmp->points.size();  //递增
+    }
+
+    // ros msg
+    sensor_msgs::PointCloud2 colored_msg;
+    pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
+    colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
+    pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
+}
+
 
 } //namespace ORB_SLAM

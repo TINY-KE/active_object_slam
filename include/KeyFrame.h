@@ -22,6 +22,7 @@
 #define KEYFRAME_H
 
 #include "MapPoint.h"
+#include "MapPlane.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
@@ -30,13 +31,15 @@
 #include "KeyFrameDatabase.h"
 
 #include <mutex>
-
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloud;
 
 namespace ORB_SLAM2
 {
 
 class Map;
 class MapPoint;
+class MapPlane;
 class Frame;
 class KeyFrameDatabase;
 
@@ -231,6 +234,27 @@ protected:
     std::mutex mMutexPose;
     std::mutex mMutexConnections;
     std::mutex mMutexFeatures;
+
+// object
+public:
+    std::vector<Object_2D*> obj_2ds;     // 2d objects.
+    bool mbByNewObj = false;           // keyframe created by keyframe.
+
+// plane
+public:
+    int mnPlaneNum;
+    int mnRealPlaneNum;
+    bool mbNewPlane; // used to determine a keyframe
+    std::vector<MapPlane *> mvpMapPlanes;
+    std::vector<PointCloud> mvPlanePoints;
+    std::vector<PointCloud> mvBoundaryPoints;
+    std::vector<cv::Mat> mvPlaneCoefficients;
+    void ReplaceMapPlaneMatch(const int &idx, MapPlane *pMP);
+    void EraseMapPlaneMatch(const int &idx);
+    void EraseMapPlaneMatch(MapPlane *pMP);
+    void AddMapPlane(MapPlane *pMP, const int &idx);
+    std::vector<MapPlane *> GetMapPlaneMatches();
+
 };
 
 } //namespace ORB_SLAM

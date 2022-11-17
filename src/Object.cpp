@@ -745,6 +745,7 @@ int Object_2D::creatObject()
 
     // save this 2d object to current frame (associates with a 3d object in the map).
     mpCurrentFrame->mvObject_2ds.push_back(this);
+    mpCurrentFrame->AppearNewObject = true;                   // 如果有新的物体,则当前帧生成为关键帧
     //mpCurrentFrame->AppearNewObject = true;
 
     // update object map.
@@ -1741,11 +1742,11 @@ bool Object_Map::WhetherOverlap(Object_Map *CompareObj)
 void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
 {
     map<int, int>::iterator sit;
-    std:;vector<Object_Map*> obj_3ds = mpMap->GetObjects();
-    for (sit = mReObj.begin(); sit != mReObj.end(); sit++)
+    std::vector<Object_Map*> obj_3ds = mpMap->GetObjects();
+    for (sit = mReObj.end(); sit != mReObj.begin(); sit--)
     {
         int nObjId = sit->first;
-        Object_Map* obj_ass = obj_3ds[nObjId];
+        Object_Map* obj_ass = obj_3ds[nObjId];  // new bug: 可以先检查下是不是费控  查看nObjId是否大于obj_3ds.size(). 或者去掉这一行
         if (sit->second < 3)
             continue;
 

@@ -61,6 +61,10 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   std_msgs
 
+  # plane
+  pcl_ros
+  pcl_conversions
+
   # yolo
   darknet_ros_msgs
 )  #for ros
@@ -129,6 +133,15 @@ add_library(${PROJECT_NAME}_lib SHARED
    src/detect_3d_cuboid/box_proposal_detail.cpp
    src/detect_3d_cuboid/object_3d_util.cpp
    src/detect_3d_cuboid/matrix_utils.cpp
+
+   # plane
+    src/MapPlane.cc
+#    ../src/g2oAddition/EdgePlane.cc
+#    ../src/g2oAddition/VertexPlane.cc
+
+   # NBV
+        src/NbvGenerator.cpp
+
 )
 
 target_link_libraries(${PROJECT_NAME}_lib

@@ -178,6 +178,8 @@ void Viewer::Run()
             if (menuShowPoints)
                 mpMapDrawer->DrawMapPoints();
 
+            mpMapDrawer->DrawMapPlanesOld();
+
             pangolin::FinishFrame();
         }
 

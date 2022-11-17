@@ -24,9 +24,14 @@
 #include<ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 #include"Map.h"
 #include"MapPoint.h"
+#include "MapPlane.h"
 #include"KeyFrame.h"
 #include "Object.h"
 #include "Converter.h"
@@ -35,6 +40,7 @@
 // #include "Plane3D.h"
 namespace ORB_SLAM2
 {
+class MapPlane;
 
 class MapPublisher
 {
@@ -93,6 +99,17 @@ private:
     const char* GRAPH_NAMESPACE = "Graph";
     const char* CAMERA_NAMESPACE = "Camera";
 
+//物体
+public:
+
+//plane
+public:
+    typedef pcl::PointXYZRGB PointT;
+    typedef pcl::PointCloud<PointT> PointCloud;
+    void DrawMapPlanes();
+    int DrawMapPlane_i = 0 ;
+    void DrawMapPlanesOld(const vector<MapPlane *> &vpMPs);
+    ros::Publisher pubCloud;
 };
 
 } //namespace ORB_SLAM

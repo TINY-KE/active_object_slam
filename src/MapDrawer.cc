@@ -261,4 +261,49 @@ void MapDrawer::GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M)
         M.SetIdentity();
 }
 
+void MapDrawer::DrawMapPlanesOld()
+{
+    const vector<MapPlane *> &vpMPs = mpMap->GetAllMapPlanes();
+    if (vpMPs.empty())
+        return;
+    glPointSize(mPointSize / 2);
+    glBegin(GL_POINTS);
+    pcl::VoxelGrid<PointT> voxel;
+    voxel.setLeafSize(0.02, 0.02, 0.02);
+    for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
+    {
+        map<KeyFrame *, int> observations = pMP->GetObservations();
+        float ir = pMP->mRed;
+        float ig = pMP->mGreen;
+        float ib = pMP->mBlue;
+        float norm = sqrt(ir * ir + ig * ig + ib * ib);
+        glColor3f(ir / norm, ig / norm, ib / norm);
+        PointCloud::Ptr allCloudPoints(new PointCloud);
+        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; mit++)
+        {
+            KeyFrame *frame = mit->first;
+            int id = mit->second;
+            if (id >= frame->mnRealPlaneNum)
+            {
+                continue;
+            }
+            Eigen::Isometry3d T = ORB_SLAM2::Converter::toSE3Quat(frame->GetPose());
+            PointCloud::Ptr cloud(new PointCloud);
+            pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
+            *allCloudPoints += *cloud;
+        }
+        PointCloud::Ptr tmp(new PointCloud());
+        voxel.setInputCloud(allCloudPoints);
+        voxel.filter(*tmp);
+
+        for (auto &p : tmp->points)
+        {
+            glColor3f(ir / norm, ig / norm, ib / norm);
+            glVertex3f(p.x, p.y, p.z);
+        }
+    }
+    glEnd();
+}
+
+
 } //namespace ORB_SLAM

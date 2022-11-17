@@ -354,6 +354,25 @@ void Tracking::Track()
         // If tracking were good, check if we insert a keyframe
         if(bOK)
         {
+            // add plane -------------------
+            // Update Planes
+            // std::cout << "[DEBUG] mnPlaneNum is " << mCurrentFrame.mnPlaneNum << std::endl;
+            for (int i = 0; i < mCurrentFrame.mnPlaneNum; ++i)
+            {
+                MapPlane *pMPl = mCurrentFrame.mvpMapPlanes[i];
+                if (pMPl && pMPl->mbSeen)
+                {
+                    // 更新边界点
+                    // TODO: 为什么不更新新生成的平面？
+                    pMPl->UpdateBoundary(mCurrentFrame, i);
+                }
+                else
+                {
+                    // mCurrentFrame.mbNewPlane = true;
+                }
+            }
+            // add plane end -----------------
+
             // Update motion model
             if(!mLastFrame.mTcw.empty())
             {
@@ -389,8 +408,12 @@ void Tracking::Track()
             mlpTemporalPoints.clear();
 
             // Check if we need to insert a new keyframe
-            if(NeedNewKeyFrame())
-                CreateNewKeyFrame();
+            if (NeedNewKeyFrame() == 1)
+                CreateNewKeyFrame(false);
+            else if (NeedNewKeyFrame() == 2)    // note [EAO] create keyframes by the new object.
+            {
+                CreateNewKeyFrame(true);
+            }
 
             // We allow points with high innovation (considererd outliers by the Huber Function)
             // pass to the new keyframe, so that bundle adjustment will finally decide
@@ -557,6 +580,10 @@ bool Tracking::TrackReferenceKeyFrame()
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);   //TrackReference中的当前位姿设置为  等于lastframe的位姿. 纯靠g2o的计算??
 
+    // add plane
+    mpMap->AssociatePlanesByBoundary(mCurrentFrame);
+    // add plane end
+
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
@@ -579,7 +606,24 @@ bool Tracking::TrackReferenceKeyFrame()
                 nmatchesMap++;
         }
     }
-    cout <<"TrackReferenceKeyFrame end , nmatchesMap = "<< nmatchesMap << endl;
+
+    // add plane
+    int nDisgardPlane = 0;
+    for (int i = 0; i < mCurrentFrame.mnPlaneNum; i++)
+    {
+        if (mCurrentFrame.mvpMapPlanes[i])
+        {
+            if (mCurrentFrame.mvpMapPlanes[i] != nullptr && mCurrentFrame.mvbPlaneOutlier[i])
+            {
+                mCurrentFrame.mvpMapPlanes[i] = static_cast<MapPlane *>(NULL);
+                nmatches--;
+                nDisgardPlane++;
+            }
+            else
+                nmatchesMap++;
+        }
+    }
+
     return nmatchesMap>=10;
 }
 
@@ -597,61 +641,7 @@ void Tracking::UpdateLastFrame_fortrackmotion()
     if(mnLastKeyFrameId==mLastFrame.mnId || mSensor==System::MONOCULAR || !mbOnlyTracking)
         return;   //此return必定被执行. 因此本程序不会使用"纯定位模式".
 
-    //// Create "visual odometry" MapPoints
-    //// We sort points according to their measured depth by the stereo/RGB-D sensor
-    //// step2.1 将上一帧存在深度的特征点按深度从小到大排序
-    //vector<pair<float,int> > vDepthIdx;
-    //vDepthIdx.reserve(mLastFrame.N);
-    //for(int i=0; i<mLastFrame.N;i++)
-    //{
-    //    float z = mLastFrame.mvDepth[i];
-    //    if(z>0)
-    //    {
-    //        vDepthIdx.push_back(make_pair(z,i));
-    //    }
-    //}
-    //
-    //if(vDepthIdx.empty())
-    //    return;
-    //
-    //sort(vDepthIdx.begin(),vDepthIdx.end());
-    //
-    //// We insert all close points (depth<mThDepth)
-    //// If less than 100 close points, we insert the 100 closest ones.
-    //// step2.2 将上一帧中没有三角化的特征点三角化，作为临时地图点
-    //int nPoints = 0;
-    //for(size_t j=0; j<vDepthIdx.size();j++)
-    //{
-    //    int i = vDepthIdx[j].second;
-    //
-    //    bool bCreateNew = false;
-    //
-    //    MapPoint* pMP = mLastFrame.mvpMapPoints[i];
-    //    if(!pMP)
-    //        bCreateNew = true;
-    //    else if(pMP->Observations()<1)
-    //    {
-    //        bCreateNew = true;
-    //    }
-    //    // // step2.3 这些临时地图点在CreateNewKeyFrame之前会被删除，因此不用添加其他属性
-    //    if(bCreateNew)
-    //    {
-    //        cv::Mat x3D = mLastFrame.UnprojectStereo(i);
-    //        MapPoint* pNewMP = new MapPoint(x3D,mpMap,&mLastFrame,i);
-    //
-    //        mLastFrame.mvpMapPoints[i]=pNewMP;
-    //
-    //        mlpTemporalPoints.push_back(pNewMP);
-    //        nPoints++;
-    //    }
-    //    else
-    //    {
-    //        nPoints++;
-    //    }
-    //
-    //    if(vDepthIdx[j].first>mThDepth && nPoints>100)
-    //        break;
-    //}
+    // 后面已删除
 }
 
 bool Tracking::TrackWithMotionModel()
@@ -682,6 +672,9 @@ bool Tracking::TrackWithMotionModel()
     if(nmatches<20)
         return false;
 
+    // 平面的数据关联
+    mpMap->AssociatePlanesByBoundary(mCurrentFrame);
+
      //[active slam]
     // TODO:  要不要把这一步放在【Discard outliers 丢弃异常值】后面。放在后面，会有部分mvpMapPoints[i]被清空，会不会影响物体的聚类
     // 但是如果要让object，参与优化，则放在Optimizer::PoseOptimization之前
@@ -709,11 +702,27 @@ bool Tracking::TrackWithMotionModel()
             else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
                 nmatchesMap++;
         }
-    }    
+    }
+
+    // add plane: 删除outlier平面
+    int nDisgardPlane = 0;
+    for (int i = 0; i < mCurrentFrame.mnPlaneNum; i++) {
+        if (mCurrentFrame.mvpMapPlanes[i]) {
+            if (mCurrentFrame.mvpMapPlanes[i]!= nullptr && mCurrentFrame.mvbPlaneOutlier[i])
+            {   // 如果plane存在,且是outllier, 则将它清空
+                mCurrentFrame.mvpMapPlanes[i] = static_cast<MapPlane *>(NULL);
+                nmatches--;
+                nDisgardPlane++;
+            } else
+                nmatchesMap++;
+        }
+    }
+    // add plane end
 
     return nmatchesMap>=10;
 }
 
+// TODO: 这个函数应该放在object的构造函数中
 void Tracking::CreatObject_intrackmotion(){
 
     // *****************************
@@ -1264,6 +1273,10 @@ bool Tracking::TrackLocalMap()
 
     SearchLocalPoints();
 
+    // add plane
+    mpMap->AssociatePlanesByBoundary(mCurrentFrame);
+    // add plane end
+
     // Optimize Pose
     Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
@@ -1289,6 +1302,23 @@ bool Tracking::TrackLocalMap()
         }
     }
 
+    // add plane
+    int nDisgardPlane = 0;
+    for (int i = 0; i < mCurrentFrame.mnPlaneNum; i++)
+    {
+        if (mCurrentFrame.mvpMapPlanes[i])
+        {
+            if (mCurrentFrame.mvpMapPlanes[i] != nullptr && mCurrentFrame.mvbPlaneOutlier[i])
+            {
+                mCurrentFrame.mvpMapPlanes[i] = static_cast<MapPlane *>(NULL);
+                nDisgardPlane++;
+            }
+            else
+                mnMatchesInliers++;
+        }
+    }
+    // add plane end
+
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
@@ -1301,31 +1331,37 @@ bool Tracking::TrackLocalMap()
 }
 
 
-bool Tracking::NeedNewKeyFrame()
+int Tracking::NeedNewKeyFrame()
 {
+    // Step 1：纯VO模式下不插入关键帧
 
+    // Step 2：如果局部地图线程被闭环检测使用，则不插入关键帧
     // If Local Mapping is freezed by a Loop Closure do not insert keyframes
     if(mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
         return false;
-
+    // 获取当前地图中的关键帧数目
     const int nKFs = mpMap->KeyFramesInMap();
 
+    // Step 3：如果距离上一次重定位比较近，并且关键帧数目超出最大限制，不插入关键帧
     // Do not insert keyframes if not enough frames have passed from last relocalisation
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)
         return false;
 
+    // Step 4：得到参考关键帧跟踪到的地图点数量. UpdateLocalKeyFrames函数中会将与当前关键帧共视程度最高的关键帧设定为当前帧的参考关键帧
     // Tracked MapPoints in the reference keyframe
     int nMinObs = 3;
     if(nKFs<=2)
         nMinObs=2;
     int nRefMatches = mpReferenceKF->TrackedMapPoints(nMinObs);
 
+    // Step 5：查询局部地图线程是否繁忙，当前能否接受新的关键帧
     // Local Mapping accept keyframes?
     bool bLocalMappingIdle = mpLocalMapper->AcceptKeyFrames();
 
+    // Step 6：对于双目或RGBD摄像头，统计成功跟踪的近点的数量，如果跟踪到的近点太少，没有跟踪到的近点较多，可以插入关键帧
     // Check how many "close" points are being tracked and how many could be potentially created.
-    int nNonTrackedClose = 0;
-    int nTrackedClose= 0;
+    int nNonTrackedClose = 0;       //双目或RGB-D中没有跟踪到的近点
+    int nTrackedClose= 0;           //双目或RGB-D中成功跟踪的近点（三维点）
     if(mSensor!=System::MONOCULAR)
     {
         for(int i =0; i<mCurrentFrame.N; i++)
@@ -1340,32 +1376,49 @@ bool Tracking::NeedNewKeyFrame()
         }
     }
 
+    // 双目或RGBD情况下：跟踪到的地图点中近点太少 同时 没有跟踪到的三维点太多，可以插入关键帧了
     bool bNeedToInsertClose = (nTrackedClose<100) && (nNonTrackedClose>70);
 
-    // Thresholds
+    // Step 7：决策是否需要插入关键帧
+    // // Step 7.1：设定比例阈值Thresholds，当前帧和参考关键帧跟踪到点的比例，比例越大，越倾向于增加关键帧
     float thRefRatio = 0.75f;
+    // 关键帧只有一帧，那么插入关键帧的阈值设置的低一点，插入频率较低
     if(nKFs<2)
         thRefRatio = 0.4f;
 
+    //单目情况下插入关键帧的频率很高
     if(mSensor==System::MONOCULAR)
         thRefRatio = 0.9f;
 
+    // Step 7.2：很长时间没有插入关键帧，可以插入
     // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
     const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
+
+    //Step 7.3：满足插入关键帧的最小间隔并且localMapper处于空闲状态，可以插入
     // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
     const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
+
+    // Step 7.4：在双目，RGB-D的情况下当前帧跟踪到的点比参考关键帧的0.25倍还少，或者满足bNeedToInsertClose
     //Condition 1c: tracking is weak
     const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || bNeedToInsertClose) ;
+
+    // Step 7.5：和参考帧相比当前跟踪到的点太少 或者满足bNeedToInsertClose；同时跟踪到的内点还不能太少
     // Condition 2: Few tracked points compared to reference keyframe. Lots of visual odometry compared to map matches.
     const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio|| bNeedToInsertClose) && mnMatchesInliers>15);
 
+    // [active slam] create new keyframe by object.
+    bool c1d = false;
+    if (mCurrentFrame.AppearNewObject)
+        c1d = true;
+
+    // 首先检查,以上"point的条件"是否满足, 如果满足则生成关键帧.否则检测"平面的条件"
     if((c1a||c1b||c1c)&&c2)
     {
         // If the mapping accepts keyframes, insert keyframe.
         // Otherwise send a signal to interrupt BA
         if(bLocalMappingIdle)
         {
-            return true;
+            return 1;
         }
         else
         {
@@ -1373,7 +1426,7 @@ bool Tracking::NeedNewKeyFrame()
             if(mSensor!=System::MONOCULAR)
             {
                 if(mpLocalMapper->KeyframesInQueue()<3)
-                    return true;
+                    return 1;
                 else
                     return false;
             }
@@ -1381,23 +1434,106 @@ bool Tracking::NeedNewKeyFrame()
                 return false;
         }
     }
-    else
-        return false;
+    //else
+    //    return false;
+
+    // 检查,"平面的条件"是否满足, 如果满足则生成关键帧.否则检测"物体的条件"
+    if (mCurrentFrame.mbNewPlane)
+    {
+        // If the mapping accepts keyframes, insert keyframe.
+        // Otherwise send a signal to interrupt BA
+        if (bLocalMappingIdle)
+        {
+            return 1;
+        }
+        else
+        {
+            mpLocalMapper->InterruptBA();
+            if (mSensor != System::MONOCULAR)
+            {
+                if (mpLocalMapper->KeyframesInQueue() < 3)
+                    return 1;
+                else
+                    return 0;
+            }
+            else
+                return 0;
+        }
+    }
+
+    // 检测"物体的条件"是否满足, 是否由新的物体出现.
+    if (c1d)
+    {
+        if (bLocalMappingIdle)
+        {
+            return 2;
+        }
+        else
+        {
+            mpLocalMapper->InterruptBA();
+            if (mSensor != System::MONOCULAR)
+            {
+                if (mpLocalMapper->KeyframesInQueue() < 3)
+                    return 2;
+                else
+                    return 0;
+            }
+            else
+                return 0;
+        }
+    }
+
+    return 0;
 }
 
-void Tracking::CreateNewKeyFrame()
+void Tracking::CreateNewKeyFrame(bool CreateByObjs)
 {
     if(!mpLocalMapper->SetNotStop(true))
         return;
 
+    // 将平面和物体信息添加到 keyFrame中
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
 
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 
+    // 如果当前帧有新的物体出现,则:
+    if (CreateByObjs)
+        pKF->mbByNewObj = true;
+
     if(mSensor!=System::MONOCULAR)
     {
         mCurrentFrame.UpdatePoseMatrices();
+
+        if (!CreateByObjs){  //为什么关键帧中,不是由物体创建时,才添加平面
+            mpMap->AssociatePlanesByBoundary(mCurrentFrame);
+
+            for (int i = 0; i < mCurrentFrame.mnPlaneNum; ++i)
+            {
+                // TODO: 增加观测计数是为了什么？
+                if (mCurrentFrame.mvpMapPlanes[i])
+                // 如果当前帧中, 某平面经过多轮track后 没有被清空, 且此平面之前没有被看到. 则添加到Map中
+                {
+                    mCurrentFrame.mvpMapPlanes[i]->AddObservation(pKF, i);
+                    if (!mCurrentFrame.mvpMapPlanes[i]->mbSeen)
+                    {
+                        mCurrentFrame.mvpMapPlanes[i]->mbSeen = true;
+                        // 只有在关键帧中才更新平面系数
+                        mpMap->AddMapPlane(mCurrentFrame.mvpMapPlanes[i]);
+                    }
+                    continue;
+                }
+
+                // 否则,创造新的平面,添加到地图中
+                if (mCurrentFrame.mvbPlaneOutlier[i])
+                    continue;
+                cv::Mat p3D = mCurrentFrame.ComputePlaneWorldCoeff(i);
+                MapPlane *pNewMP = new MapPlane(p3D, pKF, i, mpMap);
+                mpMap->AddMapPlane(pNewMP);
+                pKF->AddMapPlane(pNewMP, i);
+
+            }
+        }
 
         // We sort points by the measured depth by the stereo/RGBD sensor.
         // We create all those MapPoints whose depth < mThDepth.

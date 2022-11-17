@@ -158,6 +158,7 @@ private:
                                         "toothbrush"
                                         };
 public:
+
     // color image
     cv::Mat mQuadricIm;
     bool mbshow_yolo_result;

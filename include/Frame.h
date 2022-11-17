@@ -39,9 +39,52 @@
 //#include <opencv2/imgproc.hpp>
 //#include <opencv2/highgui.hpp>
 
+// plane
+#include "MapPlane.h"
+#include <pcl/common/transforms.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/segmentation/organized_multi_plane_segmentation.h>
+#include <pcl/features/integral_image_normal.h>
+#include "PEAC/AHCPlaneFitter.hpp"
+
 // cube slam.
 #include "detect_3d_cuboid/matrix_utils.h"
 #include "detect_3d_cuboid/detect_3d_cuboid.h"
+
+
+#ifdef __linux__
+#define _isnan(x) isnan(x)
+#endif
+
+struct ImagePointCloud
+{
+    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > vertices; // 3D vertices
+    int w, h;
+
+    inline int width() const { return w; }
+    inline int height() const { return h; }
+    // zhangjiadong: 返回(row,col)像素对应的point的3D坐标???
+    inline bool get(const int row, const int col, double &x, double &y, double &z) const
+    {
+        const int pixIdx = row * w + col;
+        z = vertices[pixIdx][2];
+        // Remove points with 0 or invalid depth in case they are detected as a plane
+        if (z == 0 || std::_isnan(z))
+            return false;
+        x = vertices[pixIdx][0];
+        y = vertices[pixIdx][1];
+        return true;
+    }
+};
+
 
 namespace ORB_SLAM2
 {
@@ -53,6 +96,7 @@ class KeyFrame;
 //class Object_Map;
 //class Cuboid3D;
 class Object_2D;
+class MapPlane;
 
 class Frame
 {
@@ -232,12 +276,9 @@ public:
     std::vector<Object_2D*> mvObject_2ds;           // 2d object in current frame.
     std::vector<Object_2D*> mvLastObject_2ds;       // last frame.
     std::vector<Object_2D*> mvLastLastObject_2ds;   // last last frame.
+    bool AppearNewObject = false;                   // Whether new objects appear in the current frame. 如果有新的物体,则当前帧生成为关键帧
     cv::Mat mColorImage;
     cv::Mat mQuadricImage;                          //在mColorImage的基础上,绘制了椭球
-    //void addColorImg(const cv::Mat &color){
-    //    mColorImage = color.clone();
-    //    mQuadricImage = color.clone();
-    //};
 
     // line.
     std::vector< KeyLine> keylines_raw, keylines_out;
@@ -245,11 +286,32 @@ public:
     Eigen::MatrixXd all_lines_eigen;
     std::vector<Eigen::MatrixXd, Eigen::aligned_allocator<Eigen::MatrixXd> > vObjsLines;
     line_lbd_detect* mpline_lbd_ptr_frame;
-    //void addLineDetect(line_lbd_detect* line_lbd_ptr_frame){
-    //    mpline_lbd_ptr_frame = line_lbd_ptr_frame;
-    //};
 
+    // plane
+    typedef pcl::PointXYZRGB PointT;
+    typedef pcl::PointCloud<PointT> PointCloud;
+    std::vector<PointCloud> mvPlanePoints;      //平面的点云
+    std::vector<PointCloud> mvBoundaryPoints;   //面边界上的点云
+    std::vector<cv::Mat> mvPlaneCoefficients;   //平面的系数Mat:  nx, ny, nz, d
+    std::vector<MapPlane *> mvpMapPlanes;
+    std::vector<bool> mvbPlaneOutlier;
+    int mnPlaneNum;                             //平面的数量
+    int mnRealPlaneNum;                         //平面的数量. 用于初始化mvpMapPlanes的长度
+    bool mbNewPlane;                            // used to determine a keyframe
+    void ComputePlanesFromOrganizedPointCloud(const cv::Mat &imDepth);
+    //void GeneratePlanesFromBoundries(const cv::Mat &imDepth);
+    //bool CaculatePlanes(const cv::Mat &inputplane, const cv::Mat &inputline);
+    bool PlaneNotSeen(const cv::Mat &coef);
+    cv::Mat ComputePlaneWorldCoeff(const int &idx);
 
+     //PEAC plane extraction
+    ImagePointCloud cloud;
+    ahc::PlaneFitter<ImagePointCloud> plane_filter;
+    std::vector<std::vector<int>> plane_vertices_; // vertex indices each plane contains
+    cv::Mat seg_img_;                              // segmentation image
+    cv::Mat color_img_;                            // input color image
+    int plane_num_;
+    void ComputePlanesFromPEAC(const cv::Mat &imDepth);
 };
 
 }// namespace ORB_SLAM

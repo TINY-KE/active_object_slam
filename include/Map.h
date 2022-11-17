@@ -27,7 +27,11 @@
 #include "Object.h"
 #include <mutex>
 
-
+#include <pcl/common/transforms.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/ModelCoefficients.h>
 
 namespace ORB_SLAM2
 {
@@ -35,6 +39,10 @@ namespace ORB_SLAM2
 class MapPoint;
 class KeyFrame;
 class Object_Map;
+class MapPlane;
+
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloud;
 
 class Map
 {
@@ -60,7 +68,7 @@ public:
 
     void clear();
 
-    vector<KeyFrame*> mvpKeyFrameOrigins;
+    std::vector<KeyFrame*> mvpKeyFrameOrigins;
 
     std::mutex mMutexMapUpdate;
 
@@ -87,6 +95,22 @@ protected:
 public:
     void AddObject(Object_Map *pObj);
     std::vector<Object_Map*> GetObjects();
+
+//plane
+public:
+    void AddMapPlane(MapPlane *pMP);
+    void EraseMapPlane(MapPlane *pMP);
+    std::vector<MapPlane*> GetAllMapPlanes();
+    void AssociatePlanesByBoundary(Frame &pF, bool out=false);
+    double PointDistanceFromPlane(const cv::Mat &plane, PointCloud::Ptr boundry, bool out=false);
+    void SearchMatchedPlanes(KeyFrame *pKF, cv::Mat Scw, const std::vector<MapPlane *> &vpPlanes, std::vector<MapPlane *> &vpMatched, bool out=false);
+    std::vector<long unsigned int> GetRemovedPlanes();
+protected:
+    float mfDisTh;
+    float mfAngleTh;
+    std::set<MapPlane*> mspMapPlanes;   //用于存储 地图中的平面特征
+    std::vector<long unsigned int> mvnRemovedPlanes;
+    // add plane end ----------------------------------
 };
 
 

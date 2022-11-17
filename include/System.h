@@ -42,6 +42,7 @@ namespace ORB_SLAM2
 
 class Viewer;
 class FrameDrawer;
+class MapPublisher;
 class Map;
 class Tracking;
 class LocalMapping;

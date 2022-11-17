@@ -105,7 +105,7 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~rosbag", rosBagFlag, "false");  //  这是做什么的???/
     ros::param::param<bool>("~online", semanticOnline, "true");
 //    slam_ptr_ = std::make_shared<ORB_SLAM2::System>(VocFile, YamlFile, "Full", ORB_SLAM2::System::RGBD, true, semanticOnline);
-    std:;cout<<"The method: "<<method <<std::endl ;
+    std::cout<<"The method: "<<method <<std::endl ;
     system_ptr = new ORB_SLAM2::System(VocFile, YamlFile, method, ORB_SLAM2::System::RGBD, true, semanticOnline);
 
 

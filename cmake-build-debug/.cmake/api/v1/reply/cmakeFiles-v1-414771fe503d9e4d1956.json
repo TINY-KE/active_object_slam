@@ -1773,11 +1773,175 @@
 		},
 		{
 			"isExternal" : true,
-			"path" : "/home/zhjd/ws_active/devel/share/darknet_ros_msgs/cmake/darknet_ros_msgsConfig-version.cmake"
+			"path" : "/opt/ros/melodic/share/pcl_ros/cmake/pcl_rosConfig-version.cmake"
 		},
 		{
 			"isExternal" : true,
-			"path" : "/home/zhjd/ws_active/devel/share/darknet_ros_msgs/cmake/darknet_ros_msgsConfig.cmake"
+			"path" : "/opt/ros/melodic/share/pcl_ros/cmake/pcl_rosConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/dynamic_reconfigure/cmake/dynamic_reconfigureConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/dynamic_reconfigure/cmake/dynamic_reconfigureConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/dynamic_reconfigure/cmake/dynamic_reconfigure-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/dynamic_reconfigure/cmake/dynamic_reconfigure-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/dynamic_reconfigure/cmake/dynamic_reconfigure-macros.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/nodelet/cmake/nodeletConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/nodelet/cmake/nodeletConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/bondcpp/cmake/bondcppConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/bondcpp/cmake/bondcppConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/bond/cmake/bondConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/bond/cmake/bondConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/bond/cmake/bond-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/smclib/cmake/smclibConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/smclib/cmake/smclibConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/nodelet/cmake/nodelet-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/nodelet_topic_tools/cmake/nodelet_topic_toolsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/nodelet_topic_tools/cmake/nodelet_topic_toolsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_conversions/cmake/pcl_conversionsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_conversions/cmake/pcl_conversionsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_msgs/cmake/pcl_msgsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_msgs/cmake/pcl_msgsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_msgs/cmake/pcl_msgs-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosbag/cmake/rosbagConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosbag/cmake/rosbagConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosbag_storage/cmake/rosbag_storageConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosbag_storage/cmake/rosbag_storageConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/roslz4/cmake/roslz4Config-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/roslz4/cmake/roslz4Config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosbag_storage/cmake/rosbag_storage-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/std_srvs/cmake/std_srvsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/std_srvs/cmake/std_srvsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/std_srvs/cmake/std_srvs-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/topic_tools/cmake/topic_toolsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/topic_tools/cmake/topic_toolsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/topic_tools/cmake/topic_tools-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf/cmake/tfConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf/cmake/tfConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_ros/cmake/tf2_rosConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_ros/cmake/tf2_rosConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/actionlib/cmake/actionlibConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/actionlib/cmake/actionlibConfig.cmake"
 		},
 		{
 			"isExternal" : true,
@@ -1892,6 +2056,90 @@
 			"isCMake" : true,
 			"isExternal" : true,
 			"path" : "/home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/cmake/linux/share/cmake-3.23/Modules/CMakeParseArguments.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/actionlib/cmake/actionlib-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosgraph/cmake/rosgraphConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rosgraph/cmake/rosgraphConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2/cmake/tf2Config-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2/cmake/tf2Config.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_msgs/cmake/tf2_msgsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_msgs/cmake/tf2_msgsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/message_generation/cmake/message_generationConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/message_generation/cmake/message_generationConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_msgs/cmake/tf2_msgs-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_py/cmake/tf2_pyConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_py/cmake/tf2_pyConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rospy/cmake/rospyConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/rospy/cmake/rospyConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf/cmake/tf-msg-extras.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_eigen/cmake/tf2_eigenConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/tf2_eigen/cmake/tf2_eigenConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_conversions/cmake/pcl_conversionsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/opt/ros/melodic/share/pcl_conversions/cmake/pcl_conversionsConfig.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/home/zhjd/ws_active/devel/share/darknet_ros_msgs/cmake/darknet_ros_msgsConfig-version.cmake"
+		},
+		{
+			"isExternal" : true,
+			"path" : "/home/zhjd/ws_active/devel/share/darknet_ros_msgs/cmake/darknet_ros_msgsConfig.cmake"
 		},
 		{
 			"isExternal" : true,
