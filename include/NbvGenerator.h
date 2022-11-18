@@ -19,12 +19,15 @@ class NbvGenerator {
 
 public:
     NbvGenerator();
-    NbvGenerator(Map* map);
+    NbvGenerator(Map* map, Tracking *pTracking, const string &strSettingPath);
 
     std::vector<cv::Mat> mvCandidates;
 
+    void run();
+
 private:
-    Map* mMap;
+    Map* mpMap;
+    Tracking* mpTracker;
 
 
 

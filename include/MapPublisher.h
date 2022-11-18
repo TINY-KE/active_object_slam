@@ -28,6 +28,15 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/common.h>
+#include <pcl/common/io.h>
+#include <pcl/common/impl/io.hpp>
+
+// pcl边界
+#include <pcl/features/boundary.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree_flann.h>
 
 #include"Map.h"
 #include"MapPoint.h"
@@ -81,7 +90,7 @@ private:
 
     visualization_msgs::Marker mPlanes;
 
-    int object_id_init = 8;
+    int object_id_init;
 
     float fCameraSize;
     float fPointSize;
@@ -108,7 +117,7 @@ public:
     typedef pcl::PointCloud<PointT> PointCloud;
     void DrawMapPlanes();
     int DrawMapPlane_i = 0 ;
-    void DrawMapPlanesOld(const vector<MapPlane *> &vpMPs);
+    void PublishMapPlanes(const vector<MapPlane *> &vpMPs);
     ros::Publisher pubCloud;
 };
 

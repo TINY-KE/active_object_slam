@@ -58,6 +58,8 @@ namespace ORB_SLAM2 {
         long unsigned int mnLoopPointForKF; //used by loop closing
         long unsigned int mnBAGlobalForKF;
         PointCloud::Ptr mvBoundaryPoints;
+        //注意: frame中的mvBoundaryPoints的类型是std::vector<PointCloud>,代表该frame提取的所有平面的边界point.
+        //两者都叫mvBoundaryPoints. 注意区分.
         bool mbSeen;
         cv::Mat mPosGBA;
         //used for visualization
@@ -66,7 +68,7 @@ namespace ORB_SLAM2 {
         int mBlue;
     protected:
         cv::Mat mWorldPos; ///< Position in absolute coordinates
-        std::map<KeyFrame*, int> mObservations;
+        std::map<KeyFrame*, int> mObservations;         //含义: 该plane对应的是, 第几帧的第几个plane
         std::map<KeyFrame*, int> mNotSeenObservations;
         std::map<KeyFrame*, int> mParObservations;
         std::map<KeyFrame*, int> mVerObservations;

@@ -199,7 +199,10 @@ void Map::AssociatePlanesByBoundary(Frame &pF, bool out)
             // 如果夹角很小的情况下
             if ((angle > mfAngleTh || angle < -mfAngleTh)) // associate plane
             {
-                // 求解地图实例上的边缘点集中每个点到平面的平均距离
+                // 求解地图实例上的边缘点集中每个点到平面的平均距离(实际程序中是:最小距离)
+                // 其中,  pM是当前帧的第i个平面在世界坐标系的投影
+                //      (*sit)->mvBoundaryPoints是某个地图中平面的边界点
+                // 如果关联成功了, 则直接将当前帧i清空, 转而放入(*sit).
                 double dis = PointDistanceFromPlane(pM, (*sit)->mvBoundaryPoints, out);
                 // 小于阈值则进行数据关联
                 if (dis < ldTh)
@@ -244,7 +247,7 @@ double Map::PointDistanceFromPlane(const cv::Mat &plane, PointCloud::Ptr boundry
     }
     if (out)
         cout << endl
-             << "ave : " << res << endl;
+             << "ave : " << res << endl;   //zhang: 这不是最小距离吗? 怎么标注的是平均距离
     return res;
 }
 

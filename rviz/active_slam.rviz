@@ -54,28 +54,22 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /object_ie
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /objectmap
       Name: Marker
       Namespaces:
-        "": true
-        Camera: true
-        Graph: true
-        KeyFrames: true
-        MapPoints: true
-        NewObjectPoints: true
-        ObjectPoints: true
+        {}
       Queue Size: 100
-      Value: true
-    - Alpha: 0.20000000298023224
+      Value: false
+    - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -131,7 +125,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 6.506892681121826
+      Distance: 5.9645514488220215
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -146,10 +140,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7503973841667175
+      Pitch: 0.9403972625732422
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.6403959393501282
+      Yaw: 2.5654070377349854
     Saved: ~
 Window Geometry:
   Displays:

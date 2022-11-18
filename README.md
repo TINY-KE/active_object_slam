@@ -112,6 +112,8 @@
   + 似乎j--已经解决了这个问题
 + Tracking::CreatObject_intrackmotion(),应该放在object的构造函数中
   + 数据关联 应该放在trackmotion trackReference trackLocal中
++ if (p == nullptr) 为什么会为空呢??
++ rviz的报错
 + 
 
 

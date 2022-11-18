@@ -293,6 +293,7 @@ public:
     std::vector<PointCloud> mvPlanePoints;      //平面的点云
     std::vector<PointCloud> mvBoundaryPoints;   //面边界上的点云
     std::vector<cv::Mat> mvPlaneCoefficients;   //平面的系数Mat:  nx, ny, nz, d
+    std::vector<cv::Mat> mvPlaneCentors;   //平面的系数Mat:  nx, ny, nz, d
     std::vector<MapPlane *> mvpMapPlanes;
     std::vector<bool> mvbPlaneOutlier;
     int mnPlaneNum;                             //平面的数量

@@ -249,6 +249,7 @@ public:
     std::vector<PointCloud> mvPlanePoints;
     std::vector<PointCloud> mvBoundaryPoints;
     std::vector<cv::Mat> mvPlaneCoefficients;
+    std::vector<cv::Mat> mvPlaneCentors; 
     void ReplaceMapPlaneMatch(const int &idx, MapPlane *pMP);
     void EraseMapPlaneMatch(const int &idx);
     void EraseMapPlaneMatch(MapPlane *pMP);

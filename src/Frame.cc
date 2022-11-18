@@ -903,7 +903,8 @@ void Frame::ComputePlanesFromPEAC(const cv::Mat &imDepth)
         voxel.setInputCloud(inputCloud);
         voxel.filter(*coarseCloud);
 
-        cv::Mat coef = (cv::Mat_<float>(4, 1) << nx, ny, nz, d); //zhangjiadong
+        cv::Mat coef = (cv::Mat_<float>(4, 1) << nx, ny, nz, d);
+        cv::Mat center =   (cv::Mat_<float>(3, 1) << cx, cy, cz);
 
         // 要求距离d大于0
         if (coef.at<float>(3) < 0)
@@ -918,6 +919,7 @@ void Frame::ComputePlanesFromPEAC(const cv::Mat &imDepth)
         mvBoundaryPoints.push_back(*coarseCloud);   //面边界上的点云
         mvPlanePoints.push_back(*coarseCloud);      //平面的点云
         mvPlaneCoefficients.push_back(coef);        //平面的系数Mat(x y z d)
+        mvPlaneCentors.push_back(center);           //中心坐标Mat(x y z)
     }
     cloud.vertices.clear();
     seg_img_.release();

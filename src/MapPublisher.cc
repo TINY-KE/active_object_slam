@@ -101,21 +101,21 @@ MapPublisher::MapPublisher(Map* pMap):mpMap(pMap), mbCameraUpdated(false)
     mReferencePoints.color.r =1.0f;
     mReferencePoints.color.a = 1.0;
 
-    //Configure MapPlanes
+    //Configure MapPlanes 平面的中心法线
     mPlanes.header.frame_id = MAP_FRAME_ID;
     mPlanes.ns = POINTS_NAMESPACE;
     mPlanes.id=7;
     mPlanes.type = visualization_msgs::Marker::POINTS;
-    mPlanes.scale.x=fPointSize;
-    mPlanes.scale.y=fPointSize;
+    mPlanes.scale.x=10*fPointSize;
+    mPlanes.scale.y=10*fPointSize;
     mPlanes.pose.orientation.w=1.0;
     mPlanes.action=visualization_msgs::Marker::ADD;
-    mPlanes.color.r =1.0f;
-    mPlanes.color.a = 1.0;
+
 
     //Configure MapObjectPoints
 
     //Configure MapObjects
+    object_id_init = 8;
 
 
     //Configure Publisher
@@ -148,7 +148,7 @@ void MapPublisher::Refresh()
         //PublishPlane(vMapPlanes);
         PublishObject(vMapObjects);
         //PublishIE(vMapObjects);
-        DrawMapPlanesOld(vpMPlanes);
+        PublishMapPlanes(vpMPlanes);
     }    
 }
 
@@ -648,15 +648,10 @@ void MapPublisher::ResetCamFlag()
 }
 
 
-void MapPublisher::DrawMapPlanesOld(const vector<MapPlane *> &vpMPs)
+void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
 {
-    //if( DrawMapPlane_i == 10){
-    //    DrawMapPlane_i = 0;
-    //}
-    //else{
-    //    DrawMapPlane_i ++;
-    //    return;
-    //}
+    mPlanes.points.clear();
+    mPlanes.lifetime = ros::Duration(0.2);
     if (vpMPs.empty())
         return;
     //降维过滤器
@@ -667,24 +662,30 @@ void MapPublisher::DrawMapPlanesOld(const vector<MapPlane *> &vpMPs)
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr  colored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+    int num = 0;
 
     for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
     {
-
-        // 获得平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
+        // 计算平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
         cv::Mat groud = (cv::Mat_<float>(3, 1) << 0, 0, 1);  ;
         cv::Mat pMP_normal = pMP->GetWorldPos();
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        if ((angle < 0.5) && (angle > -0.5))
+        if ((angle < 0.2) && (angle > -0.2))
             continue;
 
-        map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
+        //颜色
         float ir = pMP->mRed;
         float ig = pMP->mGreen;
         float ib = pMP->mBlue;
+
+        //计算当前平面,在各关键帧中对应的平面
+        map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
+
+        //将各关键帧中的平面,融合为一个allCloudPoints
         PointCloud::Ptr allCloudPoints(new PointCloud);
+        float x=0, y=0, z=0;
         for (auto mit = observations.begin(), mend = observations.end(); mit != mend; mit++)
         {
             KeyFrame *frame = mit->first;
@@ -697,32 +698,122 @@ void MapPublisher::DrawMapPlanesOld(const vector<MapPlane *> &vpMPs)
             PointCloud::Ptr cloud(new PointCloud);
             pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
             *allCloudPoints += *cloud;
+            //center += frame->mvPlanePoints[id];
         }
+
+        //对allCloudPoints降维成tmp
         PointCloud::Ptr tmp(new PointCloud());
         voxel.setInputCloud(allCloudPoints);
         voxel.filter(*tmp);
 
-        vector<float> color = colors_bgr[pMP->mnId % 6];
-        for (int i = 0; i <  tmp->points.size(); i++)
-        {
-          pcl::PointXYZRGB  p;
-          p.x=tmp->points[i].x;
-          p.y=tmp->points[i].y;
-          p.z=tmp->points[i].z;
-          p.r = color[2];
-          p.g = color[1];
-          p.b = color[0];
-          colored_pcl_ptr->points.push_back(p);
-        }
-        colored_pcl_ptr->width = 1;
-        colored_pcl_ptr->height += tmp->points.size();  //递增
-    }
 
-    // ros msg
+        // 计算allCloudPoint的中心点
+        vector<float> vec_x,vec_y,vec_z;
+        for (size_t i = 0; i < allCloudPoints->points.size(); i++)
+        {
+            vec_x.push_back(allCloudPoints->points[i].x);
+            vec_y.push_back(allCloudPoints->points[i].y);
+            vec_z.push_back(allCloudPoints->points[i].z);
+        }
+        double mean_x,mean_y,mean_z;	//点云均值
+	    double stddev_x,stddev_y,stddev_z;	//点云标准差
+        pcl::getMeanStd(vec_z, mean_z, stddev_z);
+        if(mean_z>1.7 || mean_z<0.5)
+            continue;
+        pcl::getMeanStd(vec_x, mean_x, stddev_x);
+        pcl::getMeanStd(vec_y, mean_y, stddev_y);
+
+        // 将中心点, 转为rviz marker
+        geometry_msgs::Point p;
+        p.x = mean_x;//center.at<float>(0,0);
+        p.y = mean_y;//center.at<float>(1,0);
+        p.z = mean_z;//center.at<float>(2,0);
+        mPlanes.points.push_back(p);
+
+
+        //如果能投影到当前帧，在处理
+        //为什么会有平面没有处理掉？
+        //计算下时间
+        //ComputePlanesFromOrganizedPointCloud
+
+         //tmp转为pcl::PointXYZRGB, 才能显示颜色
+        //vector<float> color = colors_bgr[pMP->mnId % 6];
+        //for (int i = 0; i <  tmp->points.size(); i++)
+        //{
+        //  pcl::PointXYZRGB  p;
+        //  p.x=tmp->points[i].x;
+        //  p.y=tmp->points[i].y;
+        //  p.z=tmp->points[i].z;
+        //  //p.r = 255*ir;//color[2];
+        //  p.r = color[2];
+        //  //p.g = 255*ig;//color[1];
+        //  p.g = color[1];
+        //  //p.b = 255*ib;//color[0];
+        //  p.b = color[0];
+        //  colored_pcl_ptr->points.push_back(p);
+        //}
+        //colored_pcl_ptr->height += tmp->points.size();  //递增
+
+
+        //计算tmp的边缘点
+        //(1)将tmp转为no_color
+        pcl::PointCloud<pcl::PointXYZ>::Ptr  nocolored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*tmp, *nocolored_pcl_ptr);
+        //（2）计算法向量
+        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normEst;
+        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+        normEst.setInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr(nocolored_pcl_ptr));
+        normEst.setRadiusSearch(0.1);
+        normEst.compute(*normals);
+        //（3）计算边缘
+        pcl::PointCloud<pcl::Boundary> boundaries;
+        pcl::BoundaryEstimation<pcl::PointXYZ, pcl::Normal, pcl::Boundary> boundEst;
+        boundEst.setInputCloud( nocolored_pcl_ptr  );
+        boundEst.setInputNormals(normals);
+        boundEst.setRadiusSearch(0.1);
+        boundEst.setAngleThreshold(M_PI / 4);
+        boundEst.setSearchMethod(pcl::search::KdTree<pcl::PointXYZ>::Ptr(new pcl::search::KdTree<pcl::PointXYZ>));
+        boundEst.compute(boundaries);
+        //(4)将boundaries转为colored_pcl_ptr
+        int boundary_points_num = 0;
+        for (int i = 0; i < tmp->points.size(); i++)
+        {
+
+            if (boundaries[i].boundary_point > 0)
+            {
+                pcl::PointXYZRGB  p;
+                p.x=tmp->points[i].x;
+                p.y=tmp->points[i].y;
+                p.z=tmp->points[i].z;
+                p.r = 255.0;
+                p.g = 0;
+                p.b = 0;
+                colored_pcl_ptr->push_back(p);
+                boundary_points_num ++;
+            }
+        }
+
+        // 桌面高度的 水平面的数量
+        num++;
+
+    }
+    cout << "-------" << endl << endl;
+    cout << "桌面高度的水平面的数量: " <<num << endl;
+
+    //发布中心点的rviz marker
+    mPlanes.header.stamp = ros::Time::now();
+    mPlanes.color.r = 0.0; mPlanes.color.g = 0.0; mPlanes.color.b = 1.0;  mPlanes.color.a = 1.0;
+    publisher.publish(mPlanes);
+
+
+    // 发布平面的点云
     sensor_msgs::PointCloud2 colored_msg;
+    colored_pcl_ptr->width = 1;
+    colored_pcl_ptr->width = colored_pcl_ptr->points.size();
     pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
     colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
     pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
+
 }
 
 

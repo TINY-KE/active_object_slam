@@ -43,7 +43,8 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
     // plane
-    , mvPlanePoints(F.mvPlanePoints), mvPlaneCoefficients(F.mvPlaneCoefficients), mnPlaneNum(F.mnPlaneNum), mvpMapPlanes(F.mvpMapPlanes), mbNewPlane(F.mbNewPlane), mvBoundaryPoints(F.mvBoundaryPoints), mnRealPlaneNum(F.mnRealPlaneNum)
+    , mvPlanePoints(F.mvPlanePoints), mvPlaneCoefficients(F.mvPlaneCoefficients), mvPlaneCentors(F.mvPlaneCentors)
+    , mnPlaneNum(F.mnPlaneNum), mvpMapPlanes(F.mvpMapPlanes), mbNewPlane(F.mbNewPlane), mvBoundaryPoints(F.mvBoundaryPoints), mnRealPlaneNum(F.mnRealPlaneNum)
     //物体
     , obj_2ds(F.mvObject_2ds)
 {

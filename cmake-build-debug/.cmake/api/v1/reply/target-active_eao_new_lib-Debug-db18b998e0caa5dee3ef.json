@@ -4595,7 +4595,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "src/NBV.cpp",
+			"path" : "src/NbvGenerator.cpp",
 			"sourceGroupIndex" : 0
 		}
 	],
