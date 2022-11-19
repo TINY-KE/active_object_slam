@@ -97,6 +97,14 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /candidate
+      Name: Marker
+      Namespaces:
+        Candidate: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -124,26 +132,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 5.9645514488220215
+      Angle: 0
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: -0.6735799312591553
-        Y: 0.2676081657409668
-        Z: 0.2148144543170929
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9403972625732422
+      Scale: 235.3994140625
       Target Frame: <Fixed Frame>
-      Value: Orbit (rviz)
-      Yaw: 2.5654070377349854
+      Value: TopDownOrtho (rviz)
+      X: -0.43246790766716003
+      Y: 0.7389808893203735
     Saved: ~
 Window Geometry:
   Displays:

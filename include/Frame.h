@@ -53,37 +53,10 @@
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/segmentation/organized_multi_plane_segmentation.h>
 #include <pcl/features/integral_image_normal.h>
-#include "PEAC/AHCPlaneFitter.hpp"
 
 // cube slam.
 #include "detect_3d_cuboid/matrix_utils.h"
 #include "detect_3d_cuboid/detect_3d_cuboid.h"
-
-
-#ifdef __linux__
-#define _isnan(x) isnan(x)
-#endif
-
-struct ImagePointCloud
-{
-    std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d> > vertices; // 3D vertices
-    int w, h;
-
-    inline int width() const { return w; }
-    inline int height() const { return h; }
-    // zhangjiadong: 返回(row,col)像素对应的point的3D坐标???
-    inline bool get(const int row, const int col, double &x, double &y, double &z) const
-    {
-        const int pixIdx = row * w + col;
-        z = vertices[pixIdx][2];
-        // Remove points with 0 or invalid depth in case they are detected as a plane
-        if (z == 0 || std::_isnan(z))
-            return false;
-        x = vertices[pixIdx][0];
-        y = vertices[pixIdx][1];
-        return true;
-    }
-};
 
 
 namespace ORB_SLAM2
@@ -305,14 +278,6 @@ public:
     bool PlaneNotSeen(const cv::Mat &coef);
     cv::Mat ComputePlaneWorldCoeff(const int &idx);
 
-     //PEAC plane extraction
-    ImagePointCloud cloud;
-    ahc::PlaneFitter<ImagePointCloud> plane_filter;
-    std::vector<std::vector<int>> plane_vertices_; // vertex indices each plane contains
-    cv::Mat seg_img_;                              // segmentation image
-    cv::Mat color_img_;                            // input color image
-    int plane_num_;
-    void ComputePlanesFromPEAC(const cv::Mat &imDepth);
 };
 
 }// namespace ORB_SLAM

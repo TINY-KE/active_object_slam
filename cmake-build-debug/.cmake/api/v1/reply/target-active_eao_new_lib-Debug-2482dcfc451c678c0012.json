@@ -358,7 +358,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3 -march=native -std=c++11  -g -fPIC"
+					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3  -std=c++11  -g -fPIC"
 				},
 				{
 					"backtrace" : 2,

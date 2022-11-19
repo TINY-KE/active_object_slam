@@ -1171,16 +1171,16 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
     mCuboid3D.corner_7 = pose * Eigen::Vector3d(x_max_obj, y_max_obj, z_max_obj);
     mCuboid3D.corner_8 = pose * Eigen::Vector3d(x_min_obj, y_max_obj, z_max_obj);
 
-    // object frame -> world frame (without yaw, parallel to world frame).
-    g2o::SE3Quat pose_without_yaw =  Converter::toSE3Quat(this->mCuboid3D.pose_noyaw_mat);
-    mCuboid3D.corner_1_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_min_obj, z_min_obj);
-    mCuboid3D.corner_2_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_min_obj, z_min_obj);
-    mCuboid3D.corner_3_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_max_obj, z_min_obj);
-    mCuboid3D.corner_4_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_max_obj, z_min_obj);
-    mCuboid3D.corner_5_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_min_obj, z_max_obj);
-    mCuboid3D.corner_6_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_min_obj, z_max_obj);
-    mCuboid3D.corner_7_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_max_obj, z_max_obj);
-    mCuboid3D.corner_8_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_max_obj, z_max_obj);
+    //// object frame -> world frame (without yaw, parallel to world frame).
+    //g2o::SE3Quat pose_without_yaw =  Converter::toSE3Quat(this->mCuboid3D.pose_noyaw_mat);
+    //mCuboid3D.corner_1_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_min_obj, z_min_obj);
+    //mCuboid3D.corner_2_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_min_obj, z_min_obj);
+    //mCuboid3D.corner_3_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_max_obj, z_min_obj);
+    //mCuboid3D.corner_4_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_max_obj, z_min_obj);
+    //mCuboid3D.corner_5_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_min_obj, z_max_obj);
+    //mCuboid3D.corner_6_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_min_obj, z_max_obj);
+    //mCuboid3D.corner_7_w = pose_without_yaw * Eigen::Vector3d(x_max_obj, y_max_obj, z_max_obj);
+    //mCuboid3D.corner_8_w = pose_without_yaw * Eigen::Vector3d(x_min_obj, y_max_obj, z_max_obj);
 
 
     // step 6. 计算cubic的长宽高和半径
@@ -1391,7 +1391,7 @@ void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
     //this->mCuboid3D.pose = obj_pose;
     //this->mCuboid3D.pose_without_yaw = obj_pose_without_yaw;
     this->mCuboid3D.pose_mat = Twobj;
-    this->mCuboid3D.pose_noyaw_mat = Twobj_without_yaw;
+    //this->mCuboid3D.pose_noyaw_mat = Twobj_without_yaw;
 }
 
 void Object_Map::ComputeProjectRectFrameTo(Frame &Frame)

@@ -78,6 +78,7 @@ private:
 
     ros::NodeHandle nh;
     ros::Publisher publisher;
+    ros::Publisher publisher_candidate;
     ros::Publisher publisher_IE;
 
     visualization_msgs::Marker mPoints;
@@ -89,6 +90,7 @@ private:
     visualization_msgs::Marker mCurrentCamera;
 
     visualization_msgs::Marker mPlanes;
+    visualization_msgs::Marker mCandidate;
 
     int object_id_init;
 
@@ -107,6 +109,7 @@ private:
     const char* OBJECTS_NAMESPACE = "MapObjects";
     const char* GRAPH_NAMESPACE = "Graph";
     const char* CAMERA_NAMESPACE = "Camera";
+    const char* CANDIDATE_NAMESPACE = "Candidate";
 
 //物体
 public:
@@ -119,6 +122,61 @@ public:
     int DrawMapPlane_i = 0 ;
     void PublishMapPlanes(const vector<MapPlane *> &vpMPs);
     ros::Publisher pubCloud;
+
+    void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution)
+    {   // BoundaryExtraction(cloud, cloud_boundary, 200);
+        pcl::PointXYZ px_min = *std::min_element(cloud->begin(), cloud->end(), [](pcl::PointXYZ pt1, pcl::PointXYZ pt2) {return pt1.x < pt2.x; });
+        pcl::PointXYZ px_max = *std::max_element(cloud->begin(), cloud->end(), [](pcl::PointXYZ pt1, pcl::PointXYZ pt2) {return pt1.x < pt2.x; });
+
+        float delta_x = (px_max.x - px_min.x) / resolution;
+        float min_y = INT_MAX, max_y = -INT_MAX;
+        std::vector<int> indexs_x(2 * resolution);
+        std::vector<std::pair<float, float>> minmax_x(resolution, { INT_MAX,-INT_MAX });
+        for (size_t i = 0; i < cloud->size(); ++i)
+        {
+            int id = (cloud->points[i].x - px_min.x) / delta_x;
+            if (cloud->points[i].y < minmax_x[id].first)
+            {
+                minmax_x[id].first = cloud->points[i].y;
+                indexs_x[id] = i;
+            }
+            else if (cloud->points[i].y > minmax_x[id].second)
+            {
+                minmax_x[id].second = cloud->points[i].y;
+                indexs_x[id + resolution] = i;
+            }
+        }
+
+        pcl::PointXYZ py_min = *std::min_element(cloud->begin(), cloud->end(), [](pcl::PointXYZ pt1, pcl::PointXYZ pt2) {return pt1.y < pt2.y; });
+        pcl::PointXYZ py_max = *std::max_element(cloud->begin(), cloud->end(), [](pcl::PointXYZ pt1, pcl::PointXYZ pt2) {return pt1.y < pt2.y; });
+
+        float delta_y = (py_max.y - py_min.y) / resolution;
+        float min_x = INT_MAX, max_x = -INT_MAX;
+        std::vector<int> indexs_y(2 * resolution);
+        std::vector<std::pair<float, float>> minmax_y(resolution, { INT_MAX,-INT_MAX });
+        for (size_t i = 0; i < cloud->size(); ++i)
+        {
+            int id = (cloud->points[i].y - py_min.y) / delta_y;
+            if (cloud->points[i].x < minmax_y[id].first)
+            {
+                minmax_y[id].first = cloud->points[i].x;
+                indexs_y[id] = i;
+            }
+            else if (cloud->points[i].x > minmax_y[id].second)
+            {
+                minmax_y[id].second = cloud->points[i].x;
+                indexs_y[id + resolution] = i;
+            }
+        }
+
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xboundary(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*cloud, indexs_x, *cloud_xboundary);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_yboundary(new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::copyPointCloud(*cloud, indexs_y, *cloud_yboundary);
+        *cloud_boundary = *cloud_xboundary + *cloud_yboundary;
+    }
+
+
 };
 
 } //namespace ORB_SLAM

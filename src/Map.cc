@@ -211,8 +211,7 @@ void Map::AssociatePlanesByBoundary(Frame &pF, bool out)
                     if (out)
                         cout << "  associate!" << endl;
                     pF.mvpMapPlanes[i] = static_cast<MapPlane *>(nullptr);
-                    // 注意，最后放入的是地图实例而不是观测，
-                    // 本质上是将能够观测到的地图实例提取出来
+                    // 注意，最后放入的是地图实例而不是观测（即在各帧中的平面索引）。后续可以将地图实例对应的所有帧中的平面融合在一起， 成为一个平面点云集合
                     pF.mvpMapPlanes[i] = (*sit);
                     continue;
                 }

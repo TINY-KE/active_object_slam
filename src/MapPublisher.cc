@@ -111,17 +111,26 @@ MapPublisher::MapPublisher(Map* pMap):mpMap(pMap), mbCameraUpdated(false)
     mPlanes.pose.orientation.w=1.0;
     mPlanes.action=visualization_msgs::Marker::ADD;
 
+    //
+    mCandidate.header.frame_id = MAP_FRAME_ID;
+    mCandidate.ns = CANDIDATE_NAMESPACE;
+    mCandidate.id=8;
+    mCandidate.type = visualization_msgs::Marker::POINTS;
+    mCandidate.pose.orientation.w=1.0;
+    mCandidate.action=visualization_msgs::Marker::ADD;
+
 
     //Configure MapObjectPoints
 
     //Configure MapObjects
-    object_id_init = 8;
+    object_id_init = 9;
 
 
     //Configure Publisher
     publisher = nh.advertise<visualization_msgs::Marker>("objectmap", 1000);
     publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
     pubCloud = nh.advertise<sensor_msgs::PointCloud2>("plane", 1000);
+    publisher_candidate = nh.advertise<visualization_msgs::Marker>("candidate", 1000);
 
     publisher.publish(mPoints);
     publisher.publish(mReferencePoints);
@@ -652,6 +661,8 @@ void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
 {
     mPlanes.points.clear();
     mPlanes.lifetime = ros::Duration(0.2);
+    mCandidate.points.clear();
+
     if (vpMPs.empty())
         return;
     //降维过滤器
@@ -660,6 +671,7 @@ void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
 
     //带颜色的pcl point
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr  colored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
+    colored_pcl_ptr->points.clear();
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
     int num = 0;
@@ -718,8 +730,10 @@ void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
         double mean_x,mean_y,mean_z;	//点云均值
 	    double stddev_x,stddev_y,stddev_z;	//点云标准差
         pcl::getMeanStd(vec_z, mean_z, stddev_z);
+        cout<< "mean z1:"<<mean_z<<std::endl;
         if(mean_z>1.7 || mean_z<0.5)
             continue;
+        cout<< "mean z2:"<<mean_z<<std::endl;
         pcl::getMeanStd(vec_x, mean_x, stddev_x);
         pcl::getMeanStd(vec_y, mean_y, stddev_y);
 
@@ -737,60 +751,109 @@ void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
         //ComputePlanesFromOrganizedPointCloud
 
          //tmp转为pcl::PointXYZRGB, 才能显示颜色
-        //vector<float> color = colors_bgr[pMP->mnId % 6];
-        //for (int i = 0; i <  tmp->points.size(); i++)
-        //{
-        //  pcl::PointXYZRGB  p;
-        //  p.x=tmp->points[i].x;
-        //  p.y=tmp->points[i].y;
-        //  p.z=tmp->points[i].z;
-        //  //p.r = 255*ir;//color[2];
-        //  p.r = color[2];
-        //  //p.g = 255*ig;//color[1];
-        //  p.g = color[1];
-        //  //p.b = 255*ib;//color[0];
-        //  p.b = color[0];
-        //  colored_pcl_ptr->points.push_back(p);
-        //}
-        //colored_pcl_ptr->height += tmp->points.size();  //递增
+        vector<float> color = colors_bgr[pMP->mnId % 6];
+        for (int i = 0; i <  tmp->points.size(); i++)
+        {
+          pcl::PointXYZRGB  p;
+          p.x=tmp->points[i].x;
+          p.y=tmp->points[i].y;
+          p.z=tmp->points[i].z;
+          //p.r = 255*ir;//color[2];
+          p.r = color[2];
+          //p.g = 255*ig;//color[1];
+          p.g = color[1];
+          //p.b = 255*ib;//color[0];
+          p.b = color[0];
+          colored_pcl_ptr->points.push_back(p);
+        }
 
 
         //计算tmp的边缘点
         //(1)将tmp转为no_color
         pcl::PointCloud<pcl::PointXYZ>::Ptr  nocolored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZ>);
         pcl::copyPointCloud(*tmp, *nocolored_pcl_ptr);
-        //（2）计算法向量
-        pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normEst;
-        pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
-        normEst.setInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr(nocolored_pcl_ptr));
-        normEst.setRadiusSearch(0.1);
-        normEst.compute(*normals);
-        //（3）计算边缘
-        pcl::PointCloud<pcl::Boundary> boundaries;
-        pcl::BoundaryEstimation<pcl::PointXYZ, pcl::Normal, pcl::Boundary> boundEst;
-        boundEst.setInputCloud( nocolored_pcl_ptr  );
-        boundEst.setInputNormals(normals);
-        boundEst.setRadiusSearch(0.1);
-        boundEst.setAngleThreshold(M_PI / 4);
-        boundEst.setSearchMethod(pcl::search::KdTree<pcl::PointXYZ>::Ptr(new pcl::search::KdTree<pcl::PointXYZ>));
-        boundEst.compute(boundaries);
-        //(4)将boundaries转为colored_pcl_ptr
-        int boundary_points_num = 0;
-        for (int i = 0; i < tmp->points.size(); i++)
-        {
+        ////（2）计算法向量
+        //pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normEst;
+        //pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+        //normEst.setInputCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr(nocolored_pcl_ptr));
+        //normEst.setRadiusSearch(0.1);
+        //normEst.compute(*normals);
+        ////（3）计算边缘
+        //pcl::PointCloud<pcl::Boundary> boundaries;
+        //pcl::BoundaryEstimation<pcl::PointXYZ, pcl::Normal, pcl::Boundary> boundEst;
+        //boundEst.setInputCloud( nocolored_pcl_ptr  );
+        //boundEst.setInputNormals(normals);
+        //boundEst.setRadiusSearch(0.1);
+        //boundEst.setAngleThreshold(M_PI / 4);
+        //boundEst.setSearchMethod(pcl::search::KdTree<pcl::PointXYZ>::Ptr(new pcl::search::KdTree<pcl::PointXYZ>));
+        //boundEst.compute(boundaries);
 
-            if (boundaries[i].boundary_point > 0)
-            {
-                pcl::PointXYZRGB  p;
-                p.x=tmp->points[i].x;
-                p.y=tmp->points[i].y;
-                p.z=tmp->points[i].z;
-                p.r = 255.0;
-                p.g = 0;
-                p.b = 0;
-                colored_pcl_ptr->push_back(p);
-                boundary_points_num ++;
-            }
+        ////(4)将boundaries转为colored_pcl_ptr
+        //int boundary_points_num = 0;
+        //for (int i = 0; i < tmp->points.size(); i++)
+        //{
+        //
+        //    if (boundaries[i].boundary_point > 0)
+        //    {
+        //        pcl::PointXYZRGB  p;
+        //        p.x=tmp->points[i].x;
+        //        p.y=tmp->points[i].y;
+        //        p.z=tmp->points[i].z;
+        //        p.r = 255.0;
+        //        p.g = 0;
+        //        p.b = 0;
+        //        colored_pcl_ptr->push_back(p);
+        //        boundary_points_num ++;
+        //    }
+        //}
+
+        //(新2)经纬线扫描法
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary(new pcl::PointCloud<pcl::PointXYZ>);
+        BoundaryExtraction(nocolored_pcl_ptr, cloud_boundary, 200);
+
+        //(3)cloud_boundary转为colored_pcl_ptr
+        vector<float> color2 = colors_bgr[(pMP->mnId+2) % 6];
+        for (int i = 0; i <  cloud_boundary->points.size(); i++)
+        {
+          pcl::PointXYZ pno = cloud_boundary->points[i];
+          pcl::PointXYZRGB  p;
+          p.x= pno.x;
+          p.y= pno.y;
+          p.z= pno.z;
+          //p.r = 255*ir;//color[2];
+          p.r = color2[2];
+          //p.g = 255*ig;//color[1];
+          p.g = color2[1];
+          //p.b = 255*ib;//color[0];
+          p.b = color2[0];
+          colored_pcl_ptr->points.push_back(p);
+        }
+        //(4)cloud_boundary转为candidates
+        double safe_radius = 0.5;
+        int divide = 20;
+        int step = floor( cloud_boundary->points.size() / divide);
+        for(int i=0; i< divide; i++){
+            int index = i*step+ divide/2 ;
+            double x,y;
+            double d = sqrt(    (cloud_boundary->points[index].x-mean_x)*(cloud_boundary->points[index].x-mean_x)
+                            +   (cloud_boundary->points[index].y-mean_y)*(cloud_boundary->points[index].y-mean_y)
+                            )
+                       + safe_radius;
+            double k = (cloud_boundary->points[index].y-mean_y) /
+                     (cloud_boundary->points[index].x-mean_x);
+
+            double x_positive = sqrt(d * d / (1 + k * k) ) + mean_x;
+            double x_negative = -sqrt(d * d / (1 + k * k) ) + mean_x;
+            if( (x_positive-mean_x)*(cloud_boundary->points[index].x-mean_x) > 0 )
+                x = x_positive;
+            else
+                x = x_negative;
+            y = k*(x - mean_x) + mean_y;
+            geometry_msgs::Point p;
+            p.x=x;
+            p.y=y;
+            p.z=mean_z;
+            mCandidate.points.push_back(p);
         }
 
         // 桌面高度的 水平面的数量
@@ -805,11 +868,20 @@ void MapPublisher::PublishMapPlanes(const vector<MapPlane *> &vpMPs)
     mPlanes.color.r = 0.0; mPlanes.color.g = 0.0; mPlanes.color.b = 1.0;  mPlanes.color.a = 1.0;
     publisher.publish(mPlanes);
 
+    //发布中心店
+    mCandidate.header.stamp = ros::Time::now();
+    mCandidate.color.r=0.0f;
+    mCandidate.color.b=0.0f;
+    mCandidate.color.g=1.0f;
+    mCandidate.color.a=1.0f;
+    mCandidate.scale.x=10*fPointSize;
+    mCandidate.scale.y=10*fPointSize;
+    publisher_candidate.publish(mCandidate);
 
     // 发布平面的点云
     sensor_msgs::PointCloud2 colored_msg;
     colored_pcl_ptr->width = 1;
-    colored_pcl_ptr->width = colored_pcl_ptr->points.size();
+    colored_pcl_ptr->height = colored_pcl_ptr->points.size();
     pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
     colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
     pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud

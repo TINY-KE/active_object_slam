@@ -364,7 +364,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3 -march=native -std=c++11  -g"
+					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3  -std=c++11  -g"
 				},
 				{
 					"backtrace" : 2,
@@ -815,7 +815,7 @@
 		"commandFragments" : 
 		[
 			{
-				"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3 -march=native -std=c++11  -g",
+				"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3  -std=c++11  -g",
 				"role" : "flags"
 			},
 			{

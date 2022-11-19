@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "gtest/googlemock/libgmock.so"
+			"path" : "gtest/googlemock/gtest/libgtest_main.so"
 		}
 	],
 	"backtrace" : 3,
@@ -13,6 +13,7 @@
 			"add_library",
 			"cxx_library_with_type",
 			"cxx_library",
+			"link_directories",
 			"target_link_libraries",
 			"set_target_properties",
 			"include_directories",
@@ -23,7 +24,7 @@
 		"files" : 
 		[
 			"/usr/src/googletest/googletest/cmake/internal_utils.cmake",
-			"/usr/src/googletest/googlemock/CMakeLists.txt",
+			"/usr/src/googletest/googletest/CMakeLists.txt",
 			"/usr/lib/cmake/vtk-6.3/UseVTK.cmake",
 			"/home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/PCLConfig.cmake",
 			"CMakeLists.txt"
@@ -36,7 +37,7 @@
 			{
 				"command" : 2,
 				"file" : 1,
-				"line" : 84,
+				"line" : 91,
 				"parent" : 0
 			},
 			{
@@ -53,12 +54,24 @@
 			},
 			{
 				"command" : 3,
+				"file" : 1,
+				"line" : 70,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
 				"file" : 0,
 				"line" : 159,
 				"parent" : 2
 			},
 			{
 				"command" : 4,
+				"file" : 1,
+				"line" : 92,
+				"parent" : 0
+			},
+			{
+				"command" : 5,
 				"file" : 0,
 				"line" : 154,
 				"parent" : 2
@@ -67,41 +80,41 @@
 				"file" : 4
 			},
 			{
-				"command" : 8,
+				"command" : 9,
 				"file" : 4,
 				"line" : 54,
-				"parent" : 6
+				"parent" : 8
 			},
 			{
 				"file" : 3,
-				"parent" : 7
+				"parent" : 9
+			},
+			{
+				"command" : 8,
+				"file" : 3,
+				"line" : 832,
+				"parent" : 10
 			},
 			{
 				"command" : 7,
 				"file" : 3,
-				"line" : 832,
-				"parent" : 8
-			},
-			{
-				"command" : 6,
-				"file" : 3,
 				"line" : 660,
-				"parent" : 9
-			},
-			{
-				"file" : 2,
-				"parent" : 10
-			},
-			{
-				"command" : 5,
-				"file" : 2,
-				"line" : 26,
 				"parent" : 11
 			},
 			{
-				"command" : 5,
+				"file" : 2,
+				"parent" : 12
+			},
+			{
+				"command" : 6,
+				"file" : 2,
+				"line" : 26,
+				"parent" : 13
+			},
+			{
+				"command" : 6,
 				"file" : 1,
-				"line" : 59,
+				"line" : 65,
 				"parent" : 0
 			}
 		]
@@ -112,10 +125,10 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3 -march=native -std=c++11  -g -fPIC"
+					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3  -std=c++11  -g -fPIC"
 				},
 				{
-					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3 -march=native -std=c++11  -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers"
+					"fragment" : "-DCV__ENABLE_C_API_CTORS -Wall  -O3  -std=c++11  -Wall -Wshadow -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers"
 				},
 				{
 					"fragment" : "-std=gnu++14"
@@ -148,11 +161,11 @@
 					"define" : "DISABLE_RSSDK"
 				},
 				{
-					"backtrace" : 5,
+					"backtrace" : 7,
 					"define" : "GTEST_CREATE_SHARED_LIBRARY=1"
 				},
 				{
-					"define" : "gmock_EXPORTS"
+					"define" : "gtest_main_EXPORTS"
 				},
 				{
 					"define" : "vtkFiltersFlowPaths_AUTOINIT=1(vtkFiltersParallelFlowPaths)"
@@ -191,63 +204,55 @@
 			"includes" : 
 			[
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/vtk-6.3"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/freetype2"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/opal/mca/event/libevent2022/libevent/include"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/lib/x86_64-linux-gnu/openmpi/include"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/python2.7"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/hdf5/openmpi"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/libxml2"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/jsoncpp"
 				},
 				{
-					"backtrace" : 12,
+					"backtrace" : 14,
 					"path" : "/usr/include/tcl"
 				},
 				{
-					"backtrace" : 13,
-					"path" : "/usr/src/googletest/googlemock/include"
-				},
-				{
-					"backtrace" : 13,
-					"path" : "/usr/src/googletest/googlemock"
-				},
-				{
-					"backtrace" : 13,
+					"backtrace" : 15,
 					"path" : "/usr/src/googletest/googletest/include"
 				},
 				{
-					"backtrace" : 13,
+					"backtrace" : 15,
 					"path" : "/usr/src/googletest/googletest"
 				}
 			],
@@ -262,12 +267,18 @@
 			},
 			"sourceIndexes" : 
 			[
-				0,
-				1
+				0
 			]
 		}
 	],
-	"id" : "gmock::@e3f94eedc5dc07131386",
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "gtest::@91549fa14b017862b6ac"
+		}
+	],
+	"id" : "gtest_main::@91549fa14b017862b6ac",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -278,18 +289,37 @@
 			},
 			{
 				"backtrace" : 4,
+				"fragment" : "-L/home/zhjd/active_eao/src/active_eao/cmake-build-debug/gtest/googlemock/gtest/src",
+				"role" : "libraryPath"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/zhjd/active_eao/src/active_eao/cmake-build-debug/gtest/googlemock/gtest/src:/home/zhjd/active_eao/src/active_eao/cmake-build-debug/gtest/googlemock/gtest",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
+				"fragment" : "-lpthread",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 6,
+				"fragment" : "gtest/googlemock/gtest/libgtest.so",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
 				"fragment" : "-lpthread",
 				"role" : "libraries"
 			}
 		],
 		"language" : "CXX"
 	},
-	"name" : "gmock",
-	"nameOnDisk" : "libgmock.so",
+	"name" : "gtest_main",
+	"nameOnDisk" : "libgtest_main.so",
 	"paths" : 
 	{
-		"build" : "gtest/googlemock",
-		"source" : "/usr/src/googletest/googlemock"
+		"build" : "gtest/googlemock/gtest",
+		"source" : "/usr/src/googletest/googletest"
 	},
 	"sourceGroups" : 
 	[
@@ -297,8 +327,7 @@
 			"name" : "Source Files",
 			"sourceIndexes" : 
 			[
-				0,
-				1
+				0
 			]
 		}
 	],
@@ -307,13 +336,7 @@
 		{
 			"backtrace" : 3,
 			"compileGroupIndex" : 0,
-			"path" : "/usr/src/googletest/googletest/src/gtest-all.cc",
-			"sourceGroupIndex" : 0
-		},
-		{
-			"backtrace" : 3,
-			"compileGroupIndex" : 0,
-			"path" : "/usr/src/googletest/googlemock/src/gmock-all.cc",
+			"path" : "/usr/src/googletest/googletest/src/gtest_main.cc",
 			"sourceGroupIndex" : 0
 		}
 	],

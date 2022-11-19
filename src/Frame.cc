@@ -195,8 +195,8 @@ Frame::Frame(const cv::Mat &imColor,const cv::Mat &imGray, const cv::Mat &imDept
 
     // add plane --------------------------
     // 由于特征提取时间和面特征提取时间加在一起都没有目标检测时间耗时大，因此这里并没有采用并行处理的方法
-    // ComputePlanesFromOrganizedPointCloud(imDepth);  //PCL提取平面
-    ComputePlanesFromPEAC(imDepth);  //PEAC
+     ComputePlanesFromOrganizedPointCloud(imDepth);  //PCL提取平面
+    //ComputePlanesFromPEAC(imDepth);  //PEAC
     mnRealPlaneNum = mvPlanePoints.size();
     mnPlaneNum = mvPlanePoints.size();
     // std::cout << "[INFO] Plane Num is : " << mnPlaneNum << std::endl;
@@ -720,10 +720,10 @@ void Frame::ComputePlanesFromOrganizedPointCloud(const cv::Mat &imDepth)
     PointCloud::Ptr inputCloud(new PointCloud());
 
     //TODO: 参数传递
-    int cloudDis = 2;
-    int min_plane = 500;
-    float AngTh = 3.0;
-    float DisTh = 0.05;
+    int cloudDis = 3;       // 3
+    int min_plane = 1000;    //1000
+    float AngTh = 3.0;      //3.0
+    float DisTh = 0.05;     //0.05
 
     // 间隔cloudDis进行采样
     for (int m = 0; m < imDepth.rows; m += cloudDis)
@@ -746,7 +746,7 @@ void Frame::ComputePlanesFromOrganizedPointCloud(const cv::Mat &imDepth)
     inputCloud->width = ceil(imDepth.cols / float(cloudDis));
 
     //估计法线
-    pcl::IntegralImageNormalEstimation<PointT, pcl::Normal> ne;
+    pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
     pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>);
     ne.setNormalEstimationMethod(ne.AVERAGE_3D_GRADIENT);
     ne.setMaxDepthChangeFactor(0.05f);
@@ -761,14 +761,14 @@ void Frame::ComputePlanesFromOrganizedPointCloud(const cv::Mat &imDepth)
     vector<pcl::PointIndices> label_indices;
     vector<pcl::PointIndices> boundary;
 
-    pcl::OrganizedMultiPlaneSegmentation<PointT, pcl::Normal, pcl::Label> mps;
+    pcl::OrganizedMultiPlaneSegmentation<pcl::PointXYZRGB, pcl::Normal, pcl::Label> mps;
     mps.setMinInliers(min_plane);
     mps.setAngularThreshold(0.017453 * AngTh);
     mps.setDistanceThreshold(DisTh);
     mps.setInputNormals(cloud_normals);
     mps.setInputCloud(inputCloud);
     // 该方法能够一次性提取几个面 TODO:
-    std::vector<pcl::PlanarRegion<PointT>, Eigen::aligned_allocator<pcl::PlanarRegion<PointT>>> regions;
+    std::vector<pcl::PlanarRegion<pcl::PointXYZRGB>, Eigen::aligned_allocator<pcl::PlanarRegion<pcl::PointXYZRGB>>> regions;
     mps.segmentAndRefine(regions, coefficients, inliers, labels, label_indices, boundary);
 
     pcl::ExtractIndices<PointT> extract;
@@ -839,92 +839,6 @@ cv::Mat Frame::ComputePlaneWorldCoeff(const int &idx)
     return temp * mvPlaneCoefficients[idx];   //mvPlaneCoefficients存的是 平面在物体坐标系下的系数 nx, ny, nz, d
 }
 
-void Frame::ComputePlanesFromPEAC(const cv::Mat &imDepth)
-{
-    int cloudDis = 1;  //zhangjiadong  用于间隔采样
-    int vertex_idx = 0;
-
-    // 间隔cloudDis进行采样, 对深度图像imDepth ...
-    cloud.vertices.resize(imDepth.rows * imDepth.cols);
-    cloud.w = ceil(imDepth.cols / float(cloudDis));
-    cloud.h = ceil(imDepth.rows / float(cloudDis));
-
-    for (int m = 0; m < imDepth.rows; m += cloudDis)
-    {
-        for (int n = 0; n < imDepth.cols; n += cloudDis, vertex_idx++)
-        {
-            double d = (double)(imDepth.ptr<float>(m)[n]);
-            if (_isnan(d) ||  d > 4.0 || d < 0.2 )
-            {
-                // cloud.vertices[vertex_idx++] = Eigen::Vector3d(0, 0, d);
-                continue;
-            }
-            double x = ((double)n - cx) * d / fx;
-            double y = ((double)m - cy) * d / fy;
-            cloud.vertices[vertex_idx] = Eigen::Vector3d(x, y, d);
-        }
-    }
-
-    seg_img_ = cv::Mat(imDepth.rows, imDepth.cols, CV_8UC3);
-    // run函数: 对于当前帧中的点云输入,进行AHC平面计算.
-    // 其中,  plane_vertices_ 指向 segmentation membership vector. 每个 pMembership->at(i) is a vector of pixel indices that belong to the i-th extracted plane
-    // 也就是说 ,   plane_vertices_.->at(i) 存储的不是 平面,  而是平面中各point 在icloud(深度图像indepth间隔采样的结果)中的像素的索引.
-    plane_filter.run(&cloud, &plane_vertices_, &seg_img_);
-
-    plane_num_ = (int)plane_vertices_.size();
-    for (int i = 0; i < plane_num_; i++)
-    {
-        auto &indices = plane_vertices_[i];
-        // 遍历每平面上的点云
-        PointCloud::Ptr inputCloud(new PointCloud());
-        for (int j : indices)  //遍历每平面上的点云,将它的坐标,存储在inputCloud中. 注: inputCloud将被pcl滤波
-        {
-            PointT p;
-            p.x = (float)cloud.vertices[j][0];
-            p.y = (float)cloud.vertices[j][1];
-            p.z = (float)cloud.vertices[j][2];
-            // 插入点云
-            inputCloud->points.push_back(p);
-        }
-        auto extractedPlane = plane_filter.extractedPlanes[i];   //此变量数据类型为 PlaneSeg::shared_ptr,  是peac中提取的平面extracted planes
-        double nx = extractedPlane->normal[0];
-        double ny = extractedPlane->normal[1];
-        double nz = extractedPlane->normal[2];
-        double cx = extractedPlane->center[0];
-        double cy = extractedPlane->center[1];
-        double cz = extractedPlane->center[2];
-
-        float d = (float)-(nx * cx + ny * cy + nz * cz);
-
-        //pcl 下采样
-        pcl::VoxelGrid<PointT> voxel;
-        voxel.setLeafSize(0.05, 0.05, 0.05);
-        PointCloud::Ptr coarseCloud(new PointCloud());
-        voxel.setInputCloud(inputCloud);
-        voxel.filter(*coarseCloud);
-
-        cv::Mat coef = (cv::Mat_<float>(4, 1) << nx, ny, nz, d);
-        cv::Mat center =   (cv::Mat_<float>(3, 1) << cx, cy, cz);
-
-        // 要求距离d大于0
-        if (coef.at<float>(3) < 0)
-            coef = -coef;
-
-        if (!PlaneNotSeen(coef))
-        {
-            continue;
-        }
-
-        //  将滤波后的点云放置到mvPlanePoints中，在我的理解可能是以此来代表平面的大小
-        mvBoundaryPoints.push_back(*coarseCloud);   //面边界上的点云
-        mvPlanePoints.push_back(*coarseCloud);      //平面的点云
-        mvPlaneCoefficients.push_back(coef);        //平面的系数Mat(x y z d)
-        mvPlaneCentors.push_back(center);           //中心坐标Mat(x y z)
-    }
-    cloud.vertices.clear();
-    seg_img_.release();
-    color_img_.release();
-}
 
 
 
