@@ -32,8 +32,9 @@ namespace ORB_SLAM2
 {
 
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
-        mbDeactivateLocalizationMode(false)
+               const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mpNbvGenerator(static_cast<NbvGenerator*>(NULL)),
+               mbReset(false),mbActivateLocalizationMode(false),
+                mbDeactivateLocalizationMode(false)
 {
     // Output welcome message
     cout << endl <<
@@ -105,6 +106,10 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         mptViewer = new thread(&Viewer::Run, mpViewer);
         mpTracker->SetViewer(mpViewer);
     }
+
+    mpNbvGenerator = new NbvGenerator(mpMap, mpTracker, strSettingsFile);
+    mptNbvGenerator = new thread(&ORB_SLAM2::NbvGenerator::Run, mpNbvGenerator);
+    mpTracker->SetNbvGenerator(mpNbvGenerator);
 
     //Set pointers between threads
     mpTracker->SetLocalMapper(mpLocalMapper);
@@ -306,6 +311,7 @@ void System::Shutdown()
 {
     mpLocalMapper->RequestFinish();
     mpLoopCloser->RequestFinish();
+    mpNbvGenerator->RequestFinish();
     if(mpViewer)
     {
         mpViewer->RequestFinish();

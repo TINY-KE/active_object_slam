@@ -45,7 +45,7 @@ namespace ORB_SLAM2
 
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor, MapPublisher*  pMapPublisher):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
-    mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
+    mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL), mpNbvGenerator(NULL),
     mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0),  mpMapPublisher(pMapPublisher)
 {
     // Load camera parameters from settings file
@@ -2432,6 +2432,9 @@ void Tracking::SampleObjYaw(Object_Map* obj3d)
     obj3d->mCuboid3D.mfErroeYaw = obj3d->mvAngleTimesAndScore[best_num][4];
 }
 
-
+void Tracking::SetNbvGenerator(NbvGenerator *pNbvGenerator)
+{
+    mpNbvGenerator = pNbvGenerator;
+}
 
 } //namespace ORB_SLAM

@@ -334,7 +334,7 @@ bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
 
 void MapPoint::UpdateNormalAndDepth()
 {   //所谓的法向量，就是也就是说相机光心指向地图点的方向，计算这个方向方法很简单，只需要用地图点的三维坐标减去相机光心的三维坐标就可以。
-    map<KeyFrame*,size_t> observations;
+    map<KeyFrame*,size_t> observations;  //observations是观测到此point的全部关键帧 及此point的索引
     KeyFrame* pRefKF;
     cv::Mat Pos;
     {
@@ -358,7 +358,7 @@ void MapPoint::UpdateNormalAndDepth()
         cv::Mat Owi = pKF->GetCameraCenter();
         ///观测点坐标减去关键帧中相机光心的坐标就是观测方向   //也就是说相机光心指向地图点
         cv::Mat normali = mWorldPos - Owi;
-        //对其进行归一化后相加
+        //对其进行归一化后相加. 以下的normal是个求和, 因此还得除以size()
         normal = normal + normali/cv::norm(normali);
         n++;
     }

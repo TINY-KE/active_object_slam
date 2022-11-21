@@ -37,10 +37,12 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 #include "YOLOv3SE.h"
+#include "NbvGenerator.h"
 namespace ORB_SLAM2
 {
 
 class Viewer;
+class NbvGenerator;
 class FrameDrawer;
 class MapPublisher;
 class Map;
@@ -152,7 +154,7 @@ private:
 
     // The viewer draws the map and the current camera pose. It uses Pangolin.
     Viewer* mpViewer;
-
+    NbvGenerator* mpNbvGenerator;
     FrameDrawer* mpFrameDrawer;
     MapDrawer* mpMapDrawer;
     MapPublisher* mpMapPublisher;
@@ -162,7 +164,7 @@ private:
     std::thread* mptLocalMapping;
     std::thread* mptLoopClosing;
     std::thread* mptViewer;
-
+    std::thread* mptNbvGenerator;
     // Reset flag
     std::mutex mMutexReset;
     bool mbReset;

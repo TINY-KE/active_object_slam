@@ -49,6 +49,10 @@
 // line
 #include <line_lbd/line_descriptor.hpp>
 #include <line_lbd/line_lbd_allclass.h>
+
+//nbv
+#include "NbvGenerator.h"
+
 namespace ORB_SLAM2
 {
 
@@ -59,6 +63,7 @@ class Map;
 class LocalMapping;
 class LoopClosing;
 class System;
+class NbvGenerator;
 
 class Tracking
 {  
@@ -255,6 +260,12 @@ private:
 
     // line
     line_lbd_detect* line_lbd_ptr;
+
+    //nbv
+public:
+    void SetNbvGenerator(NbvGenerator *pNbvGenerator);
+    NbvGenerator* mpNbvGenerator;
+
 };
 
 } //namespace ORB_SLAM
