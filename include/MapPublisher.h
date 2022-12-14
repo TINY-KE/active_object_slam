@@ -25,6 +25,9 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <tf/transform_broadcaster.h>
+#include <nav_msgs/Odometry.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -46,6 +49,12 @@
 #include "Converter.h"
 #include <random>
 #include <mutex>
+
+//eigen cv的convert
+#include<opencv2/core/core.hpp>
+#include<opencv2/features2d/features2d.hpp>
+#include<opencv2/core/eigen.hpp>
+
 // #include "Plane3D.h"
 namespace ORB_SLAM2
 {
@@ -54,7 +63,7 @@ class MapPlane;
 class MapPublisher
 {
 public:
-    MapPublisher(Map* pMap);
+    MapPublisher(Map* pMap, const string &strSettingPath);
 
     Map* mpMap;
 
@@ -78,8 +87,13 @@ private:
 
     ros::NodeHandle nh;
     ros::Publisher publisher;
-
+    ros::Publisher publisher_curframe;
+    ros::Publisher publisher_KF;
+    ros::Publisher publisher_CoView;
+    ros::Publisher publisher_object;
+    ros::Publisher publisher_object_points;
     ros::Publisher publisher_IE;
+    ros::Publisher publisher_robotpose;
 
     visualization_msgs::Marker mPoints;
     visualization_msgs::Marker mReferencePoints;
@@ -110,16 +124,14 @@ private:
     const char* CAMERA_NAMESPACE = "Camera";
 
 
-//物体
-public:
-
 //plane
 public:
     //typedef pcl::PointXYZRGB PointT;
     //typedef pcl::PointCloud<PointT> PointCloud;
 
-
-
+//机器人底盘的位姿
+public:
+    cv::Mat mT_body_cam;   //相机在机器人上的坐标
 };
 
 } //namespace ORB_SLAM

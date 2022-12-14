@@ -24,6 +24,7 @@
 
 
 extern std::string WORK_SPACE_PATH;
+extern std::string yamlfile_object;
 extern bool MotionIou_flag;
 extern bool NoPara_flag;
 extern bool ProIou_flag;
@@ -229,7 +230,8 @@ public:
     //yolo检测框和观测帧的id, 用于iou数据关联
     cv::Rect mLastRect;
     cv::Rect mLastLastRect;
-    cv::Rect mRect_byProjectPoints;    //原mPredictRect. 投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
+    cv::Rect mRect_byProjectPoints;    // zhang推测： 这应该是投影到最新一帧的rect
+                                // 原mPredictRect. 投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
     int mnAddedID_nouse;
     int mnLastAddID;
     int mnLastLastAddID;
@@ -249,11 +251,11 @@ public:
 
     //物体中的特征点
     std::vector< MapPoint*> mvpMapObjectMappoints;
-    std::vector< MapPoint*> mvpMapObjectMappoints_NewForActive;  //物体中新添加的特征点，用于更新占据概率地图
+    std::vector< MapPoint*> mvpMapObjectMappoints_NewForActive;     //物体中新添加的特征点，用于更新占据概率地图
 
     //潜在的可以融合的物体
-    std::map<int, int> mReObj;                              //potential associated objects.  记录潜在的关联对象，会在localmap中进行融合
-    std::map<int, int> mmAppearSametime;                    // 共视关系: 两个物体在同一帧中被观测到, 则认为两个物体被共视. 第二项代表被共视的次数. 次数越多, 越有可能是同一个物体
+    std::map<int, int> mReObj;                                      //potential associated objects.  记录潜在的关联对象，会在localmap中进行融合
+    std::map<int, int> mmAppearSametime;                            // 共视关系: 两个物体在同一帧中被观测到, 则认为两个物体被共视. 第二项代表被共视的次数. 次数越多, 越有可能是同一个物体
 
     //物体yaw估计中，各角度的评分
     std::vector<Eigen::Matrix<float,5,1>, Eigen::aligned_allocator<Eigen::Matrix<float,5,1>> > mvAngleTimesAndScore;    // Score of sampling angle.
@@ -262,8 +264,8 @@ public:
 // object3d 通用函数部分 *
     void ComputeMeanAndDeviation_3D();
     void IsolationForestDeleteOutliers();
-    void Update_Twobj();                                    // 原UpdateObjPose  更新物体在世界下的坐标
-    void ComputeProjectRectFrameTo(Frame &Frame);           //将obj3d中的point投影到目标frame中，计算obj3d在目标frame中的投影边界框.从而查看obje3d,能够关联目标frame中物体
+    void Update_Twobj();                                                // 原UpdateObjPose  更新物体在世界下的坐标
+    void ComputeProjectRectFrameToCurrentFrame(Frame &Frame);           //将obj3d中的point投影到目标frame中，计算obj3d在目标frame中的投影边界框.从而查看obje3d,能够关联目标frame中物体
     bool WhetherOverlap(Object_Map *CompareObj);
     void UpdateCoView(Object_Map *Obj_CoView);
     void AddObj2d(Object_2D* Object_2d){
@@ -281,7 +283,7 @@ protected:
 // ************************************
 // object3d localmap部分 *
 public:
-    static std::mutex mMutex_front_back;                    //用于前端和后端对obj2d操作时,不冲突
+    static std::mutex mMutex_front_back;                                //用于前端和后端对obj2d操作时,不冲突
     void SearchAndMergeMapObjs_fll(Map *mpMap);
     void MergeTwoMapObjs_fll(Object_Map *RepeatObj);
     bool DoubleSampleTtest_fll(Object_Map *RepeatObj);
@@ -293,42 +295,42 @@ public:
 // ************************************
 // object3d 信息熵计算部分 *
 public:
-    void init_information_entroy();
+    int mIE_rows, mIE_cols;
 
-    int threshold = 3;                                      //用于判定, 某列grid是否有效
-
+    void IE_RecoverInit();
+    int mIEThreshold;                                       //用于判定, 某列grid是否有效
     Eigen::Vector3d mMainDirection;                         //通过特征点计算的主方向,用于view的 ie
-
-    double statistics;                                      //检验统计量
+    double mStatistics = 1;                                 //检验统计量
 
     //传感器模型
-    double P_occ=0.6;
-    double P_free=0.4;
-    double P_prior=0.5;
+    double mP_occ;
+    double mP_free;
+    double mP_prior;
 
-    std::vector<std::vector<double> > vInforEntroy;                   // 没用.  用于存储18*18个栅格的信息熵
-    std::vector<std::vector<double> > vgrid_prob;                     //用于存储18*18个栅格的占据概率
-    std::vector<std::vector<int> > vpointnum_eachgrid;                //存储18*18个栅格中,各自的grid数量
+    double mIE;
+    //std::vector<std::vector<double> > mvInforEntroy;                   // 没用.  用于存储18*18个栅格的信息熵
+    cv::Mat mvInforEntroy_mat;
+    //std::vector<std::vector<double> > mvGridProb;                     //用于存储18*18个栅格的占据概率
+    cv::Mat mvGridProb_mat;
+    //std::vector<std::vector<int> > mvPointNum;                //存储18*18个栅格中,各自的grid数量
+    cv::Mat mvPointNum_mat;
 
-    void grid_index(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y);
-
-    void compute_pointnum_eachgrid();
-
-    void compute_occupied_prob();
-
-    double information_entroy(const double &p);
-
-    void compute_information_entroy();
-
+    void compute_grid_xy(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y);
+    cv::Mat compute_pointnum_eachgrid();
+    void compute_occupied_prob_eachgrid();
+    double IE(const double &p);
+    void ComputeIE();
     double get_information_entroy();
-
     std::vector<MapPoint* >  GetObjectMappoints();
-
     std::vector<MapPoint* >  GetNewObjectMappoints();
 protected:
     std::mutex mMutexPose;
     std::mutex mMutexObj2d;
 
+// ************************************
+// object3d 筛选候选点 *
+public:
+    bool WheatherInRectFrameOf(const cv::Mat &Tcw, const float &fx, const float &fy, const float &cx, const float &cy, const float &ImageWidth, const float &ImageHeight);  //计算到任意帧的投影
 };
 
 

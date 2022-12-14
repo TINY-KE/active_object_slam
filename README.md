@@ -62,7 +62,7 @@
 + 只要ProIou大于0.25就认为是，潜在的关联对象？？
 + ProIou=4 //Debug=4
 +  Read t-distribution boundary value.  为什么t分布有二维值
-+ obj3d->ComputeProjectRectFrameTo(*mpCurrentFrame);
++ obj3d->ComputeProjectRectFrameToCurrentFrame(*mpCurrentFrame);
 + object3d的ComputeMeanAndStandard和IsolationForestDeleteOutliers有什么区别？？
   + this->ComputeMeanAndStandard();
   + this->IsolationForestDeleteOutliers();
@@ -81,7 +81,7 @@
 + 为什么字ProIou中, 只将过去30帧的物体,投影过来
 // object appeared in the last 30 frames.
             if (obj3d->mnLastAddID > mCurrentFrame.mnId - 30)
-                obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
+                obj3d->ComputeProjectRectFrameToCurrentFrame(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
             else
             {
                 obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
@@ -94,10 +94,10 @@
 + 去掉mnConfidence_foractive, 直接用object2d的size代替?
 + 均分和bigToSmall,几乎没效果
 + GetNewObjectMappoints() 为什么点这么少啊??
-+ object3d中的mRect_byProjectPoints 是投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameTo(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
++ object3d中的mRect_byProjectPoints 是投影到当前帧的投影框, 根据tTrackMotion中的obj3d->ComputeProjectRectFrameToCurrentFrame(mCurrentFrame),没获取一帧, 地图中物体的投影框就会重新计算
 + 计算最新一帧中 线段 和 cube边 的角度偏差      // 为什么只用最新一帧?? 万一不满足之前帧的中线段 怎么办?
 
-### 0 要做的事情:
+### 0 新程序重构--要做的事情:
 + 后端剔除物体的原因. 是不是因为看到的点太少了?
 + 估计方向
 + 新的object点为什么 这么少?
@@ -114,7 +114,7 @@
   + 数据关联 应该放在trackmotion trackReference trackLocal中
 + if (p == nullptr) 为什么会为空呢??
 + rviz的报错
-+ 
++ 对于椅子，去掉z轴的iforest
 
 
 ### 0 未来可以微调的参数

@@ -44,6 +44,7 @@
 #include <darknet_ros_msgs/ObjectCount.h>
 #include "YOLOv3SE.h"
 std::string WORK_SPACE_PATH = "";
+std::string yamlfile_object = "";
 bool MotionIou_flag = true;
 bool NoPara_flag = true;
 bool ProIou_flag = true;
@@ -102,6 +103,7 @@ int main(int argc, char **argv)
     ros::param::param<bool>("~ProIou_only30_flag", ProIou_only30_flag, false);
     const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";
     ros::param::param<std::string>("~yamlfile", yamlfile, "TUM3_ros.yaml"); /*kinectdk.yaml  TUM3.yaml TUM3_ros.yaml kinectdk_720.yaml*/
+    ros::param::param<std::string>("~yamlfile", yamlfile_object, "TUM3_ros.yaml");
     const std::string YamlFile = WORK_SPACE_PATH + "/config/" + yamlfile;
     ros::param::param<std::string>("~sensor", sensor, "RGBD");
     ros::param::param<bool>("~online", semanticOnline, "true");

@@ -2,7 +2,7 @@
 <!--     <include file="$(find darknet_ros)/launch/darknet_ros.launch"/> -->
 <!-- launch-prefix="gdb -ex run - -args"   -->
     <!-- launch-prefix="valgrind"   -->
-    <node pkg="active_eao_new"  type="active_rgbd"  name="active_rgbd"  output="screen"  >
+    <node pkg="active_eao_new"  type="active_rgbd"  name="active_rgbd"  output="screen" >
         <!-- <param name="sensor" value="MONO"/> -->
         <param name="sensor" value="RGBD"/>
         <param name="online" value="true" type="bool"/>
@@ -12,12 +12,10 @@
         <param name="gravity_aixs" value="3" type="int"/>
 
 
-        <!-- KINECT DK-->
-        <param name="rgb_topic" value="/rgb/image_raw" type="string"/>
-        <param name="depth_topic" value="/depth_to_rgb/image_raw" type="string"/>
+        <!-- KINECT v1-->
         <param name="bbox_topic" value="/darknet_ros/bounding_boxes" type="string"/>
         <param name="WORK_SPACE_PATH" value="/home/zhjd/active_eao/src/active_eao/" type="string"/>
-        <param name="yamlfile" value="TUM3_ros.yaml" type="string"/>
+        <param name="yamlfile" value="kinectv1.yaml" type="string"/>
 
         <param name="MotionIou_flag" value="true" type="bool"/>
 <!--        <param name="MotionIou_flag" value="false" type="bool"/>-->
@@ -40,5 +38,6 @@
         <!-- kinectdk_720.yaml -->
     </node>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz"/>
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz" >
+    </node>
 </launch>

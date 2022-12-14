@@ -249,6 +249,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     if (ConstraintType == 1){// robot_camera tf
         float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
                 tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
+         //float qx = fSettings["Tgroud_firstcamera.qx"], qy = fSettings["Tgroud_firstcamera.qy"], qz = fSettings["Tgroud_firstcamera.qz"], qw = fSettings["Tgroud_firstcamera.qw"],
+         //       tx = fSettings["Tgroud_firstcamera.tx"], ty = fSettings["Tgroud_firstcamera.ty"], tz = fSettings["Tgroud_firstcamera.tz"];
         mCurrentFrame.mGroundtruthPose_mat = cv::Mat::eye(4, 4, CV_32F);
         Eigen::Quaterniond quaternion(Eigen::Vector4d(qx, qy, qz, qw));
         Eigen::AngleAxisd rotation_vector(quaternion);
@@ -1122,13 +1124,13 @@ void Tracking::CreatObject_intrackmotion(){
             // object appeared in the last 30 frames.
             if(ProIou_only30_flag) {
                 if (obj3d->mnLastAddID > mCurrentFrame.mnId - 30)
-                    obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
+                    obj3d->ComputeProjectRectFrameToCurrentFrame(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
                 else {
                     obj3d->mRect_byProjectPoints = cv::Rect(0, 0, 0, 0);
                 }
             }
             else{
-                obj3d->ComputeProjectRectFrameTo(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
+                obj3d->ComputeProjectRectFrameToCurrentFrame(mCurrentFrame);  //将obj3d中的point投影到当前帧中，计算投影边界框
             }
         }
 

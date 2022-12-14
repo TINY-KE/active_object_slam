@@ -5,10 +5,10 @@
 #--------------------------------------------------------------------------------------------
 
 # Camera calibration and distortion parameters (OpenCV) 
-Camera.fx: 535.4
-Camera.fy: 539.2
-Camera.cx: 320.1
-Camera.cy: 247.6
+Camera.fx: 554.254691191187
+Camera.fy: 554.254691191187
+Camera.cx: 320.5
+Camera.cy: 240.5
 
 Camera.k1: 0.0
 Camera.k2: 0.0
@@ -21,13 +21,13 @@ Camera.max_dis: 5.0
 Camera.min_dis: 0.5
 
 # Camera frames per second 
-Camera.fps: 30.0
+Camera.fps: 20.0
 
 # IR projector baseline times fx (aprox.)
 Camera.bf: 40.0
 
 # Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
-Camera.RGB: 1
+Camera.RGB: 0
 
 # Close/Far threshold. Baseline times.
 ThDepth: 40.0
@@ -35,32 +35,18 @@ ThDepth: 40.0
 # Deptmap values factor
 DepthMapFactor: 1.0
 
-# 1: robot_camera tf; 2: use imu
+# 1: robot_camera tf; 2: use imu     imu pose,qw:0.640856,qx:0.298836,qy:0.298836,qz:0.640856
+# imu pose,qw:0.640856,qx:-0.298836,qy:-0.298836,qz:-0.640856
 ConstraintType: 1
-Trobot_camera.qx: 0.0003
-Trobot_camera.qy: 0.8617
-Trobot_camera.qz: -0.5072
-Trobot_camera.qw: -0.0145
-Trobot_camera.tx: 0.0 #-0.6832
-Trobot_camera.ty: 0.0 #2.6909
-Trobot_camera.tz: 1.7373
-Trobot_camera.down_nbv_height: 0.7
+Trobot_camera.qx: 0.298836
+Trobot_camera.qy: 0.298836
+Trobot_camera.qz: 0.640856
+Trobot_camera.qw: 0.640856
+Trobot_camera.tx: 2.0
+Trobot_camera.ty: 0.0
+Trobot_camera.tz: 1.0
+Trobot_camera.down_nbv_height: 0.0
 
-#Tgroud_firstcamera.qx: 0.0003
-#Tgroud_firstcamera.qy: 0.8617
-#Tgroud_firstcamera.qz: -0.5072
-#Tgroud_firstcamera.qw: -0.0145
-#Tgroud_firstcamera.tx: -0.6832
-#Tgroud_firstcamera.ty: 2.6909
-#Tgroud_firstcamera.tz: 1.7373
-#
-#Trobot_camera.qx: 0
-#Trobot_camera.qy: 0
-#Trobot_camera.qz: 0
-#Trobot_camera.qw: 1
-#Trobot_camera.tx: 0
-#Trobot_camera.ty: 0
-#Trobot_camera.tz: 1.7373    #这一项会影响到candidate的高度
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
@@ -182,4 +168,4 @@ IE.Threshold: 5
 #75,  #花瓶
 #66,  #键盘
 #41   #杯子
-yolo_class: [77,73,56,39,66]
+yolo_class: [77, 73,56, 39,  63, 75,  66, 41]

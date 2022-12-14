@@ -387,7 +387,7 @@ void Viewer::read_local_object_file(){
     }
 
     for(int i=0; i<vObjects.size(); i++){
-        vObjects[i]->compute_information_entroy();
+        vObjects[i]->ComputeIE();
     }
 }
 

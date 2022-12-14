@@ -586,7 +586,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             }
             else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
             {
-                obj3d->ComputeProjectRectFrameTo(*mpCurrentFrame);
+                obj3d->ComputeProjectRectFrameToCurrentFrame(*mpCurrentFrame);
 
                 float fIou_force = Converter::bboxOverlapratio(RectCurrent, obj3d->mRect_byProjectPoints);
                 float fIou2_force = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3d->mRect_byProjectPoints);
@@ -1241,6 +1241,8 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
     }
     mCenterStandar = sqrt(dis / (mvObject_2ds.size()));
 
+    // step 8. 计算ie
+    this->ComputeIE();
 }
 
 // 移除object3d中的outliers，重新优化物体的坐标和尺度
@@ -1394,7 +1396,7 @@ void Object_Map::Update_Twobj()      //更新物体在世界下的坐标
     //this->mCuboid3D.pose_noyaw_mat = Twobj_without_yaw;
 }
 
-void Object_Map::ComputeProjectRectFrameTo(Frame &Frame)
+void Object_Map::ComputeProjectRectFrameToCurrentFrame(Frame &Frame)
 {
     const cv::Mat Rcw = Frame.mTcw.rowRange(0, 3).colRange(0, 3);
     const cv::Mat tcw = Frame.mTcw.rowRange(0, 3).col(3);
@@ -1498,7 +1500,7 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
         cv::Rect ProjectRect_3Dand2D;
 
         // projected bounding box1.
-        this->ComputeProjectRectFrameTo(mCurrentFrame);
+        this->ComputeProjectRectFrameToCurrentFrame(mCurrentFrame);
         ProjectRect_3D = this->mRect_byProjectPoints;
 
         // mixed points of frame object and map object.
@@ -2340,120 +2342,196 @@ void Object_Map::DivideEquallyTwoObjs_fll(Object_Map *AnotherObj, float overlap_
 // ************************************
 
 Object_Map::Object_Map() {
-    init_information_entroy();
+    cv::FileStorage fSettings( WORK_SPACE_PATH + "/config/" +yamlfile_object, cv::FileStorage::READ);
+    if(!fSettings.isOpened())
+	{
+		cout<<"Failed to open settings file at: "<<WORK_SPACE_PATH+yamlfile_object<<endl;
+	}
+	else cout<<"success to open file at: "<<WORK_SPACE_PATH+yamlfile_object<<endl;
+
+    mIE_rows = fSettings["IE.rows"];
+    mIE_cols = fSettings["IE.cols"];
+    std::cout<<"IE_RecoverInit:2  "
+                <<", " << mIE_rows
+                <<", " << mIE_cols
+                <<std::endl;
+    mP_occ = fSettings["IE.P_occ"];
+    mP_free = fSettings["IE.P_free"];
+    mP_prior = fSettings["IE.P_prior"];
+    mIEThreshold = fSettings["IE.Threshold"];
+    IE_RecoverInit();
 }
 
-void Object_Map::init_information_entroy() {
+double Object_Map::IE(const double &p){
+    return -1*p*log(p) - (1-p)*log(1-p);
+}
+
+// 重置每个grid的: point数量,信息熵
+void Object_Map::IE_RecoverInit() {
         //mCuboid3D = object->mCuboid3D;
         //mvpMapObjectMappoints = object->mvpMapObjectMappoints;
 
-        vector<double> InforEntroy_single(18, 0.693147) ;
-        vector<vector<double> > InforEntroy( 18, InforEntroy_single);   vInforEntroy = InforEntroy;
+        //18*18个grid中 点的数量
+        //vector<int> PointNum_OneColu(mIE_rows, 0.0) ;
+        //vector<vector<int> >  PointNum(mIE_cols, PointNum_OneColu);
+        //mvPointNum = PointNum;
+        mvPointNum_mat = cv::Mat::zeros(mIE_rows,mIE_cols,CV_32F);
 
-        vector<double> grid_prob_single(18, 0.5) ;
-        vector<vector<double> > grid_prob( 18, grid_prob_single);   vgrid_prob = grid_prob;
+        //18*18个grid的 占据概率
+        //vector<double> GridProb_OneColu(mIE_rows, mP_prior) ;
+        //vector<vector<double> > GridProb(mIE_cols, GridProb_OneColu);
+        //mvGridProb = GridProb;
+        mvGridProb_mat = cv::Mat::ones(mIE_rows,mIE_cols,CV_32F);
+        mvGridProb_mat *= mP_prior;
 
-        vector<int> pointnum_eachgrid_single(18, 0.0) ;
-        vector<vector<int> >  pointnum_eachgrid(18, pointnum_eachgrid_single);        vpointnum_eachgrid = pointnum_eachgrid;
+        //18*18个grid中 熵的大小(熵最大是0.693147)
+        //vector<double> InforEntroy_OneColu(mIE_rows, IE(mP_prior) ) ;
+        //vector<vector<double> > InforEntroy(mIE_cols, InforEntroy_OneColu);
+        //mvInforEntroy = InforEntroy;
+        mvInforEntroy_mat = cv::Mat::ones(mIE_rows,mIE_cols,CV_32F);
+        mvInforEntroy_mat *= IE(mP_prior);
     }
 
 
+//
+void Object_Map::compute_grid_xy(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y){
+    //假设所有"物体都位于水平面"
 
-void Object_Map::grid_index(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y){
+    //zero_vec是 起点轴.
+    //point_vec 是中心指向point的连线
     Eigen::Vector3d v1(zero_vec(0),zero_vec(1),0.0), v2(point_vec(0),point_vec(1),0.0);
     double cosValNew = v1.dot(v2) / (v1.norm()*v2.norm()); //通过向量的点乘, 计算角度cos值
     double angleNew = acos(cosValNew) * 180 / M_PI;     //弧度角
+    //acos()的正常范围是0~180度.
+    // 因此如果point_vec的y值大于0, 则直接采用angleNew
+    // 反之, 角度等于 180+(180-angleNew) = 360-angleNew
     if(point_vec(1) >= 0)
-        x = floor(angleNew/20.0);
+        x = floor(angleNew/(360.0/mIE_cols));
     else
-        x = floor((360.0-angleNew)/20.0);
+        x = floor((360.0-angleNew)/(360.0/mIE_cols));
 
     y = floor(
-                (  (point_vec(2)  + mCuboid3D.height/2 ) /mCuboid3D.height) * 18
+                (  (point_vec(2)  + mCuboid3D.height/2 ) /mCuboid3D.height) * mIE_rows
             );
     //std::cout<<"[计算y]"  <<point_vec(2)   <<", 中心z " <<  mCuboid3D.cuboidCenter[2] <<",  cube高度 "<< mCuboid3D.height/2 <<std::endl;
 }
 
-void Object_Map::compute_pointnum_eachgrid(){
+// 计算每个grid的点数
+cv::Mat Object_Map::compute_pointnum_eachgrid(){
     float cuboidCenter0 = (mCuboid3D.corner_2[0] + mCuboid3D.corner_8[0])/2.0;
     float cuboidCenter1 = (mCuboid3D.corner_2[1] + mCuboid3D.corner_8[1]) / 2.0;
     float cuboidCenter2 = (mCuboid3D.corner_2[2] + mCuboid3D.corner_8[2])/2.0 ;
     double center_x = cuboidCenter0;
     double center_y = cuboidCenter1;
     double center_z = cuboidCenter2;
-    //g2o::SE3Quat pose = mCuboid3D.pose;
-    //Eigen::Isometry3d T_w2o = fromSE3Quat(mCuboid3D.pose);
+    //object在世界的位姿
     cv::Mat T_w2o_mat = mCuboid3D.pose_mat;
-    //Eigen::MatrixXd T_w2o_eigen = Eigen::toEigenMatrixXd(T_w2o_mat);
     Eigen::Isometry3d T_w2o = ORB_SLAM2::Converter::toSE3Quat(T_w2o_mat);
+    //物体坐标系下, 指向x轴的向量
     Eigen::Vector3d zero_vec( 1,0,0);
     zero_vec = T_w2o* zero_vec;
+
     for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
         cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
         Eigen::Vector3d point_vec( point_pose.at<float>(0)-center_x, point_pose.at<float>(1)-center_y, point_pose.at<float>(2)-center_z);
         int x = -1 , y = -1;
-        grid_index(zero_vec, point_vec,  x,  y);
-        if( x>=0 && x<=18 && y>=0 && y<=18 ) {
-            vpointnum_eachgrid[x][y] += 1;
+        compute_grid_xy(zero_vec, point_vec, x, y);
+        if( x>=0 && x<=mIE_cols && y>=0 && y<=mIE_rows ) {
+            int temp = mvPointNum_mat.at<float>(x,y);
+            std::cout<<"compute_pointnum_eachgrid1: " << temp <<std::endl;
+            mvPointNum_mat.at<float>(x,y) = temp+1;
+            std::cout<<"compute_pointnum_eachgrid2: " << mvPointNum_mat.at<float>(x,y) <<std::endl;
         }
         else{
             std::cout<<"compute grid index: ERROR:i "<<i<<", x "<<x<<", y "<<y<<std::endl;
         }
     }
+
+    return mvPointNum_mat;
 }
 
-void Object_Map::compute_occupied_prob(){
+//计算每个grid的占据概率
+void Object_Map::compute_occupied_prob_eachgrid(){
+    std::cout<<"debug 每个grid的point数量：";
+    for(int x=0; x<mIE_rows; x++){
 
-    for(int x=0; x<18; x++){
-        int num = accumulate(vpointnum_eachgrid[x].begin(), vpointnum_eachgrid[x].end(), 0);
-        if(num > threshold){
+        //计算这一行的点的总数
+        int num_onecol = 0;
+        for(int y=0; y<mIE_cols; y++){
+            std::cout<<mvPointNum_mat.at<float>(x,y)<<"， ";
+            num_onecol +=  mvPointNum_mat.at<float>(x,y);
+        }
+
+
+        //总数大于阈值，才认为管材的有效
+        if(num_onecol > mIEThreshold){
             //当前列的观测到认为有效，即当前列的grid，认为是free或occupied
-            for(int y=0; y<18; y++){
+            for(int y=0; y<mIE_rows; y++){
                 double lnv_p ;
-                if(vpointnum_eachgrid[x][y] == 0){
+                int PointNum = mvPointNum_mat.at<float>(x,y);
+                int ObserveNum = mvObject_2ds.size();
+                if(ObserveNum==0) ObserveNum=40;
+                if(PointNum == 0){
                     //free
-                    //lnv_p = log(vgrid_prob[x][y]) + log(P_free) -log(0.5);
-                    // 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
-                    lnv_p = log(0.5) + log(P_free) -log(0.5);
+                    //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
+                    //lnv_p = log(mP_prior) + ObserveNum * (log(mP_free) -log(mP_prior));
+                    lnv_p = ObserveNum * log( mP_free/ (1.0 - mP_free));
+
                 }
                 else{
                     //occupied
-                    //lnv_p = log(vgrid_prob[x][y]) + log(P_occ) -log(0.5);
-                    // 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
-                    lnv_p = log(0.5) + log(P_occ) -log(0.5);
+                    //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
+                    //lnv_p = log(mP_prior) + ObserveNum * (log(mP_occ) - log(mP_prior));
+                    lnv_p = ObserveNum * log( mP_occ/ (1.0 - mP_occ));
                 }
-                vgrid_prob[x][y] = exp(lnv_p);
+                //mvGridProb_mat.at<float>(x,y) = exp(lnv_p);
+                double bel = 1.0 - 1.0 / (1 + exp(lnv_p));
+                mvGridProb_mat.at<float>(x,y) = (float) bel;
             }
         }
         else{
             ///当前列的观测到认为无效，即当前列的grid，认为是unknown
-             for(int y=0; y<18; y++)
+             for(int y=0; y<mIE_rows; y++)
                  //unkonwn
-                 vgrid_prob[x][y] = 0.5;
+                 mvGridProb_mat.at<float>(x,y) = mP_prior;
         }
-
     }
+    std::cout<<""<<std::endl;
 }
 
-double Object_Map::information_entroy(const double &p){
-    return -1*p*log(p) - (1-p)*log(1-p);
-}
 
-void Object_Map::compute_information_entroy(){
+//计算每个grid的信息熵
+void Object_Map::ComputeIE(){
+    IE_RecoverInit();
+    // 计算每个grid的点数
     compute_pointnum_eachgrid();
-    compute_occupied_prob();
-    //计算各grid的信息熵
-    for(int x=0; x<18; x++)
-        for(int y=0; y<18; y++)
-            vInforEntroy[x][y] = information_entroy(vgrid_prob[x][y]);
+    //计算每个grid的占据概率
+    compute_occupied_prob_eachgrid();
 
-    //计算主向量
+    //计算各grid的信息熵
+    std::cout<<"debug 每个grid的占据概率：";
+    for(int x=0; x<mIE_cols; x++)
+        for(int y=0; y<mIE_rows; y++){
+            std::cout<<mvGridProb_mat.at<float>(x,y)<<"， ";
+            mvInforEntroy_mat.at<float>(x,y) = IE(mvGridProb_mat.at<float>(x,y));
+        }
+    std::cout<<""<<std::endl;
+
+    //计算总的信息熵mIE
+    double entroy = 0;
+    for(int x=0; x<mIE_cols; x++)
+        for(int y=0; y<mIE_rows; y++){
+            entroy += mvInforEntroy_mat.at<float>(x,y);
+        }
+    mIE = entroy/(mIE_cols*mIE_rows);
+
+    //计算主向量, 注意:这是在world坐标系下描述的
     double main_x, main_y, main_z;
     for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
         cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
-        main_x +=  point_pose.at<float>(0);
-        main_y +=  point_pose.at<float>(1);
-        main_z +=  point_pose.at<float>(2);
+        main_x +=  point_pose.at<float>(0) - this->mCuboid3D.cuboidCenter(0) ;
+        main_y +=  point_pose.at<float>(1) - this->mCuboid3D.cuboidCenter(1) ;
+        main_z +=  point_pose.at<float>(2) - this->mCuboid3D.cuboidCenter(2) ;
     }
     double normalize = sqrt( main_x*main_x + main_y*main_y + main_z*main_z );
     main_x = main_x/normalize;
@@ -2461,18 +2539,66 @@ void Object_Map::compute_information_entroy(){
     main_z = main_z/normalize;
     mMainDirection =  Eigen::Vector3d(main_x, main_y, main_z);
 
-    //记录栅格的状态
+    //记录栅格的状态??
 }
 
 
 
 double Object_Map::get_information_entroy(){
-    double entroy = 0;
-    for(int x=0; x<18; x++)
-        for(int y=0; y<18; y++){
-            entroy += vInforEntroy[x][y];
-        }
-    return entroy/(18.0*18.0);
+    return mIE;
 }
+
+
+
+// ************************************
+// object3d 筛选候选点 *
+// ************************************
+bool Object_Map::WheatherInRectFrameOf(const cv::Mat &Tcw, const float &fx, const float &fy, const float &cx, const float &cy, const float &ImageWidth, const float &ImageHeight)
+{
+    const cv::Mat Rcw = Tcw.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = Tcw.rowRange(0, 3).col(3);
+    vector<float> x_pt;
+    vector<float> y_pt;
+    for (int j = 0; j < mvpMapObjectMappoints.size(); j++)
+    {
+        MapPoint *pMP = mvpMapObjectMappoints[j];
+        cv::Mat PointPosWorld = pMP->GetWorldPos();
+
+        cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+        const float xc = PointPosCamera.at<float>(0);
+        const float yc = PointPosCamera.at<float>(1);
+        const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+        float u = fx * xc * invzc + cx;
+        float v = fy * yc * invzc + cy;
+
+        x_pt.push_back(u);
+        y_pt.push_back(v);
+
+    }
+
+    if (x_pt.size() == 0)
+        return false;
+
+    sort(x_pt.begin(), x_pt.end());
+    sort(y_pt.begin(), y_pt.end());
+    float x_min = x_pt[0];
+    float x_max = x_pt[x_pt.size() - 1];
+    float y_min = y_pt[0];
+    float y_max = y_pt[y_pt.size() - 1];
+
+    if (x_min < 0)
+        return false;
+    if (y_min < 0)
+        return false;
+    if (x_max > ImageWidth)
+        return false;
+    if (y_max > ImageHeight)
+        return false;
+    //Camera.width: 640
+    //Camera.height: 480
+}
+
 
 }

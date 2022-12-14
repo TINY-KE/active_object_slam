@@ -27,6 +27,11 @@
 #include"Thirdparty/g2o/g2o/types/types_six_dof_expmap.h"
 #include"Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
+//eigen cv的convert
+#include<opencv2/core/core.hpp>
+#include<opencv2/features2d/features2d.hpp>
+#include<opencv2/core/eigen.hpp>
+
 namespace ORB_SLAM2
 {
 
@@ -57,7 +62,23 @@ public:
     static float bboxOverlapratioLatter(const cv::Rect& rect1, const cv::Rect& rect2);
     static float bboxOverlapratioFormer(const cv::Rect& rect1, const cv::Rect& rect2);
 
-    static Eigen::Matrix4d toMatrix4d(const cv::Mat &cvMat4);
+
+
+//位姿的形式变换
+
+    static cv::Mat Quation2CvMat(const double qx, const double qy, const double qz, const double qw, const double tx, const double ty, const double tz  );
+    static Eigen::Matrix4d Quation2Eigen(const double qx, const double qy, const double qz, const double qw, const double tx, const double ty, const double tz  );
+
+    static Eigen::Quaterniond toQuaterniond(const Eigen::Isometry3d &Iso );
+    static Eigen::Quaterniond toQuaterniond( const Eigen::Matrix4d &matrix );
+    static Eigen::Quaterniond toQuaterniond( const cv::Mat &mat );
+
+    static Eigen::Isometry3d Matrix4dtoIsometry3d(const Eigen::Matrix4d &matrix );
+    static Eigen::Matrix4d Isometry3dtoMatrix4d(const Eigen::Isometry3d &Iso );
+    static Eigen::Matrix4d cvMattoMatrix4d(const cv::Mat &cvMat4);
+    static Eigen::Isometry3d cvMattoIsometry3d(const cv::Mat &cvMat4);
+
+
 };
 
 }// namespace ORB_SLAM
