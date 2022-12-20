@@ -133,7 +133,8 @@
   + e->setLevel(1);    // 设置为outlier , level 1 对应为外点,上面的过程中我们设置其为不优化
   + e->setLevel(0);   // 设置为inlier, level 0 对应为内点,上面的过程中我们就是要优化这些关系
 + mappoint的深入学习，对扭头算法很重要 https://guyuehome.com/37713
-
++ 雷达的point怎么生成的？
+  + 
 
 ### 0 track的流程
 + 如果trackmotion  或者trackReference  成功了(bOK==TRUE). 那么我们就获得了相机的粗略位姿. 接下来通过TrackLocalMap ,获得更精确的位姿.  
