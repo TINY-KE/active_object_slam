@@ -50,6 +50,9 @@ mpMap(map), mpTracker(pTracking)
     //新方法：
     mT_body_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
     down_nbv_height = fSettings["Trobot_camera.down_nbv_height"];
+
+    mMaxPlaneHeight = fSettings["Plane.Height.Max"];
+    mMinPlaneHeight = fSettings["Plane.Height.Min"];
 }
 
 void NbvGenerator::Run() {
@@ -117,6 +120,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
+        cout<< "垂直夹角angle:"<<angle<<std::endl;
         if ((angle < 0.2) && (angle > -0.2))
             continue;
 
@@ -159,7 +163,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         pcl::getMeanStd(vec_z, mean_z, stddev_z);
         cout<< "mean z1:"<<mean_z<<std::endl;
         // 桌面高度太小，忽略
-        if(mean_z>1.7 || mean_z<0.2)
+        if(mean_z>mMaxPlaneHeight || mean_z<mMinPlaneHeight)
             continue;
         cout<< "mean z2:"<<mean_z<<std::endl;
         pcl::getMeanStd(vec_x, mean_x, stddev_x);

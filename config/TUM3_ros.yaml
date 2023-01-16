@@ -150,6 +150,8 @@ IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
 IE.Threshold: 5
+Plane.Height.Max: 1.7
+Plane.Height.Min: 0.2
 
 #--------------------------------------------------------------------------------------------
 # yolo

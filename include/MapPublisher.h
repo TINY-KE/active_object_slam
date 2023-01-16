@@ -95,6 +95,10 @@ private:
     ros::Publisher publisher_IE;
     ros::Publisher publisher_robotpose;
 
+    //tf tree
+    tf::TransformBroadcaster odom_broadcaster;
+    tf::TransformBroadcaster camera_broadcaster;
+
     visualization_msgs::Marker mPoints;
     visualization_msgs::Marker mReferencePoints;
     visualization_msgs::Marker mKeyFrames;
@@ -132,6 +136,8 @@ public:
 //机器人底盘的位姿
 public:
     cv::Mat mT_body_cam;   //相机在机器人上的坐标
+    geometry_msgs::Quaternion mQuaternion_robot_camera;   //机器人到相机坐标系的旋转关系
+    geometry_msgs::Vector3_<float> mTranslation_robot_camera;   //机器人到相机坐标系的平移关系
 };
 
 } //namespace ORB_SLAM

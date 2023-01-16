@@ -247,8 +247,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         ConstraintType = 1;
     }
     if (ConstraintType == 1){// robot_camera tf
-        float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
-                tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
+        float qx = fSettings["Trobot_baselink.qx"], qy = fSettings["Trobot_baselink.qy"], qz = fSettings["Trobot_baselink.qz"], qw = fSettings["Trobot_baselink.qw"],
+                tx = fSettings["Trobot_baselink.tx"], ty = fSettings["Trobot_baselink.ty"], tz = fSettings["Trobot_baselink.tz"];
          //float qx = fSettings["Tgroud_firstcamera.qx"], qy = fSettings["Tgroud_firstcamera.qy"], qz = fSettings["Tgroud_firstcamera.qz"], qw = fSettings["Tgroud_firstcamera.qw"],
          //       tx = fSettings["Tgroud_firstcamera.tx"], ty = fSettings["Tgroud_firstcamera.ty"], tz = fSettings["Tgroud_firstcamera.tz"];
         mCurrentFrame.mGroundtruthPose_mat = cv::Mat::eye(4, 4, CV_32F);

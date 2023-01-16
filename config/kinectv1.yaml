@@ -37,14 +37,44 @@ DepthMapFactor: 1.0
 
 # 1: robot_camera tf; 2: use imu     imu pose,qw:0.640856,qx:0.298836,qy:0.298836,qz:0.640856
 # imu pose,qw:0.640856,qx:-0.298836,qy:-0.298836,qz:-0.640856
+# qw:0.627211,qx:0.326505,qy:0.326505,qz:0.627211
 ConstraintType: 1
-Trobot_camera.qx: 0.298836
-Trobot_camera.qy: 0.298836
-Trobot_camera.qz: 0.640856
-Trobot_camera.qw: 0.640856
-Trobot_camera.tx: 2.0
+Trobot_baselink.qw: -0.364187
+Trobot_baselink.qx: 0.606109
+Trobot_baselink.qy: 0.606109
+Trobot_baselink.qz: -0.364187
+
+Trobot_baselink.tx: 0.0
+Trobot_baselink.ty: 0.0
+Trobot_baselink.tz: 1.2
+
+
+
+
+
+#translation from baselink frame to camera frame
+#tum
+#Trobot_camera.qx: 0.0003
+#Trobot_camera.qy: 0.8617
+#Trobot_camera.qz: -0.5072
+#Trobot_camera.qw: -0.0145
+
+#v1  -0.364187,qx:0.606109,qy:-0.606109,qz:0.364187
+#gazebo camera pose,qw:-0.364187,qx:0.606109,qy:0.606109,qz:-0.364187
+Trobot_camera.qw: -0.364187
+Trobot_camera.qx: 0.606109
+Trobot_camera.qy: -0.606109
+Trobot_camera.qz: 0.364187
+
+#kinectdk 20 5?
+#Trobot_camera.qx: -0.506
+#Trobot_camera.qy: 0.507
+#Trobot_camera.qz: -0.493
+#Trobot_camera.qw: 0.494
+
+Trobot_camera.tx: 0.0
 Trobot_camera.ty: 0.0
-Trobot_camera.tz: 1.0
+Trobot_camera.tz: 1.2
 Trobot_camera.down_nbv_height: 0.0
 
 
@@ -52,7 +82,7 @@ Trobot_camera.down_nbv_height: 0.0
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 
-# ORB Extractor: Number of features per image
+# ORB Extractor: Number of features per image0
 ORBextractor.nFeatures: 1000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
@@ -112,6 +142,7 @@ Plane.VPChi: 300
 Plane.ParallelInfo: 0.5
 Plane.VerticalInfo: 0.5
 
+
 #--------------------------------------------------------------------------------------------
 # Supposed Plane Extraction Parameters
 #--------------------------------------------------------------------------------------------
@@ -136,6 +167,8 @@ IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
 IE.Threshold: 5
+Plane.Height.Max: 0.2
+Plane.Height.Min: 0.1
 
 #--------------------------------------------------------------------------------------------
 # yolo
@@ -168,4 +201,4 @@ IE.Threshold: 5
 #75,  #花瓶
 #66,  #键盘
 #41   #杯子
-yolo_class: [77, 73,56, 39,  63, 75,  66, 41]
+yolo_class: [77, 73,56, 39,  63, 75,  66,  41]

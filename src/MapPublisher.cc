@@ -141,6 +141,13 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     //cv_mat_32f.convertTo(mT_body_cam, CV_32F);
     //新方法：
     mT_body_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
+    mQuaternion_robot_camera.x = qx;
+    mQuaternion_robot_camera.y = qy;
+    mQuaternion_robot_camera.z = qz;
+    mQuaternion_robot_camera.w = qw;
+    mTranslation_robot_camera.x = tx;
+    mTranslation_robot_camera.y = ty;
+    mTranslation_robot_camera.z = tz;
 }
 
 void MapPublisher::Refresh()
@@ -383,12 +390,15 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
     robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
     robotpose.pose.pose.position.z = 0.0;
-    //Eigen::Vector3d v(1,0,0);
-    //v = Converter::cvMattoIsometry3d(T_w_body)*v;
-    Eigen::AngleAxisd rotation_vector (-M_PI/2.0, Eigen::Vector3d(0,0,1));
-    Eigen::Quaterniond q_y_x = Eigen::Quaterniond(rotation_vector);
+    //（1）gazebo中的四元数和rviz的不同，需要绕着z轴转90度
+    //Eigen::AngleAxisd rotation_vector (-M_PI/2.0, Eigen::Vector3d(0,0,1));
+    //Eigen::Quaterniond q_y_x = Eigen::Quaterniond(rotation_vector);
+    //Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
+    //Eigen::Quaterniond q = q_y_x * q_w_body;
+    //（2）不饶z轴转90度
     Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
-    Eigen::Quaterniond q = q_y_x * q_w_body;
+    Eigen::Quaterniond q = q_w_body;
+
     robotpose.pose.pose.orientation.w = q.w();
     robotpose.pose.pose.orientation.x = q.x();
     robotpose.pose.pose.orientation.y = q.y();
@@ -397,6 +407,29 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     robotpose.header.stamp=ros::Time::now();
     publisher_robotpose.publish(robotpose);
 
+    //发布tf树
+    //发布机器人底盘和odom的tf变换
+    geometry_msgs::TransformStamped odom_trans;
+    ros::Time current_time = ros::Time::now();
+    odom_trans.header.stamp = current_time;
+    odom_trans.header.frame_id = "odom";
+    odom_trans.child_frame_id = "base_link";
+    odom_trans.transform.translation.x = robotpose.pose.pose.position.x;
+    odom_trans.transform.translation.y = robotpose.pose.pose.position.y;
+    odom_trans.transform.translation.z = 0.0;
+    odom_trans.transform.rotation = robotpose.pose.pose.orientation; //Quaternion_odom_robot;
+    odom_broadcaster.sendTransform(odom_trans);
+
+    // 5.5 发布camera_depth_optical_frame和base_link的tf变换
+    geometry_msgs::TransformStamped camera_trans;
+    camera_trans.header.stamp = current_time;
+    camera_trans.header.frame_id = "base_link";
+    camera_trans.child_frame_id = "camera_depth_optical_frame";
+    camera_trans.transform.translation.x = mTranslation_robot_camera.x;
+    camera_trans.transform.translation.y = mTranslation_robot_camera.y;
+    camera_trans.transform.translation.z = mTranslation_robot_camera.z;
+    camera_trans.transform.rotation = mQuaternion_robot_camera;
+    camera_broadcaster.sendTransform(camera_trans);
 }
 //void MapPublisher::PublishPlane(const vector<MapPlane *> &vpMPls ){
 //    mPlanes.points.clear();

@@ -108,12 +108,14 @@ public: //NBV MAM
     float mImageWidth, mImageHeight;
     float mdivide;
     float down_nbv_height;       //nbv的高度
+    float mMaxPlaneHeight, mMinPlaneHeight;
     cv::Mat mT_body_cam;   //相机在机器人上的坐标
     double mPitch;  //相机的俯仰角
     //double mgreat_angle = 0;
     //std::mutex mMutexMamAngle;
     //double getMamGreadAngle();
     string mstrSettingPath;
+
 };
 
 }

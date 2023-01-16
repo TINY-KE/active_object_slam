@@ -2,7 +2,7 @@
 <!--     <include file="$(find darknet_ros)/launch/darknet_ros.launch"/> -->
 <!-- launch-prefix="gdb -ex run - -args"   -->
     <!-- launch-prefix="valgrind"   -->
-    <node pkg="active_eao_new"  type="active_rgbd"  name="active_rgbd"  output="screen" >
+    <node pkg="active_eao_new"  type="active_rgbd"  name="active_rgbd"  output="screen" launch-prefix="gdb -ex run --args" >
         <!-- <param name="sensor" value="MONO"/> -->
         <param name="sensor" value="RGBD"/>
         <param name="online" value="true" type="bool"/>
