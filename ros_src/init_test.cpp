@@ -31,12 +31,14 @@
 #include <message_filters/sync_policies/approximate_time.h>
 
 #include <opencv2/core/core.hpp>
-#include <geometry_msgs/PoseStamped.h> 
+#include <geometry_msgs/PoseStamped.h>
+#include <std_msgs/Float64.h>
 #include <tf/tf.h> 
 #include <tf/transform_datatypes.h> 
 #include "Converter.h"
 #include "System.h"
 #include "yolo_label.h"
+
 
 // darknet_ros_msgs
 #include <darknet_ros_msgs/BoundingBoxes.h>
@@ -74,6 +76,10 @@ std::vector<string> yolo_id = {
         "sink水槽", "refrigerator冰箱", "book书", "clock钟", "vase花瓶", //71
         "scissors", "teddy bear泰迪熊",  "hair drier", "toothbrush"};//76
 //yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
+
+//NBV MAM
+ros::Publisher pub_mam;
+int loop = 0;
 
 class ImageGrabber
 {
@@ -120,6 +126,7 @@ int main(int argc, char **argv)
     //(3)接受ros topic
     ImageGrabber igb(&SLAM);
     ros::NodeHandle nh;
+    pub_mam = nh.advertise<std_msgs::Float64>("/mam_angle", 10); //NBV MAM
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/rgb/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/depth_to_rgb/image_raw", 1);
     message_filters::Subscriber<darknet_ros_msgs::BoundingBoxes> bbox_sub(nh, "/darknet_ros/bounding_boxes", 1);
@@ -175,6 +182,16 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
 
     cv::Mat Tcw;
     Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,  cv_ptrD->image,  cv_ptrRGB->header.stamp.toSec(),  BboxVector);
+
+    //NBV MAM
+    if( loop == 20){
+        std_msgs::Float64 msg;
+        msg.data =  mpSLAM -> getMamGreadAngle();
+        pub_mam.publish(msg);
+        loop = 0;
+    }else{
+        loop ++;
+    }
 }
 
 vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::BoundingBox>& boxes){

@@ -2,8 +2,20 @@
 **目标：试图调整 EAO-SLAM ，建立物体级active slam**
 
 **TODO**
-+ 在rviz中显示正确的信息熵
-+ nbv只显示best的那个
++ 改良信息熵的计算公式
++ int ObserveNum = mvObject_2ds.size();  
+  + if(ObserveNum==0) ObserveNum=40;//todo:  这是因为在融合的时候,有一步没把mvObject_2ds融合
++ marker.id= IE_id ;  //TODO:绝对数字
+  + 确定id是不是只针对同一个topic下的可视化单元. 本可视化程序中已经将他们拆分为多个topic了. 应该没什么问题吧
++ mNBV_Angle_correct 为什么需要纠正一下呢??
++ 根据当前的位置显示局部候选点
++ 把costmap在slam找那个生成,从而可以把把cost融入到nbv的评价函数中.
++ 平面的g2o优化 还没加进去
++ 为什么老版本程序中MapPoint::PredictScale只有一个,而且很简短
++ camera camera_model(MD,20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
++ 如何在扭头时，发布对应的baselink_camera的正确的tf
+  + 假设扭头在仿真环境中是瞬时且准确的。
+  + 
 
 **已完成部分：**
 + 将yolo改为ros版本（darknet ros）,并通过ros message_filters::Synchronizer进行输入.
@@ -43,6 +55,8 @@
 
 **失败的内容：**
 + evo比较有无平面优化时，轨迹精度的变化。 只能通过读取本地图片与物体检测的方法，进行比较
++ 在rviz中显示正确的信息熵
+  + rviz不支持这个功能
 + 
 
 ### 2 知识学习

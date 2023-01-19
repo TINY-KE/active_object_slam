@@ -75,6 +75,7 @@ private:
     ros::NodeHandle nh;
     visualization_msgs::Marker mCandidate;
     visualization_msgs::Marker mPlanesCentroid;
+    int  mbPubNavGoal;
 
     const char* CANDIDATE_NAMESPACE = "Candidate";
     const char* MAP_FRAME_ID = "map"; //  odom   imu_link   /ORB_SLAM/World    map
@@ -86,7 +87,7 @@ private:
     ros::Publisher publisher_candidate;
     int mtest = 5;
     ros::Publisher publisher_candidate_unsort;
-
+    ros::Publisher publisher_nbv;
     vector<Candidate> mvGlobalCandidate;
     vector<Candidate> mvLocalCandidate;
     Candidate NBV;
@@ -98,18 +99,23 @@ private:
     double computeCosAngle(cv::Mat &candidate, cv::Mat &objectPose, Eigen::Vector3d &ie);
     void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
     void ExtractNBV();
-    void PublishPlanesAndCamera();
+    void PublishPlanesAndNBV();
     void PublishNBV();
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
     void PublishCamera(const vector<Candidate> &candidates);
 
-public: //NBV MAM
+//NBV MAM
+private:
     float mfx, mfy, mcx, mcy;
     float mImageWidth, mImageHeight;
     float mdivide;
     float down_nbv_height;       //nbv的高度
     float mMaxPlaneHeight, mMinPlaneHeight;
-    cv::Mat mT_body_cam;   //相机在机器人上的坐标
+    cv::Mat mT_baselink_cam;       //相机在机器人底盘上的坐标
+    cv::Mat mT_world_initbaselink;     //初始机器人底盘在世界中的坐标
+    cv::Mat mT_world_cam;     //初始相机在世界中的坐标
+    double mNBV_Angle_correct;
+    int mCandidate_num_topub; //展示的候选观测点的数量
     double mPitch;  //相机的俯仰角
     //double mgreat_angle = 0;
     //std::mutex mMutexMamAngle;

@@ -179,6 +179,10 @@ private:
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
+
+//NBV MAM
+public:
+    double getMamGreadAngle();
 };
 
 }// namespace ORB_SLAM

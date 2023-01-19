@@ -38,6 +38,9 @@
 #include<mutex>
 #include <unistd.h>
 
+//NBV MAM
+#include<camera.h>
+
 using namespace std;
 
 namespace ORB_SLAM2
@@ -186,6 +189,12 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
 
+    //NBV MAM
+    float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
+          tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
+    mT_baselink_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
+    mDivide = fSettings["MAM.divide"];
+    //NBV MAM END
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -247,8 +256,8 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         ConstraintType = 1;
     }
     if (ConstraintType == 1){// robot_camera tf
-        float qx = fSettings["Trobot_baselink.qx"], qy = fSettings["Trobot_baselink.qy"], qz = fSettings["Trobot_baselink.qz"], qw = fSettings["Trobot_baselink.qw"],
-                tx = fSettings["Trobot_baselink.tx"], ty = fSettings["Trobot_baselink.ty"], tz = fSettings["Trobot_baselink.tz"];
+        float qx = fSettings["Tworld_camera.qx"], qy = fSettings["Tworld_camera.qy"], qz = fSettings["Tworld_camera.qz"], qw = fSettings["Tworld_camera.qw"],
+                tx = fSettings["Tworld_camera.tx"], ty = fSettings["Tworld_camera.ty"], tz = fSettings["Tworld_camera.tz"];
          //float qx = fSettings["Tgroud_firstcamera.qx"], qy = fSettings["Tgroud_firstcamera.qy"], qz = fSettings["Tgroud_firstcamera.qz"], qw = fSettings["Tgroud_firstcamera.qw"],
          //       tx = fSettings["Tgroud_firstcamera.tx"], ty = fSettings["Tgroud_firstcamera.ty"], tz = fSettings["Tgroud_firstcamera.tz"];
         mCurrentFrame.mGroundtruthPose_mat = cv::Mat::eye(4, 4, CV_32F);
@@ -1320,6 +1329,111 @@ bool Tracking::TrackLocalMap()
         }
     }
     // add plane end
+
+    // NBV MAM: check the camera model
+    map_data MD;
+    double theta_interval;
+
+    //unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+    vector<MapPoint*> vpPts = mpMap->GetAllMapPoints();
+    //cout << "totally " << vpPts.size() << " points." << endl;
+    for(size_t i=0; i<vpPts.size(); i++){
+        if(vpPts[i]->isBad())
+            continue;
+
+        cv::Mat Tsc_curr = mCurrentFrame.mTcw.clone().inv();   //TODO: 如何使用运动模型 mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
+
+
+        float minDist = vpPts[i]->GetMinDistanceInvariance();
+        float maxDist = vpPts[i]->GetMaxDistanceInvariance();
+        float foundRatio = vpPts[i]->GetFoundRatio();
+
+        //float Dist = sqrt((Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))*(Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))+
+        //(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(1))*(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(2))+
+        //(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2))*(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2)));
+
+        //if((Dist > maxDist)||(Dist < minDist))
+        //    continue;
+
+        MD.Map.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0),   vpPts[i]->GetWorldPos().at<float>(1),  vpPts[i]->GetWorldPos().at<float>(2)});
+
+        if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){
+            theta_interval = 10.0/57.3;
+        }else{
+            theta_interval = vpPts[i]->theta_std * 2.5;
+        }
+
+        MD.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));
+        MD.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));
+        MD.maxDist.push_back(double(maxDist));
+        MD.minDist.push_back(double(minDist));
+        MD.foundRatio.push_back(double(foundRatio));
+    }
+
+
+    camera camera_model(MD,20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
+    cv::FileStorage fSettings(mStrSettingPath, cv::FileStorage::READ);
+    float fx = fSettings["Camera.fx"];
+    float fy = fSettings["Camera.fy"];
+    float cx = fSettings["Camera.cx"];
+    float cy = fSettings["Camera.cy"];
+    float width = fSettings["Camera.width"];
+    float heigh = fSettings["Camera.height"];
+    float max_dis = fSettings["Camera.max_dis"];
+    float min_dis = fSettings["Camera.min_dis"];
+    camera_model.setCamera(fx, fy, cx, cy, width, heigh, max_dis, min_dis );
+    // compute the pose in the body frame
+    if(!mCurrentFrame.mTcw.empty()){
+
+        //cv::Mat Tsc = mCurrentFrame.mTcw.clone().inv();
+        //cv::Mat T_wb_mat = cv::Mat(T_ws_mat*Tsc*T_cb_mat);   //zhang: 世界到机器人身体的变换
+        ////zhang    T_ws_mat是世界到相机start位姿的变换.  Tsc是相机start位姿到当前相机位姿的变换??   T_cb_mat是相机到机器人身体的变换.
+        //cv::Mat Twb_cam = T_wb_initial_mat.inv()*T_wb_mat; //zhang:  第五帧位姿, 到当前帧的位姿变换
+
+        cv::Mat Twc_cam = mCurrentFrame.mTcw.clone().inv();
+        //visible_info VI;
+        int visible_pts = 0;
+        double great_angle = -5.0;
+
+        cv::Mat body = cv::Mat::eye(4,4,CV_32F);
+        body =Twc_cam * mT_baselink_cam.inv() ;
+        //std::cout<<"result: "<<  body<<std::endl;
+        cv::Mat body_new;
+
+        for(int i=0; i<=mDivide; i++){
+            double angle = M_PI/mDivide * i - M_PI/2.0 ;
+            //旋转
+            Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
+            Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
+            //Eigen::Isometry3d trans_matrix;
+            //trans_matrix.rotate(rotation_vector);
+            //trans_matrix.pretranslate(Vector3d(0,0,0));
+            cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+
+            //平移
+            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
+
+            //总变换矩阵
+            cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
+            rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
+            t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
+
+            body_new = body * trans_mat;   //旋转之后的机器人位姿
+            Twc_cam = body_new * mT_baselink_cam;   //旋转之后的相机位姿
+            int num = camera_model.countVisible(Twc_cam);
+            cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
+            if(num > visible_pts){
+                great_angle = angle;
+                visible_pts = num;
+            }
+
+        }
+        unique_lock<mutex> lock(mMutexMamAngle);
+        mGreat_angle = great_angle/M_PI*180 ;
+        cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle << endl;
+    }
+    // NBV MAM: check the camera model end
+
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
@@ -2437,6 +2551,11 @@ void Tracking::SampleObjYaw(Object_Map* obj3d)
 void Tracking::SetNbvGenerator(NbvGenerator *pNbvGenerator)
 {
     mpNbvGenerator = pNbvGenerator;
+}
+
+double Tracking::getMamGreadAngle(){
+    unique_lock<mutex> lock(mMutexMamAngle);
+    return  mGreat_angle;
 }
 
 } //namespace ORB_SLAM

@@ -69,9 +69,9 @@ public:
     static cv::Mat Quation2CvMat(const double qx, const double qy, const double qz, const double qw, const double tx, const double ty, const double tz  );
     static Eigen::Matrix4d Quation2Eigen(const double qx, const double qy, const double qz, const double qw, const double tx, const double ty, const double tz  );
 
-    static Eigen::Quaterniond toQuaterniond(const Eigen::Isometry3d &Iso );
-    static Eigen::Quaterniond toQuaterniond( const Eigen::Matrix4d &matrix );
-    static Eigen::Quaterniond toQuaterniond( const cv::Mat &mat );
+    static Eigen::Quaterniond ExtractQuaterniond(const Eigen::Isometry3d &Iso );
+    static Eigen::Quaterniond ExtractQuaterniond(const Eigen::Matrix4d &matrix );
+    static Eigen::Quaterniond ExtractQuaterniond(const cv::Mat &mat );
 
     static Eigen::Isometry3d Matrix4dtoIsometry3d(const Eigen::Matrix4d &matrix );
     static Eigen::Matrix4d Isometry3dtoMatrix4d(const Eigen::Isometry3d &Iso );

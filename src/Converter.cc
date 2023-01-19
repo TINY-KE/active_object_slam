@@ -237,19 +237,19 @@ Eigen::Isometry3d Converter::cvMattoIsometry3d(const cv::Mat &cvMat4){
             );
 }
 
-Eigen::Quaterniond Converter::toQuaterniond(const Eigen::Isometry3d &Iso){
+Eigen::Quaterniond Converter::ExtractQuaterniond(const Eigen::Isometry3d &Iso){
     Eigen::Quaterniond q = Eigen::Quaterniond(Iso.rotation());
     return q;
 }
 
-Eigen::Quaterniond Converter::toQuaterniond(const Eigen::Matrix4d &matrix ){
-    return toQuaterniond(
+Eigen::Quaterniond Converter::ExtractQuaterniond(const Eigen::Matrix4d &matrix ){
+    return ExtractQuaterniond(
             Matrix4dtoIsometry3d(matrix)
     );
 }
 
-Eigen::Quaterniond Converter::toQuaterniond(const cv::Mat &mat ){
-    return toQuaterniond(
+Eigen::Quaterniond Converter::ExtractQuaterniond(const cv::Mat &mat ){
+    return ExtractQuaterniond(
             cvMattoIsometry3d(mat)
     );
 }

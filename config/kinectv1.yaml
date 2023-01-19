@@ -39,17 +39,14 @@ DepthMapFactor: 1.0
 # imu pose,qw:0.640856,qx:-0.298836,qy:-0.298836,qz:-0.640856
 # qw:0.627211,qx:0.326505,qy:0.326505,qz:0.627211
 ConstraintType: 1
-Trobot_baselink.qw: -0.364187
-Trobot_baselink.qx: 0.606109
-Trobot_baselink.qy: 0.606109
-Trobot_baselink.qz: -0.364187
+Tworld_camera.qw: -0.364187
+Tworld_camera.qx: 0.606109
+Tworld_camera.qy: 0.606109
+Tworld_camera.qz: -0.364187
 
-Trobot_baselink.tx: 0.0
-Trobot_baselink.ty: 0.0
-Trobot_baselink.tz: 1.2
-
-
-
+Tworld_camera.tx: 0.0
+Tworld_camera.ty: 0.0
+Tworld_camera.tz: 1.2
 
 
 #translation from baselink frame to camera frame
@@ -166,10 +163,12 @@ IE.cols: 18
 IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
-IE.Threshold: 5
+IE.Threshold: 3
 Plane.Height.Max: 0.2
 Plane.Height.Min: 0.1
-
+NBV_Angle_correct_factor: -0.5
+Candidate_num_topub: 1
+PubNavGoal: 1
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

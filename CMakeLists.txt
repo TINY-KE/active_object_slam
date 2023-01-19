@@ -135,12 +135,14 @@ add_library(${PROJECT_NAME}_lib SHARED
    src/detect_3d_cuboid/matrix_utils.cpp
 
    # plane
-    src/MapPlane.cc
+   src/MapPlane.cc
 #    ../src/g2oAddition/EdgePlane.cc
 #    ../src/g2oAddition/VertexPlane.cc
 
    # NBV
-        src/NbvGenerator.cpp
+   src/NbvGenerator.cpp
+   # NBV MAM
+   src/camera.cc
 
 )
 

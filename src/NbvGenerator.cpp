@@ -16,7 +16,7 @@ mpMap(map), mpTracker(pTracking)
     pubCloud = nh.advertise<sensor_msgs::PointCloud2>("plane", 1000);
     publisher_candidate = nh.advertise<visualization_msgs::Marker>("candidate", 1000);
     publisher_candidate_unsort = nh.advertise<visualization_msgs::Marker>("candidate_unsort", 1000);
-
+    publisher_nbv = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1);
     fPointSize=0.01;
     mCandidate.header.frame_id = MAP_FRAME_ID;
     mCandidate.ns = CANDIDATE_NAMESPACE;
@@ -34,25 +34,24 @@ mpMap(map), mpTracker(pTracking)
     mImageHeight = fSettings["Camera.height"];
     mdivide = fSettings["MAM.divide"];
 
-    //坐标关系,用于生成
+    //
     float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
-                tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
-    //mT_body_cam = cv::Mat::eye(4, 4, CV_32F);
-    //Eigen::Quaterniond quaternion(Eigen::Vector4d(qx, qy, qz, qw));
-    //Eigen::AngleAxisd rotation_vector(quaternion);
-    //Eigen::Isometry3d T = Eigen::Isometry3d::Identity();
-    //T.rotate(rotation_vector);
-    //T.pretranslate(Eigen::Vector3d(tx, ty, tz));
-    //Eigen::Matrix4d GroundtruthPose_eigen = T.matrix();
-    //cv::Mat cv_mat_32f;
-    //cv::eigen2cv(GroundtruthPose_eigen, cv_mat_32f);
-    //cv_mat_32f.convertTo(mT_body_cam, CV_32F);
-    //新方法：
-    mT_body_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
-    down_nbv_height = fSettings["Trobot_camera.down_nbv_height"];
+          tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
+    mT_baselink_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
 
+    qx = fSettings["Tworld_camera.qx"], qy = fSettings["Tworld_camera.qy"], qz = fSettings["Tworld_camera.qz"], qw = fSettings["Tworld_camera.qw"],
+    tx = fSettings["Tworld_camera.tx"], ty = fSettings["Tworld_camera.ty"], tz = fSettings["Tworld_camera.tz"];
+    mT_world_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
+
+    mT_world_initbaselink  = mT_world_cam * mT_baselink_cam.inv();
+
+    double factor = fSettings["NBV_Angle_correct_factor"];
+    mNBV_Angle_correct = factor * M_PI;
+    mCandidate_num_topub = fSettings["Candidate_num_topub"];
+    down_nbv_height = fSettings["Trobot_camera.down_nbv_height"];
     mMaxPlaneHeight = fSettings["Plane.Height.Max"];
     mMinPlaneHeight = fSettings["Plane.Height.Min"];
+    mbPubNavGoal = fSettings["PubNavGoal"];
 }
 
 void NbvGenerator::Run() {
@@ -92,7 +91,7 @@ void NbvGenerator::Run() {
 
 
             //可视化
-            PublishPlanesAndCamera();
+            PublishPlanesAndNBV();
         }
 
         usleep(10*1000);
@@ -120,7 +119,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        cout<< "垂直夹角angle:"<<angle<<std::endl;
+        //cout<< "垂直夹角angle:"<<angle<<std::endl;
         if ((angle < 0.2) && (angle > -0.2))
             continue;
 
@@ -161,11 +160,11 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         double mean_x,mean_y,mean_z;	//点云均值
 	    double stddev_x,stddev_y,stddev_z;	//点云标准差
         pcl::getMeanStd(vec_z, mean_z, stddev_z);
-        cout<< "mean z1:"<<mean_z<<std::endl;
+        //cout<< "mean z1:"<<mean_z<<std::endl;
         // 桌面高度太小，忽略
         if(mean_z>mMaxPlaneHeight || mean_z<mMinPlaneHeight)
             continue;
-        cout<< "mean z2:"<<mean_z<<std::endl;
+        //cout<< "mean z2:"<<mean_z<<std::endl;
         pcl::getMeanStd(vec_x, mean_x, stddev_x);
         pcl::getMeanStd(vec_y, mean_y, stddev_y);
 
@@ -212,31 +211,32 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
                 angle = angle +  M_PI;
             if( (mean_x-x)<0 && (mean_y-y)<0 )
                 angle = angle -  M_PI;
-            Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
+            Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
             Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
             cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
-            cv::Mat PoseFootprint_mat = cv::Mat::eye(4, 4, CV_32F);
-            rotate_mat.copyTo(PoseFootprint_mat.rowRange(0, 3).colRange(0, 3));
-            t_mat.copyTo(PoseFootprint_mat.rowRange(0, 3).col(3));
-            cv::Mat PoseCamera_mat = PoseFootprint_mat * mT_body_cam;
+            //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
+            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
+            cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
+            rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
+            t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
+            cv::Mat Camera_mat = T_world_to_baselink * mT_baselink_cam;
 
             Candidate candidate;
-            candidate.pose = PoseCamera_mat;
+            candidate.pose = Camera_mat;
             mvGlobalCandidate.push_back(candidate);
         }
         // 桌面高度的 水平面的数量
         num++;
     }
 
-    cout << "-------" << endl;
-    cout << "桌面高度的水平面的数量: " <<num << endl << endl;
+    //cout << "-------" << endl;
+    //cout << "桌面高度的水平面的数量: " <<num << endl << endl;
 }
 
 vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     vector<Candidate> cands;
     cv::Mat T_w_cam = initPose.pose;   //初始的相机在世界的坐标
-    cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F); T_w_body = T_w_cam * mT_body_cam.inv() ;  //初始的机器人底盘在世界的坐标
+    cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F); T_w_body = T_w_cam * mT_baselink_cam.inv() ;  //初始的机器人底盘在世界的坐标
     cv::Mat T_w_body_new;    //旋转之后的机器人位姿
     for(int i=0; i<=mdivide; i++){
             double angle = M_PI/mdivide * i - M_PI/2.0 ;
@@ -257,7 +257,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
             t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
 
             T_w_body_new = T_w_body * trans_mat;   //旋转之后的机器人位姿
-            T_w_cam = T_w_body_new * mT_body_cam;   //旋转之后的相机位姿
+            T_w_cam = T_w_body_new * mT_baselink_cam;   //旋转之后的相机位姿
             Candidate temp;
             temp.pose = T_w_cam;
             cands.push_back(temp);
@@ -265,7 +265,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     return  cands;
 }
 
-void  NbvGenerator::PublishPlanesAndCamera()
+void  NbvGenerator::PublishPlanesAndNBV()
 {
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
@@ -387,7 +387,7 @@ void NbvGenerator::PublishCamera(const vector<Candidate> &candidates)
 
     mCandidate.points.clear();
 
-    for(int i=0; i < 7/*candidates.size()*/; i++)
+    for(int i=0; i < mCandidate_num_topub/*candidates.size()*/; i++)
     {
         //cv::Mat Tcw = Tcws[i];
         vector<float> color ;
@@ -459,6 +459,22 @@ void NbvGenerator::PublishCamera(const vector<Candidate> &candidates)
         //mCandidate.color.b=0.0f;
         //mCandidate.color.g=0.0f;
         //publisher_candidate_unsort.publish(mCandidate);
+
+        //发布为导航的goal
+        if(mbPubNavGoal){
+            cv::Mat T_w_baselink = Twc * mT_baselink_cam.inv();
+            geometry_msgs::PoseStamped goal;
+            goal.header.frame_id = "map";
+            goal.pose.position.x =  T_w_baselink.at<float>(0,3);
+            goal.pose.position.y =  T_w_baselink.at<float>(1,3);
+            goal.pose.position.z =  0;
+            Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
+            goal.pose.orientation.w = q.w();
+            goal.pose.orientation.x = q.x();
+            goal.pose.orientation.y = q.y();
+            goal.pose.orientation.z = q.z();
+            publisher_nbv.publish(goal);
+        }
 
     }
 }

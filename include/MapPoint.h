@@ -76,7 +76,7 @@ public:
 
     cv::Mat GetDescriptor();
 
-    void UpdateNormalAndDepth();
+    //void UpdateNormalAndDepth();
 
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
@@ -111,6 +111,14 @@ public:
     cv::Mat mPosGBA;
     long unsigned int mnBAGlobalForKF;
 
+    //NBV MAM
+    std::vector<cv::Mat> mNormalVectors;
+    std::vector<float> theta_sVector;
+    float theta_mean;
+    float theta_std;
+    void UpdateNormalAndDepth();
+    void compute_std_pts(std::vector<float> v, float & mean, float & stdev);
+    //NBV MAM end
 
     static std::mutex mGlobalMutex;
 

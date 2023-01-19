@@ -54,6 +54,8 @@ MapPoint::MapPoint(const cv::Mat &Pos, Map* pMap, Frame* pFrame, const int &idxF
     mNormalVector = mWorldPos - Ow;
     mNormalVector = mNormalVector/cv::norm(mNormalVector);
 
+    mNormalVectors.push_back(mNormalVector);  //NBV MAM
+
     cv::Mat PC = Pos - Ow;
     const float dist = cv::norm(PC);
     const int level = pFrame->mvKeysUn[idxF].octave;
@@ -332,56 +334,56 @@ bool MapPoint::IsInKeyFrame(KeyFrame *pKF)
     return (mObservations.count(pKF));
 }
 
-void MapPoint::UpdateNormalAndDepth()
-{   //所谓的法向量，就是也就是说相机光心指向地图点的方向，计算这个方向方法很简单，只需要用地图点的三维坐标减去相机光心的三维坐标就可以。
-    map<KeyFrame*,size_t> observations;  //observations是观测到此point的全部关键帧 及此point的索引
-    KeyFrame* pRefKF;
-    cv::Mat Pos;
-    {
-        unique_lock<mutex> lock1(mMutexFeatures);
-        unique_lock<mutex> lock2(mMutexPos);
-        if(mbBad)
-            return;
-        observations=mObservations;
-        pRefKF=mpRefKF;
-        Pos = mWorldPos.clone();
-    }
-
-    if(observations.empty())
-        return;
-
-    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
-    int n=0;
-    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
-    {
-        KeyFrame* pKF = mit->first;
-        cv::Mat Owi = pKF->GetCameraCenter();
-        ///观测点坐标减去关键帧中相机光心的坐标就是观测方向   //也就是说相机光心指向地图点
-        cv::Mat normali = mWorldPos - Owi;
-        //对其进行归一化后相加. 以下的normal是个求和, 因此还得除以size()
-        normal = normal + normali/cv::norm(normali);
-        n++;
-    }
-
-    cv::Mat PC = Pos - pRefKF->GetCameraCenter();
-    const float dist = cv::norm(PC);
-    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
-    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
-    const int nLevels = pRefKF->mnScaleLevels;
-
-    //深度范围：地图点到参考帧（只有一帧）相机中心距离，乘上参考帧中描述子获取金字塔放大尺度
-    //得到最大距离mfMaxDistance;最大距离除以整个金字塔最高层的放大尺度得到最小距离mfMinDistance.
-    //通常说来，距离较近的地图点，将在金字塔较高的地方提出，
-    //距离较远的地图点，在金字塔层数较低的地方提取出（金字塔层数越低，分辨率越高，才能识别出远点）
-    //因此，通过地图点的信息（主要对应描述子），我们可以获得该地图点对应的金字塔层级
-    //从而预测该地图点在什么范围内能够被观测到
-    {
-        unique_lock<mutex> lock3(mMutexPos);
-        mfMaxDistance = dist*levelScaleFactor;
-        mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
-        mNormalVector = normal/n;
-    }
-}
+//void MapPoint::UpdateNormalAndDepth()
+//{   //所谓的法向量，就是也就是说相机光心指向地图点的方向，计算这个方向方法很简单，只需要用地图点的三维坐标减去相机光心的三维坐标就可以。
+//    map<KeyFrame*,size_t> observations;  //observations是观测到此point的全部关键帧 及此point的索引
+//    KeyFrame* pRefKF;
+//    cv::Mat Pos;
+//    {
+//        unique_lock<mutex> lock1(mMutexFeatures);
+//        unique_lock<mutex> lock2(mMutexPos);
+//        if(mbBad)
+//            return;
+//        observations=mObservations;
+//        pRefKF=mpRefKF;
+//        Pos = mWorldPos.clone();
+//    }
+//
+//    if(observations.empty())
+//        return;
+//
+//    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
+//    int n=0;
+//    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+//    {
+//        KeyFrame* pKF = mit->first;
+//        cv::Mat Owi = pKF->GetCameraCenter();
+//        ///观测点坐标减去关键帧中相机光心的坐标就是观测方向   //也就是说相机光心指向地图点
+//        cv::Mat normali = mWorldPos - Owi;
+//        //对其进行归一化后相加. 以下的normal是个求和, 因此还得除以size()
+//        normal = normal + normali/cv::norm(normali);
+//        n++;
+//    }
+//
+//    cv::Mat PC = Pos - pRefKF->GetCameraCenter();
+//    const float dist = cv::norm(PC);
+//    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+//    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
+//    const int nLevels = pRefKF->mnScaleLevels;
+//
+//    //深度范围：地图点到参考帧（只有一帧）相机中心距离，乘上参考帧中描述子获取金字塔放大尺度
+//    //得到最大距离mfMaxDistance;最大距离除以整个金字塔最高层的放大尺度得到最小距离mfMinDistance.
+//    //通常说来，距离较近的地图点，将在金字塔较高的地方提出，
+//    //距离较远的地图点，在金字塔层数较低的地方提取出（金字塔层数越低，分辨率越高，才能识别出远点）
+//    //因此，通过地图点的信息（主要对应描述子），我们可以获得该地图点对应的金字塔层级
+//    //从而预测该地图点在什么范围内能够被观测到
+//    {
+//        unique_lock<mutex> lock3(mMutexPos);
+//        mfMaxDistance = dist*levelScaleFactor;
+//        mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
+//        mNormalVector = normal/n;
+//    }
+//}
 
 float MapPoint::GetMinDistanceInvariance()
 {
@@ -429,6 +431,69 @@ int MapPoint::PredictScale(const float &currentDist, Frame* pF)
     return nScale;
 }
 
+//NBV MAM
+void MapPoint::UpdateNormalAndDepth()
+{
+    map<KeyFrame*,size_t> observations;
+    KeyFrame* pRefKF;
+    cv::Mat Pos;
+    {
+        unique_lock<mutex> lock1(mMutexFeatures);
+        unique_lock<mutex> lock2(mMutexPos);
+        if(mbBad)
+            return;
+        observations=mObservations;
+        pRefKF=mpRefKF;
+        Pos = mWorldPos.clone();
+    }
 
+    if(observations.empty())
+        return;
+
+    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
+    int n=0;
+    mNormalVectors.clear();
+    theta_sVector.clear();
+    for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
+    {
+        KeyFrame* pKF = mit->first;
+        cv::Mat Owi = pKF->GetCameraCenter();
+        cv::Mat normali = mWorldPos - Owi;
+        normal = normal + normali/cv::norm(normali);
+        mNormalVectors.push_back(normali/cv::norm(normali));
+        // compute the viewing angle in the world frame
+        float theta = atan2(normali.at<float>(0,0),normali.at<float>(2,0));
+        theta_sVector.push_back(theta);
+        n++;
+    }
+
+    cv::Mat PC = Pos - pRefKF->GetCameraCenter();
+    const float dist = cv::norm(PC);
+    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
+    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
+    const int nLevels = pRefKF->mnScaleLevels;
+
+    {
+        unique_lock<mutex> lock3(mMutexPos);
+        mfMaxDistance = dist*levelScaleFactor;
+        mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
+        mNormalVector = normal/n;
+        // compute the mean and std of viewing angle
+        compute_std_pts(theta_sVector, theta_mean, theta_std);
+    }
+}
+
+void MapPoint::compute_std_pts(std::vector<float> v, float & mean, float & stdev)
+{
+    float sum = std::accumulate(v.begin(), v.end(), 0.0);
+    mean = sum / v.size();
+
+    std::vector<float> diff(v.size());
+    std::transform(v.begin(), v.end(), diff.begin(),
+                std::bind2nd(std::minus<float>(), mean));
+    float sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+    stdev = std::sqrt(sq_sum / v.size());
+}
+//NBV MAM end
 
 } //namespace ORB_SLAM

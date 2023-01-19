@@ -101,6 +101,8 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     mReferencePoints.color.r =1.0f;
     mReferencePoints.color.a = 1.0;
 
+    //Configure IE grid
+    IE_id = 7;
 
     //Configure MapObjectPoints
 
@@ -396,7 +398,7 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     //Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
     //Eigen::Quaterniond q = q_y_x * q_w_body;
     //（2）不饶z轴转90度
-    Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
+    Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
     Eigen::Quaterniond q = q_w_body;
 
     robotpose.pose.pose.orientation.w = q.w();
@@ -621,74 +623,6 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
 
 }
 
-//void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
-//    // color.
-//    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
-//    vector<float> color;
-//
-//    for(size_t i=0; i< vObjs.size(); i++){
-//        double  pie = 3.1415926;
-//        Object_Map* obj = vObjs[i];
-//
-//        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true))
-//        {
-//            continue;
-//        }
-//
-//        color = colors_bgr[obj->mnClass % 6];
-//        double diameter = sqrt(obj->mCuboid3D.width * obj->mCuboid3D.width   +   obj->mCuboid3D.lenth * obj->mCuboid3D.lenth )/2.0;
-//        for(int x=0; x<obj->mIE_rows; x++){
-//            double angle_divide = 2*pie/obj->mIE_rows;
-//            double angle = angle_divide * ( x + 0.5 );
-//            double p_x = cos(angle) * diameter;
-//            double p_y = sin(angle) * diameter;
-//
-//            double h_divide =  obj->mCuboid3D.height/obj->mIE_cols;
-//            for(int y=0; y<obj->mIE_cols; y++){
-//                //计算纵坐标
-//                double p_z = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;
-//
-//                // 物体坐标系 -> 世界坐标系
-//                Eigen::Vector3d p_world = Converter::toSE3Quat(obj->mCuboid3D.pose_mat) * Eigen::Vector3d(p_x, p_y, p_z);
-//                geometry_msgs::Point p;
-//                p.x=p_world[0];
-//                p.y=p_world[1];
-//                p.z=p_world[2];
-//
-//                //生成 rviz marker
-//                visualization_msgs::Marker marker;
-//                marker.header.frame_id = MAP_FRAME_ID;
-//                marker.ns = "InformationEntroy";
-//                marker.lifetime = ros::Duration(5.0);
-//                marker.id= (x*obj->mIE_cols + y) + obj->mnId * obj->mIE_rows * obj->mIE_rows  ;  //TODO:绝对数字
-//                marker.type = visualization_msgs::Marker::POINTS;
-//                marker.scale.x=0.03;
-//                marker.scale.y=0.08;
-//                marker.pose.orientation.w=1.0;  //????
-//                marker.action=visualization_msgs::Marker::ADD;
-//                //double color = obj->vInforEntroy[x][y];  marker.color.r = color; marker.color.g = color; marker.color.b = color; marker.color.a = 1.0;
-//                //std::cout<< "x" <<x << ", y" <<y << ", prob" <<obj->vgrid_prob[x][y] <<std::endl;
-//                if(obj->mvGridProb_mat.at<float>(x,y) > 0.5){
-//                    //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
-//                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
-//                }
-//                else if(obj->mvGridProb_mat.at<float>(x,y) < 0.5){
-//                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
-//                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
-//                }
-//                else {
-//                    marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
-//                }
-//                marker.points.push_back(p);
-//                publisher_IE.publish(marker);
-//            }
-//        }
-//        //std::cout<<std::endl<<std::endl<<std::endl;
-//
-//
-//    }
-//}
-
 void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
@@ -698,8 +632,9 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     visualization_msgs::Marker marker;
     marker.header.frame_id = MAP_FRAME_ID;
     marker.ns = "InformationEntroy";
-    marker.lifetime = ros::Duration(5.0);
-    marker.id= 0  ;  //TODO:绝对数字
+    //marker.lifetime = ros::Duration(5.0);
+    marker.lifetime = ros::Duration(0.2);
+    //marker.id= IE_id ;  //TODO:绝对数字
     marker.type = visualization_msgs::Marker::POINTS;
     marker.scale.x=0.03;
     marker.scale.y=0.08;
@@ -708,7 +643,6 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
 
 
     for(size_t i=0; i< vObjs.size(); i++){
-        double  pie = 3.1415926;
         Object_Map* obj = vObjs[i];
 
         if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true))
@@ -719,7 +653,7 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
         color = colors_bgr[obj->mnClass % 6];
         double diameter = sqrt(obj->mCuboid3D.width * obj->mCuboid3D.width   +   obj->mCuboid3D.lenth * obj->mCuboid3D.lenth )/2.0;
         for(int x=0; x<obj->mIE_rows; x++){
-            double angle_divide = 2*pie/obj->mIE_rows;
+            double angle_divide = 2*M_PI/obj->mIE_rows;
             double angle = angle_divide * ( x + 0.5 );
             double p_x = cos(angle) * diameter;
             double p_y = sin(angle) * diameter;
@@ -730,20 +664,14 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                 double p_z = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;
 
                 // 物体坐标系 -> 世界坐标系
-                //Eigen::Isometry3d T = ORB_SLAM2::Converter::toSE3Quat(obj->mCuboid3D.pose_mat);
-                //Eigen::Matrix4d T2 = T.matrix();
-                //Eigen::Matrix3d T3 = T2.block<3, 3>(0, 0);
-                Eigen::Matrix4d T2 = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
-                Eigen::Matrix3d T3 = T2.block<3, 3>(0, 0);
-                Eigen::Vector3d p_world = T3 * Eigen::Vector3d(p_x, p_y, p_z);
+                Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
+                Eigen::Matrix3d R = T.block<3, 3>(0, 0);
+                Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
                 geometry_msgs::Point p;
-                p.x=p_world[0];
-                p.y=p_world[1];
-                p.z=p_world[2];
+                p.x= p_world[0] + T(0, 3);
+                p.y= p_world[1] + T(1, 3);
+                p.z= p_world[2] + T(2, 3);
 
-
-                //double color = obj->vInforEntroy[x][y];  marker.color.r = color; marker.color.g = color; marker.color.b = color; marker.color.a = 1.0;
-                //std::cout<< "x" <<x << ", y" <<y << ", prob" <<obj->vgrid_prob[x][y] <<std::endl;
                 if(obj->mvGridProb_mat.at<float>(x,y) > 0.5){
                     //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
                     marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
@@ -755,12 +683,14 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                 else {
                     marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
                 }
+                marker.id= ++IE_id;
                 marker.points.push_back(p);
+                publisher_IE.publish(marker);
+                //usleep(100);
             }
         }
-        //std::cout<<std::endl<<std::endl<<std::endl;
     }
-    publisher_IE.publish(marker);
+
 }
 
 void MapPublisher::SetCurrentCameraPose(const cv::Mat &Tcw)    //zhangjiadong  用在map.cc中

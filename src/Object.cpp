@@ -1327,7 +1327,7 @@ void Object_Map::IsolationForestDeleteOutliers(){
         {
             id_MOutpoint_out++;
             pMP = mvpMapObjectMappoints.erase(pMP);
-            std::cout<<"[iforest debug] mSumPointsPos size:"<< mSumPointsPos.size() <<", pos size:"<< pos.size() <<std::endl;
+            //std::cout<<"[iforest debug] mSumPointsPos size:"<< mSumPointsPos.size() <<", pos size:"<< pos.size() <<std::endl;
             mSumPointsPos -= pos;
         }
         else
@@ -2438,9 +2438,9 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
         compute_grid_xy(zero_vec, point_vec, x, y);
         if( x>=0 && x<=mIE_cols && y>=0 && y<=mIE_rows ) {
             int temp = mvPointNum_mat.at<float>(x,y);
-            std::cout<<"compute_pointnum_eachgrid1: " << temp <<std::endl;
+            //std::cout<<"compute_pointnum_eachgrid1: " << temp <<std::endl;
             mvPointNum_mat.at<float>(x,y) = temp+1;
-            std::cout<<"compute_pointnum_eachgrid2: " << mvPointNum_mat.at<float>(x,y) <<std::endl;
+            //std::cout<<"compute_pointnum_eachgrid2: " << mvPointNum_mat.at<float>(x,y) <<std::endl;
         }
         else{
             std::cout<<"compute grid index: ERROR:i "<<i<<", x "<<x<<", y "<<y<<std::endl;
@@ -2452,13 +2452,12 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
 
 //计算每个grid的占据概率
 void Object_Map::compute_occupied_prob_eachgrid(){
-    std::cout<<"debug 每个grid的point数量：";
+    std::cout<<"debug 每个grid的point数量与占据概率：";
     for(int x=0; x<mIE_rows; x++){
 
         //计算这一行的点的总数
         int num_onecol = 0;
         for(int y=0; y<mIE_cols; y++){
-            std::cout<<mvPointNum_mat.at<float>(x,y)<<"， ";
             num_onecol +=  mvPointNum_mat.at<float>(x,y);
         }
 
@@ -2470,7 +2469,7 @@ void Object_Map::compute_occupied_prob_eachgrid(){
                 double lnv_p ;
                 int PointNum = mvPointNum_mat.at<float>(x,y);
                 int ObserveNum = mvObject_2ds.size();
-                if(ObserveNum==0) ObserveNum=40;
+                //if(ObserveNum==0) ObserveNum=40;//todo:  这是因为在融合的时候,有一步没把mvObject_2ds融合
                 if(PointNum == 0){
                     //free
                     //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
@@ -2485,18 +2484,21 @@ void Object_Map::compute_occupied_prob_eachgrid(){
                     lnv_p = ObserveNum * log( mP_occ/ (1.0 - mP_occ));
                 }
                 //mvGridProb_mat.at<float>(x,y) = exp(lnv_p);
-                double bel = 1.0 - 1.0 / (1 + exp(lnv_p));
+                double bel = 1.0 - 1.0 / (1.0 + exp(lnv_p));
                 mvGridProb_mat.at<float>(x,y) = (float) bel;
+                std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<","<<ObserveNum<<","<<lnv_p<<")， ";
             }
         }
         else{
-            ///当前列的观测到认为无效，即当前列的grid，认为是unknown
-             for(int y=0; y<mIE_rows; y++)
+             //当前列的观测到认为无效，即当前列的grid，认为是unknown
+             for(int y=0; y<mIE_rows; y++){
                  //unkonwn
                  mvGridProb_mat.at<float>(x,y) = mP_prior;
+                 std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<")， ";
+             }
         }
     }
-    std::cout<<""<<std::endl;
+    std::cout<<"   "<<std::endl;
 }
 
 

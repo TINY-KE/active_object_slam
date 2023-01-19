@@ -499,4 +499,9 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
     return mTrackedKeyPointsUn;
 }
 
+//NBV MAM
+double System::getMamGreadAngle(){
+    return mpTracker->getMamGreadAngle();
+}
+
 } //namespace ORB_SLAM

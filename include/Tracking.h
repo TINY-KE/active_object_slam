@@ -266,6 +266,13 @@ public:
     void SetNbvGenerator(NbvGenerator *pNbvGenerator);
     NbvGenerator* mpNbvGenerator;
 
+public: //NBV MAM
+    cv::Mat mT_baselink_cam;    //mTbc;
+    double mGreat_angle = 0;
+    float mDivide;
+    std::mutex mMutexMamAngle;
+    double getMamGreadAngle();
+
 };
 
 } //namespace ORB_SLAM

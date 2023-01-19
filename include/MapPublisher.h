@@ -110,7 +110,7 @@ private:
 
 
     int object_id_init;
-
+    int IE_id;
     float fCameraSize;
     float fPointSize;
 
