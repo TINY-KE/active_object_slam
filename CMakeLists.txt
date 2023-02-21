@@ -60,6 +60,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   image_transport
   std_msgs
+  tf
 
   # plane
   pcl_ros

@@ -34,6 +34,13 @@
 #include "Converter.h"
 #include "Tracking.h"
 
+//movebase action
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+
+
+
 namespace ORB_SLAM2
 {
 class Tracking;
@@ -88,6 +95,7 @@ private:
     int mtest = 5;
     ros::Publisher publisher_candidate_unsort;
     ros::Publisher publisher_nbv;
+    actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* mActionlib;
     vector<Candidate> mvGlobalCandidate;
     vector<Candidate> mvLocalCandidate;
     Candidate NBV;
@@ -99,19 +107,18 @@ private:
     double computeCosAngle(cv::Mat &candidate, cv::Mat &objectPose, Eigen::Vector3d &ie);
     void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
     void ExtractNBV();
-    void PublishPlanesAndNBV();
+    void PublishPlanes();
     void PublishNBV();
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
-    void PublishCamera(const vector<Candidate> &candidates);
+    void PublishGlobalNBVRviz(const vector<Candidate> &candidates);
 
-//NBV MAM
+
 private:
     float mfx, mfy, mcx, mcy;
     float mImageWidth, mImageHeight;
-    float mdivide;
     float down_nbv_height;       //nbv的高度
     float mMaxPlaneHeight, mMinPlaneHeight;
-    cv::Mat mT_baselink_cam;       //相机在机器人底盘上的坐标
+    cv::Mat mT_basefootprint_cam;       //相机在机器人底盘上的坐标
     cv::Mat mT_world_initbaselink;     //初始机器人底盘在世界中的坐标
     cv::Mat mT_world_cam;     //初始相机在世界中的坐标
     double mNBV_Angle_correct;
@@ -122,6 +129,18 @@ private:
     //double getMamGreadAngle();
     string mstrSettingPath;
 
+//NBV MAM
+private:
+    double mGreat_angle = 0;
+    float mDivide;
+    std::mutex mMutexMamAngle;
+    float  mMax_dis;
+    float  mMin_dis;
+    ros::Publisher publisher_mam;
+    ros::Publisher publisher_mam_rviz;
+    void publishLocalNBV();
+    float mTfDuration;
+    void publishNeckAngle(double angle);
 };
 
 }

@@ -4,6 +4,12 @@
 
 #include "NbvGenerator.h"
 
+//NBV MAM
+#include<camera.h>
+#include <std_msgs/Float64.h>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/Twist.h>
+
 namespace ORB_SLAM2
 {
 
@@ -17,6 +23,9 @@ mpMap(map), mpTracker(pTracking)
     publisher_candidate = nh.advertise<visualization_msgs::Marker>("candidate", 1000);
     publisher_candidate_unsort = nh.advertise<visualization_msgs::Marker>("candidate_unsort", 1000);
     publisher_nbv = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1);
+    publisher_mam = nh.advertise<std_msgs::Float64>("/neck/neck_controller/command", 10);
+    publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
+    mActionlib = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
     fPointSize=0.01;
     mCandidate.header.frame_id = MAP_FRAME_ID;
     mCandidate.ns = CANDIDATE_NAMESPACE;
@@ -32,18 +41,19 @@ mpMap(map), mpTracker(pTracking)
     mcy = fSettings["Camera.cy"];
     mImageWidth = fSettings["Camera.width"];
     mImageHeight = fSettings["Camera.height"];
-    mdivide = fSettings["MAM.divide"];
+    mMax_dis = fSettings["Camera.max_dis"];
+    mMin_dis = fSettings["Camera.min_dis"];
+    mDivide = fSettings["MAM.divide"];   //NBV MAM,  也用在了global nbv中
 
-    //
     float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
           tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
-    mT_baselink_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
+    mT_basefootprint_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
 
     qx = fSettings["Tworld_camera.qx"], qy = fSettings["Tworld_camera.qy"], qz = fSettings["Tworld_camera.qz"], qw = fSettings["Tworld_camera.qw"],
     tx = fSettings["Tworld_camera.tx"], ty = fSettings["Tworld_camera.ty"], tz = fSettings["Tworld_camera.tz"];
     mT_world_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
 
-    mT_world_initbaselink  = mT_world_cam * mT_baselink_cam.inv();
+    mT_world_initbaselink  = mT_world_cam * mT_basefootprint_cam.inv();
 
     double factor = fSettings["NBV_Angle_correct_factor"];
     mNBV_Angle_correct = factor * M_PI;
@@ -52,6 +62,8 @@ mpMap(map), mpTracker(pTracking)
     mMaxPlaneHeight = fSettings["Plane.Height.Max"];
     mMinPlaneHeight = fSettings["Plane.Height.Min"];
     mbPubNavGoal = fSettings["PubNavGoal"];
+    mTfDuration = fSettings["MAM.TfDuration"];
+
 }
 
 void NbvGenerator::Run() {
@@ -59,10 +71,10 @@ void NbvGenerator::Run() {
     {
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         vector<Object_Map*> ObjectMaps = mpMap->GetObjects();
-        //计算全局候选点
+        //1. 计算全局候选点
         ExtractCandidates(vpMPlanes);
 
-        //计算局部候选点
+        //2. 旋转并评估 全局候选点
         cv::Mat BestCandidate;
         for(int i=0; i<mvGlobalCandidate.size(); i++ ){
             auto globalCandidate = mvGlobalCandidate[i];
@@ -79,7 +91,7 @@ void NbvGenerator::Run() {
             mvGlobalCandidate[i].pose = localCandidate.begin()->pose.clone();
         }
 
-
+        //3. 将全局NBV发送给导航模块
         if( mvGlobalCandidate.size() != 0 )
         {
             //从大到小排序GlobalCandidate, 队首是NBV
@@ -87,11 +99,66 @@ void NbvGenerator::Run() {
                       [](Candidate a, Candidate b) -> bool { return a.reward > b.reward; });
             NBV = *mvGlobalCandidate.begin();
 
-            //利用速度模型, 生成局部nbv
-
-
             //可视化
-            PublishPlanesAndNBV();
+            PublishPlanes();
+
+            //发布桌面边缘的候选点, 发送给movebase导航目标点和rviz可视化
+            PublishGlobalNBVRviz(mvGlobalCandidate);
+
+            //Global NBV:  将候选点的第一个,发送为movebase的目标点
+            if(mbPubNavGoal){
+                cv::Mat Twc = mvGlobalCandidate.front().pose;
+                cv::Mat T_w_baselink = Twc * mT_basefootprint_cam.inv();
+
+                //version1： topic
+                //geometry_msgs::PoseStamped goal;
+                //goal.header.frame_id = "map";
+                //goal.pose.position.x =  T_w_baselink.at<float>(0,3);
+                //goal.pose.position.y =  T_w_baselink.at<float>(1,3);
+                //goal.pose.position.z =  0;
+                //Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
+                //goal.pose.orientation.w = q.w();
+                //goal.pose.orientation.x = q.x();
+                //goal.pose.orientation.y = q.y();
+                //goal.pose.orientation.z = q.z();
+                //publisher_nbv.publish(goal);
+
+                //version2： action
+                while(!mActionlib->waitForServer(ros::Duration(5.0))){
+                    ROS_INFO("Waiting for the move_base action server to come up");
+                }
+                move_base_msgs::MoveBaseGoal ActionGoal;
+                ActionGoal.target_pose.header.frame_id = "map";
+                ActionGoal.target_pose.header.stamp = ros::Time::now();
+                ActionGoal.target_pose.pose.position.x = T_w_baselink.at<float>(0,3);
+                ActionGoal.target_pose.pose.position.y = T_w_baselink.at<float>(1,3);
+                ActionGoal.target_pose.pose.position.y = 0.0;
+                Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
+                ActionGoal.target_pose.pose.orientation.w = q.w();
+                ActionGoal.target_pose.pose.orientation.x = q.x();
+                ActionGoal.target_pose.pose.orientation.y = q.y();
+                ActionGoal.target_pose.pose.orientation.z = q.z();
+                mActionlib->sendGoal(ActionGoal);
+                mActionlib->waitForResult();
+                //if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+                //    ROS_INFO("The robot reached the goal!");
+                //else
+                //    ROS_INFO("The base failed to reach the goal!");
+
+                //4. 在导航过程中，生成Local NBV:
+                while(mActionlib->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
+                    publishLocalNBV();
+                }
+
+                //5.到达global nbv之后，让机器人扭头到0度
+                ROS_INFO("The base failed to reach the goal!");
+                publishNeckAngle(0.0);
+            }
+            else{
+                publishLocalNBV();
+            }
+
+
         }
 
         usleep(10*1000);
@@ -219,7 +286,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
             cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
             rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
             t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
-            cv::Mat Camera_mat = T_world_to_baselink * mT_baselink_cam;
+            cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
             Candidate candidate;
             candidate.pose = Camera_mat;
@@ -236,10 +303,10 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
 vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     vector<Candidate> cands;
     cv::Mat T_w_cam = initPose.pose;   //初始的相机在世界的坐标
-    cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F); T_w_body = T_w_cam * mT_baselink_cam.inv() ;  //初始的机器人底盘在世界的坐标
+    cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F); T_w_body = T_w_cam * mT_basefootprint_cam.inv() ;  //初始的机器人底盘在世界的坐标
     cv::Mat T_w_body_new;    //旋转之后的机器人位姿
-    for(int i=0; i<=mdivide; i++){
-            double angle = M_PI/mdivide * i - M_PI/2.0 ;
+    for(int i=0; i<=mDivide; i++){
+            double angle = M_PI/mDivide * i - M_PI/2.0 ;
             //旋转
             Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
             Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
@@ -257,7 +324,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
             t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
 
             T_w_body_new = T_w_body * trans_mat;   //旋转之后的机器人位姿
-            T_w_cam = T_w_body_new * mT_baselink_cam;   //旋转之后的相机位姿
+            T_w_cam = T_w_body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
             Candidate temp;
             temp.pose = T_w_cam;
             cands.push_back(temp);
@@ -265,7 +332,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     return  cands;
 }
 
-void  NbvGenerator::PublishPlanesAndNBV()
+void  NbvGenerator::PublishPlanes()
 {
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
@@ -316,9 +383,6 @@ void  NbvGenerator::PublishPlanesAndNBV()
     pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
     colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
     pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
-
-    //发布桌面边缘的候选点
-    PublishCamera(mvGlobalCandidate);
 }
 
 
@@ -377,7 +441,7 @@ void NbvGenerator::BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
 
 
-void NbvGenerator::PublishCamera(const vector<Candidate> &candidates)
+void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
 {
     if(candidates.empty())
         return ;
@@ -460,26 +524,144 @@ void NbvGenerator::PublishCamera(const vector<Candidate> &candidates)
         //mCandidate.color.g=0.0f;
         //publisher_candidate_unsort.publish(mCandidate);
 
-        //发布为导航的goal
-        if(mbPubNavGoal){
-            cv::Mat T_w_baselink = Twc * mT_baselink_cam.inv();
-            geometry_msgs::PoseStamped goal;
-            goal.header.frame_id = "map";
-            goal.pose.position.x =  T_w_baselink.at<float>(0,3);
-            goal.pose.position.y =  T_w_baselink.at<float>(1,3);
-            goal.pose.position.z =  0;
-            Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
-            goal.pose.orientation.w = q.w();
-            goal.pose.orientation.x = q.x();
-            goal.pose.orientation.y = q.y();
-            goal.pose.orientation.z = q.z();
-            publisher_nbv.publish(goal);
-        }
-
     }
 }
 
+void NbvGenerator::publishLocalNBV(){
 
+    //1.构建地图，并向mam中添加地图点。 TODO：也应该添加 物体。
+    map_data MapData;
+    double theta_interval;
+    vector<MapPoint*> vpPts = mpMap->GetAllMapPoints();
+    for(size_t i=0; i<vpPts.size(); i++){
+        if(vpPts[i]->isBad())
+            continue;
+
+        float minDist = vpPts[i]->GetMinDistanceInvariance();
+        float maxDist = vpPts[i]->GetMaxDistanceInvariance();
+        float foundRatio = vpPts[i]->GetFoundRatio();
+
+        //float Dist = sqrt((Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))*(Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))+
+        //(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(1))*(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(2))+
+        //(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2))*(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2)));
+
+        //if((Dist > maxDist)||(Dist < minDist))
+        //    continue;
+
+        MapData.Map.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0), vpPts[i]->GetWorldPos().at<float>(1), vpPts[i]->GetWorldPos().at<float>(2)});
+
+        if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){
+            theta_interval = 10.0/57.3;
+        }else{
+            theta_interval = vpPts[i]->theta_std * 2.5;
+        }
+
+        MapData.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));
+        MapData.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));
+        MapData.maxDist.push_back(double(maxDist));
+        MapData.minDist.push_back(double(minDist));
+        MapData.foundRatio.push_back(double(foundRatio));
+    }
+
+    //2.构建mam对象
+    camera camera_model(MapData, 20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
+    camera_model.setCamera(mfx, mfy, mcx, mcy,  mImageWidth,  mImageHeight, mMax_dis, mMin_dis );
+
+    //3.获取机器人在map下的坐标T_w_basefootprint
+    tf::TransformListener listener;
+    tf::StampedTransform transform;
+    cv::Mat T_w_basefootprint = cv::Mat::eye(4,4,CV_32F);
+    try
+    {
+        listener.waitForTransform("/map", "/base_footprint", ros::Time(0), ros::Duration(mTfDuration));
+        listener.lookupTransform("/map", "/base_footprint", ros::Time(0), transform);
+        T_w_basefootprint = Converter::Quation2CvMat(
+                        transform.getRotation().x(),
+                        transform.getRotation().y(),
+                        transform.getRotation().z(),
+                        transform.getRotation().w(),
+                        transform.getOrigin().x(),
+                        transform.getOrigin().y(),
+                        0.0  //transform.getOrigin().x(),
+                );
+    }
+    catch (tf::TransformException &ex)
+    {
+        ROS_ERROR("%s -->> lost tf from /map to /base_footprint",ex.what());
+    }
+
+    //4.计算扭头的最佳角度
+    if(!T_w_basefootprint.empty()){
+
+        //visible_info VI;
+        int visible_pts = 0;
+        double great_angle = -5.0;
+
+        //利用速度模型, 生成下一时刻的机器人位姿
+
+        //在机器人位姿的基础上，计算最佳扭头的角度
+        cv::Mat body_new;
+        for(int i=0; i<=mDivide; i++){
+            double angle = M_PI/mDivide * i - M_PI/2.0 ;
+            //旋转
+            Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
+            Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
+            //Eigen::Isometry3d trans_matrix;
+            //trans_matrix.rotate(rotation_vector);
+            //trans_matrix.pretranslate(Vector3d(0,0,0));
+            cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+
+            //平移
+            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
+
+            //总变换矩阵
+            cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
+            rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
+            t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
+
+            body_new = T_w_basefootprint * trans_mat;   //旋转之后的机器人位姿
+            cv::Mat T_w_cam = body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
+            int num = camera_model.countVisible(T_w_cam);   //利用相机模型， 计算最佳的扭头角度
+            cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
+            if(num > visible_pts){
+                great_angle = angle;
+                visible_pts = num;
+            }
+        }
+        //unique_lock<mutex> lock(mMutexMamAngle);
+        mGreat_angle = great_angle;//   /M_PI*180 ;
+        //cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
+
+        //5.发布脖子的角度
+        publishNeckAngle(great_angle);
+
+        //6.可视化local nbv
+        {
+            geometry_msgs::PoseWithCovarianceStamped mampose;
+            mampose.pose.pose.position.x = T_w_basefootprint.at<float>(0, 3);
+            mampose.pose.pose.position.y = T_w_basefootprint.at<float>(1, 3);
+            mampose.pose.pose.position.z = 0.0;
+
+            Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_basefootprint);
+            Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( great_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
+            Eigen::Quaterniond q = q_w_body * q_body_rotate;
+            mampose.pose.pose.orientation.w = q.w();
+            mampose.pose.pose.orientation.x = q.x();
+            mampose.pose.pose.orientation.y = q.y();
+            mampose.pose.pose.orientation.z = q.z();
+            mampose.header.frame_id= "map";
+            mampose.header.stamp=ros::Time::now();
+
+            publisher_mam_rviz.publish(mampose);
+        }
+    }
+}
+
+void NbvGenerator::publishNeckAngle(double  angle){
+    std_msgs::Float64 msg;
+    msg.data =  angle;
+    publisher_mam.publish(msg);
+}
 void NbvGenerator::RequestFinish()
 {
     unique_lock<mutex> lock(mMutexFinish);

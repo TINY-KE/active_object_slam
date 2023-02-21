@@ -434,25 +434,25 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     //camera_trans.transform.rotation = mQuaternion_robot_camera;
     //camera_broadcaster.sendTransform(camera_trans);
 
-    //(4)发布localnbv的箭头
-    if(mbMAMUpdated){
-        geometry_msgs::PoseWithCovarianceStamped mampose;
-        mampose.pose.pose.position.x = T_w_body.at<float>(0, 3);
-        mampose.pose.pose.position.y = T_w_body.at<float>(1, 3);
-        mampose.pose.pose.position.z = 0.0;
-
-        Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
-        Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( mMAM_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
-        Eigen::Quaterniond q = q_w_body * q_body_rotate;
-        mampose.pose.pose.orientation.w = q.w();
-        mampose.pose.pose.orientation.x = q.x();
-        mampose.pose.pose.orientation.y = q.y();
-        mampose.pose.pose.orientation.z = q.z();
-        mampose.header.frame_id= "map";
-        mampose.header.stamp=ros::Time::now();
-
-        publisher_mam_rviz.publish(mampose);
-    }
+    //(4)发布localnbv的箭头   //NBV MAM
+    //if(mbMAMUpdated){
+    //    geometry_msgs::PoseWithCovarianceStamped mampose;
+    //    mampose.pose.pose.position.x = T_w_body.at<float>(0, 3);
+    //    mampose.pose.pose.position.y = T_w_body.at<float>(1, 3);
+    //    mampose.pose.pose.position.z = 0.0;
+    //
+    //    Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
+    //    Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( mMAM_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
+    //    Eigen::Quaterniond q = q_w_body * q_body_rotate;
+    //    mampose.pose.pose.orientation.w = q.w();
+    //    mampose.pose.pose.orientation.x = q.x();
+    //    mampose.pose.pose.orientation.y = q.y();
+    //    mampose.pose.pose.orientation.z = q.z();
+    //    mampose.header.frame_id= "map";
+    //    mampose.header.stamp=ros::Time::now();
+    //
+    //    publisher_mam_rviz.publish(mampose);
+    //}
 }
 
 //void MapPublisher::PublishPlane(const vector<MapPlane *> &vpMPls ){

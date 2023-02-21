@@ -157,6 +157,7 @@ SavePath.PlaneFeature: "PlaneFeature.txt"
 # NBV
 #--------------------------------------------------------------------------------------------
 MAM.divide: 20
+MAM.TfDuration: 2.0
 IE.rows: 18
 IE.cols: 18
 IE.P_occ: 0.6
@@ -167,7 +168,7 @@ Plane.Height.Max: 1.0
 Plane.Height.Min: 0.5
 NBV_Angle_correct_factor: -0.5
 Candidate_num_topub: 1
-PubNavGoal: 1
+PubNavGoal: 0
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

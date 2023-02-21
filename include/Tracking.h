@@ -267,11 +267,17 @@ public:
     NbvGenerator* mpNbvGenerator;
 
 public: //NBV MAM
-    cv::Mat mT_baselink_cam;    //mTbc;
-    double mGreat_angle = 0;
-    float mDivide;
-    std::mutex mMutexMamAngle;
-    double getMamGreadAngle();
+    //cv::Mat mT_baselink_cam;    //mTbc;
+    //double mGreat_angle = 0;
+    //float mDivide;
+    //std::mutex mMutexMamAngle;
+    double getMamGreadAngle(){
+        //unique_lock<mutex> lock(mMutexMamAngle);
+        //return  mGreat_angle;
+    }
+    //double Tcw(){
+    //    return mCurrentFrame.mTcw.clone();
+    //}
 
 };
 
