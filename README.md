@@ -15,7 +15,9 @@
 + camera camera_model(MD,20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
 + 如何在扭头时，发布对应的baselink_camera的正确的tf
   + 假设扭头在仿真环境中是瞬时且准确的。
-  + 
+  + 局部nbv怎么融合到nbvgenerator中
++ 融合局部nbv了吗？ 并在rviz中显示
++ local nbv怎么影响路径规划？
 
 **已完成部分：**
 + 将yolo改为ros版本（darknet ros）,并通过ros message_filters::Synchronizer进行输入.

@@ -79,6 +79,14 @@ public:
     geometry_msgs::Point corner_to_marker(const std::vector<double>& v);
     void SetCurrentCameraPose(const cv::Mat &Tcw);
 
+//NBV MAM
+public:
+    void SetMAM(const double &angle);
+private:
+    double mMAM_angle;
+    bool mbMAMUpdated = false;
+//NBV MAM end
+
 private:
 
     cv::Mat GetCurrentCameraPose();
@@ -94,6 +102,8 @@ private:
     ros::Publisher publisher_object_points;
     ros::Publisher publisher_IE;
     ros::Publisher publisher_robotpose;
+    ros::Publisher publisher_mam_rviz;   //NBV MAM
+
 
     //tf tree
     tf::TransformBroadcaster odom_broadcaster;

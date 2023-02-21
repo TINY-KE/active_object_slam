@@ -1363,6 +1363,8 @@ bool Tracking::TrackLocalMap()
             theta_interval = vpPts[i]->theta_std * 2.5;
         }
 
+
+
         MD.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));
         MD.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));
         MD.maxDist.push_back(double(maxDist));
@@ -1426,11 +1428,12 @@ bool Tracking::TrackLocalMap()
                 great_angle = angle;
                 visible_pts = num;
             }
-
+6
         }
         unique_lock<mutex> lock(mMutexMamAngle);
-        mGreat_angle = great_angle/M_PI*180 ;
-        cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle << endl;
+        mGreat_angle = great_angle;//   /M_PI*180 ;
+        cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
+        mpMapPublisher->SetMAM(mGreat_angle);
     }
     // NBV MAM: check the camera model end
 

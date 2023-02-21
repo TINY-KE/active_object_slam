@@ -16,6 +16,8 @@
         <!-- KINECT v1-->
         <param name="bbox_topic" value="/darknet_ros/bounding_boxes" type="string"/>
         <param name="WORK_SPACE_PATH" value="/home/zhjd/active_eao/src/active_eao/" type="string"/>
+        <param name="mam_loop" value="10" type="int"/>
+
         <param name="yamlfile" value="kinectv1.yaml" type="string"/>
 
         <param name="MotionIou_flag" value="true" type="bool"/>
@@ -39,6 +41,6 @@
         <!-- kinectdk_720.yaml -->
     </node>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz" >
-    </node>
+<!--    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz" >-->
+<!--    </node>-->
 </launch>

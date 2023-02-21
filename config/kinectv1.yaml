@@ -46,8 +46,7 @@ Tworld_camera.qz: -0.364187
 
 Tworld_camera.tx: 0.0
 Tworld_camera.ty: 0.0
-Tworld_camera.tz: 1.2
-
+Tworld_camera.tz: 1.2  #this height is 0.2 higher than the height in gazebo
 
 #translation from baselink frame to camera frame
 #tum
@@ -71,7 +70,7 @@ Trobot_camera.qz: 0.364187
 
 Trobot_camera.tx: 0.0
 Trobot_camera.ty: 0.0
-Trobot_camera.tz: 1.2
+Trobot_camera.tz: 1.2  #this height is 0.2 higher than the height in gazebo
 Trobot_camera.down_nbv_height: 0.0
 
 
@@ -164,8 +163,8 @@ IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
 IE.Threshold: 3
-Plane.Height.Max: 0.2
-Plane.Height.Min: 0.1
+Plane.Height.Max: 1.0
+Plane.Height.Min: 0.5
 NBV_Angle_correct_factor: -0.5
 Candidate_num_topub: 1
 PubNavGoal: 1

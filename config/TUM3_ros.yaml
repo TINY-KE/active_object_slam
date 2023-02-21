@@ -37,30 +37,34 @@ DepthMapFactor: 1.0
 
 # 1: robot_camera tf; 2: use imu
 ConstraintType: 1
-Trobot_camera.qx: 0.0003
-Trobot_camera.qy: 0.8617
-Trobot_camera.qz: -0.5072
-Trobot_camera.qw: -0.0145
+Tworld_camera.qw: -0.0145
+Tworld_camera.qx: 0.0003
+Tworld_camera.qy: 0.8617
+Tworld_camera.qz: -0.5072
+
+Tworld_camera.tx: 0.0
+Tworld_camera.ty: 0.0
+Tworld_camera.tz: 1.7373
+
+Trobot_camera.qw: -0.364187
+Trobot_camera.qx: 0.606109
+Trobot_camera.qy: -0.606109
+Trobot_camera.qz: 0.364187
+
 Trobot_camera.tx: 0.0 #-0.6832
 Trobot_camera.ty: 0.0 #2.6909
 Trobot_camera.tz: 1.7373
 Trobot_camera.down_nbv_height: 0.7
 
-#Tgroud_firstcamera.qx: 0.0003
-#Tgroud_firstcamera.qy: 0.8617
-#Tgroud_firstcamera.qz: -0.5072
-#Tgroud_firstcamera.qw: -0.0145
-#Tgroud_firstcamera.tx: -0.6832
-#Tgroud_firstcamera.ty: 2.6909
-#Tgroud_firstcamera.tz: 1.7373
+#Trobot_camera.qw: -0.0145
+#Trobot_camera.qx: 0.0003
+#Trobot_camera.qy: 0.8617
+#Trobot_camera.qz: -0.5072
 #
-#Trobot_camera.qx: 0
-#Trobot_camera.qy: 0
-#Trobot_camera.qz: 0
-#Trobot_camera.qw: 1
-#Trobot_camera.tx: 0
-#Trobot_camera.ty: 0
-#Trobot_camera.tz: 1.7373    #这一项会影响到candidate的高度
+#Trobot_camera.tx: 0.0 #-0.6832
+#Trobot_camera.ty: 0.0 #2.6909
+#Trobot_camera.tz: 1.7373
+#Trobot_camera.down_nbv_height: 0.7
 
 #--------------------------------------------------------------------------------------------
 # ORB Parameters
@@ -149,10 +153,12 @@ IE.cols: 18
 IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
-IE.Threshold: 5
+IE.Threshold: 3
 Plane.Height.Max: 1.7
 Plane.Height.Min: 0.2
-
+NBV_Angle_correct_factor: -0.5
+Candidate_num_topub: 1
+PubNavGoal: 1
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

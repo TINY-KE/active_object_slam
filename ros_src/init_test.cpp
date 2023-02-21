@@ -47,6 +47,7 @@
 #include "YOLOv3SE.h"
 std::string WORK_SPACE_PATH = "";
 std::string yamlfile_object = "";
+int mam_loop = 1;
 bool MotionIou_flag = true;
 bool NoPara_flag = true;
 bool ProIou_flag = true;
@@ -79,7 +80,9 @@ std::vector<string> yolo_id = {
 
 //NBV MAM
 ros::Publisher pub_mam;
+ros::Publisher pub_mam_rviz;
 int loop = 0;
+//NBV MAM end
 
 class ImageGrabber
 {
@@ -100,6 +103,7 @@ int main(int argc, char **argv)
     string yamlfile, sensor; bool semanticOnline, rosBagFlag;
     //(1)从ros param中获取参数
     ros::param::param<std::string>("~WORK_SPACE_PATH", WORK_SPACE_PATH, "/home/zhjd/active_eao/src/active_eao/");
+    ros::param::param<int>("~mam_loop", mam_loop, 1);
     ros::param::param<bool>("~MotionIou_flag", MotionIou_flag, true);
     ros::param::param<bool>("~NoPara_flag", NoPara_flag, true);
     ros::param::param<bool>("~ProIou_flag", ProIou_flag, true);
@@ -126,14 +130,16 @@ int main(int argc, char **argv)
     //(3)接受ros topic
     ImageGrabber igb(&SLAM);
     ros::NodeHandle nh;
-    pub_mam = nh.advertise<std_msgs::Float64>("/mam_angle", 10); //NBV MAM
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/rgb/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/depth_to_rgb/image_raw", 1);
     message_filters::Subscriber<darknet_ros_msgs::BoundingBoxes> bbox_sub(nh, "/darknet_ros/bounding_boxes", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, darknet_ros_msgs::BoundingBoxes> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub,bbox_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2,_3));
-    
+
+    //(4)发送的ros topic
+    pub_mam = nh.advertise<std_msgs::Float64>("/neck/neck_controller/command", 10);                                //NBV MAM     原topic名字/mam_angle
+    pub_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);  //NBV MAM
     ros::spin();
 
     // Stop all threads
@@ -184,9 +190,23 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,  cv_ptrD->image,  cv_ptrRGB->header.stamp.toSec(),  BboxVector);
 
     //NBV MAM
-    if( loop == 20){
+    if( loop == 5){
         std_msgs::Float64 msg;
         msg.data =  mpSLAM -> getMamGreadAngle();
+
+        //geometry_msgs::PoseWithCovarianceStamped robotpose;
+        //robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
+        //robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
+        //robotpose.pose.pose.position.z = 0.0;
+        //Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
+        //Eigen::Quaterniond q = q_w_body;
+        //robotpose.pose.pose.orientation.w = q.w();
+        //robotpose.pose.pose.orientation.x = q.x();
+        //robotpose.pose.pose.orientation.y = q.y();
+        //robotpose.pose.pose.orientation.z = q.z();
+        //robotpose.header.frame_id= "odom";
+        //robotpose.header.stamp=ros::Time::now();
+
         pub_mam.publish(msg);
         loop = 0;
     }else{

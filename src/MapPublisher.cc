@@ -119,7 +119,7 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     publisher_object_points = nh.advertise<visualization_msgs::Marker>("objectPoints", 1000);
     publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
     publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
-
+    publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
 
     publisher.publish(mPoints);
     publisher.publish(mReferencePoints);
@@ -332,7 +332,7 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     mCurrentCamera.points.clear();
 
     float d = fCameraSize;
-
+    //(1) 相机的几何模型
     //Camera is a pyramid. Define in camera coordinate system
     cv::Mat o = (cv::Mat_<float>(4, 1) << 0, 0, 0, 1);
     cv::Mat p1 = (cv::Mat_<float>(4, 1) << d, d * 0.8, d * 0.5, 1);
@@ -385,6 +385,7 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
 
     publisher_curframe.publish(mCurrentCamera);
 
+    //（2）相机的坐标和四元数
     cv::Mat T_w_cam = Tcw.inv();   //初始的相机在世界的坐标
     cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F);
     T_w_body = T_w_cam * mT_body_cam.inv();  //初始的机器人底盘在世界的坐标
@@ -392,12 +393,12 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
     robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
     robotpose.pose.pose.position.z = 0.0;
-    //（1）gazebo中的四元数和rviz的不同，需要绕着z轴转90度
+    //（2.1）gazebo中的四元数和rviz的不同，需要绕着z轴转90度
     //Eigen::AngleAxisd rotation_vector (-M_PI/2.0, Eigen::Vector3d(0,0,1));
     //Eigen::Quaterniond q_y_x = Eigen::Quaterniond(rotation_vector);
     //Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
     //Eigen::Quaterniond q = q_y_x * q_w_body;
-    //（2）不饶z轴转90度
+    //（2.2）不饶z轴转90度
     Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
     Eigen::Quaterniond q = q_w_body;
 
@@ -409,7 +410,7 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     robotpose.header.stamp=ros::Time::now();
     publisher_robotpose.publish(robotpose);
 
-    //发布tf树
+    //（3）发布tf树
     //发布机器人底盘和odom的tf变换
     geometry_msgs::TransformStamped odom_trans;
     ros::Time current_time = ros::Time::now();
@@ -422,17 +423,38 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     odom_trans.transform.rotation = robotpose.pose.pose.orientation; //Quaternion_odom_robot;
     odom_broadcaster.sendTransform(odom_trans);
 
-    // 5.5 发布camera_depth_optical_frame和base_link的tf变换
-    geometry_msgs::TransformStamped camera_trans;
-    camera_trans.header.stamp = current_time;
-    camera_trans.header.frame_id = "base_link";
-    camera_trans.child_frame_id = "camera_depth_optical_frame";
-    camera_trans.transform.translation.x = mTranslation_robot_camera.x;
-    camera_trans.transform.translation.y = mTranslation_robot_camera.y;
-    camera_trans.transform.translation.z = mTranslation_robot_camera.z;
-    camera_trans.transform.rotation = mQuaternion_robot_camera;
-    camera_broadcaster.sendTransform(camera_trans);
+    //发布camera_depth_optical_frame和base_link的tf变换
+    //geometry_msgs::TransformStamped camera_trans;
+    //camera_trans.header.stamp = current_time;
+    //camera_trans.header.frame_id = "base_link";
+    //camera_trans.child_frame_id = "camera_depth_optical_frame";
+    //camera_trans.transform.translation.x = mTranslation_robot_camera.x;
+    //camera_trans.transform.translation.y = mTranslation_robot_camera.y;
+    //camera_trans.transform.translation.z = mTranslation_robot_camera.z;
+    //camera_trans.transform.rotation = mQuaternion_robot_camera;
+    //camera_broadcaster.sendTransform(camera_trans);
+
+    //(4)发布localnbv的箭头
+    if(mbMAMUpdated){
+        geometry_msgs::PoseWithCovarianceStamped mampose;
+        mampose.pose.pose.position.x = T_w_body.at<float>(0, 3);
+        mampose.pose.pose.position.y = T_w_body.at<float>(1, 3);
+        mampose.pose.pose.position.z = 0.0;
+
+        Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
+        Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( mMAM_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
+        Eigen::Quaterniond q = q_w_body * q_body_rotate;
+        mampose.pose.pose.orientation.w = q.w();
+        mampose.pose.pose.orientation.x = q.x();
+        mampose.pose.pose.orientation.y = q.y();
+        mampose.pose.pose.orientation.z = q.z();
+        mampose.header.frame_id= "map";
+        mampose.header.stamp=ros::Time::now();
+
+        publisher_mam_rviz.publish(mampose);
+    }
 }
+
 //void MapPublisher::PublishPlane(const vector<MapPlane *> &vpMPls ){
 //    mPlanes.points.clear();
 //
@@ -698,6 +720,11 @@ void MapPublisher::SetCurrentCameraPose(const cv::Mat &Tcw)    //zhangjiadong  �
     unique_lock<mutex> lock(mMutexCamera);
     mCameraPose = Tcw.clone();
     mbCameraUpdated = true;
+}
+
+void MapPublisher::SetMAM(const double &angle){         //zhangjiadong  用在mam的发布中
+    mMAM_angle = angle;
+    mbMAMUpdated = true;
 }
 
 cv::Mat MapPublisher::GetCurrentCameraPose()
