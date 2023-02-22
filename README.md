@@ -8,15 +8,30 @@
 + marker.id= IE_id ;  //TODO:绝对数字
   + 确定id是不是只针对同一个topic下的可视化单元. 本可视化程序中已经将他们拆分为多个topic了. 应该没什么问题吧
 + mNBV_Angle_correct 为什么需要纠正一下呢??
-+ 根据当前的位置显示局部候选点
 + 把costmap在slam找那个生成,从而可以把把cost融入到nbv的评价函数中.
 + 平面的g2o优化 还没加进去
-+ 为什么老版本程序中MapPoint::PredictScale只有一个,而且很简短
-+ camera camera_model(MD,20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
-+ 如何在扭头时，发布对应的baselink_camera的正确的tf
-  + 假设扭头在仿真环境中是瞬时且准确的。
-  + 局部nbv怎么融合到nbvgenerator中
-+ 融合局部nbv了吗？ 并在rviz中显示
++ 有个物体始终不能生成正确的位姿 mCuboid3D.pose_mat.
+  + 看看是哪个物体： 先剔除掉
+  + 权益之计，注释掉了一些函数：
+    + publishIE()
++ gazebo机器人的转速有点慢？？
++ float theta_robot_w=atan2(delta_x_w,delta_z_w);   //atan2(float __y, float __x)   这个角度是在z轴上的夹角，是不是求错了??
+  + 改成了和x轴的。
++ 为什么global nbv到达之后，不移动
+  + 是因为地图的信息没更新？
+  + 是不是global nbv的算法 没起作用？
+  + computeReward(candidate, ObjectMaps);还没有检查
+  + 为什么global nbv的可视化结果和实际发送的导航目标  不一样
+
+
++ ~~暂时去掉global nbv的旋转： vector<Candidate> localCandidate = RotateCandidates(globalCandidate);~~
+  + 或者减小 旋转角度
++ std::sort(globalCandidate.begin(), globalCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
++ 
+
+
+
+**以后的研究方向**
 + local nbv怎么影响路径规划？
 
 **已完成部分：**
@@ -35,7 +50,8 @@
   + 局部路径规划teb_planner.  机器人倒车时，可能配到障碍物。
   + 通信频率10会崩溃， 尝试wifi能否解决问题
 + 实现了基于gazebo的movebase导航
-  + 
++ 局部nbv整合进nbv generator线程中，并梳理出伪代码
++ 
 
 
 **未来想进行的修改 和 学习的内容：**

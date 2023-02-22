@@ -25,7 +25,7 @@
 #define GRID_ROWS 20
 
 typedef struct {
-    	std::vector<std::vector<double>> Map;
+    	std::vector<std::vector<double>> MapPointsCoordinate;
     	std::vector<double> UB;
         std::vector<double> LB;
         std::vector<double> maxDist;
@@ -52,7 +52,7 @@ class camera
 {
 public:
     // todo: compute the gridElement?Inv
-    camera(map_data MD, int);
+    camera(map_data mapData, int);
 
     camera();
 
@@ -63,7 +63,7 @@ public:
     std::vector<float> read_text_single_line(std::string points);
 
     // todo: update the frameGrid here
-    proj_info isInFrustum(std::vector<float> MapPoint_s, float upper_limit, float lower_limit, Eigen::Matrix4f, Eigen::Matrix4f, float max_range, float min_range) const;
+    proj_info isInFrustum(std::vector<float> MapPoint_s, float upper_limit_theta, float lower_limit_theta, Eigen::Matrix4f, Eigen::Matrix4f, float max_range, float min_range) const;
 
     bool setRobotPose(Eigen::Matrix4f Twb);
 
@@ -83,7 +83,7 @@ public:
 
     std::vector<int> posInGrid(float u, float v) const;
 
-    int feature_threshold;
+    //int feature_threshold;
 
     // todo: implement
     bool computeMatrixStd(Eigen::Matrix<float, GRID_ROWS, GRID_COLS>& frameGrid);
@@ -98,7 +98,7 @@ private:
     float cx, cy;
     float MinX, MaxX;
     float MinY, MaxY;
-    float max_dist, min_dist;
+    float max_dist, mMin_dist;
     float gridElementWidthInv;
     float gridElementHeightInv;
     Eigen::Matrix<float, GRID_ROWS, GRID_COLS> frameGrid;
@@ -107,12 +107,12 @@ private:
 
 
     // map points:
-    std::vector<std::vector<float> > map_vec;
+    std::vector<std::vector<float> > map_points_vec;
     //cv::Mat map;
     std::vector<float> upper_bound;
     std::vector<float> lower_bound;
-    std::vector<float> max_range;
-    std::vector<float> min_range;
+    std::vector<float> max_range_dist;
+    std::vector<float> min_range_dist;
     std::vector<float> foundRatio;
     
 

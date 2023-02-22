@@ -77,10 +77,7 @@ std::vector<string> yolo_id = {
         "sink水槽", "refrigerator冰箱", "book书", "clock钟", "vase花瓶", //71
         "scissors", "teddy bear泰迪熊",  "hair drier", "toothbrush"};//76
 //yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
-
-//NBV MAM
-ros::Publisher pub_mam;
-ros::Publisher pub_mam_rviz;
+;
 int loop = 0;
 //NBV MAM end
 
@@ -137,9 +134,6 @@ int main(int argc, char **argv)
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub,bbox_sub);
     sync.registerCallback(boost::bind(&ImageGrabber::GrabRGBD,&igb,_1,_2,_3));
 
-    //(4)发送的ros topic
-    pub_mam = nh.advertise<std_msgs::Float64>("/neck/neck_controller/command", 10);                                //NBV MAM     原topic名字/mam_angle
-    pub_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);  //NBV MAM
     ros::spin();
 
     // Stop all threads
@@ -189,29 +183,6 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
     cv::Mat Tcw;
     Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,  cv_ptrD->image,  cv_ptrRGB->header.stamp.toSec(),  BboxVector);
 
-    //NBV MAM
-    if( loop == 5){
-        std_msgs::Float64 msg;
-        msg.data =  mpSLAM -> getMamGreadAngle();
-
-        //geometry_msgs::PoseWithCovarianceStamped robotpose;
-        //robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
-        //robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
-        //robotpose.pose.pose.position.z = 0.0;
-        //Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
-        //Eigen::Quaterniond q = q_w_body;
-        //robotpose.pose.pose.orientation.w = q.w();
-        //robotpose.pose.pose.orientation.x = q.x();
-        //robotpose.pose.pose.orientation.y = q.y();
-        //robotpose.pose.pose.orientation.z = q.z();
-        //robotpose.header.frame_id= "odom";
-        //robotpose.header.stamp=ros::Time::now();
-
-        pub_mam.publish(msg);
-        loop = 0;
-    }else{
-        loop ++;
-    }
 }
 
 vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::BoundingBox>& boxes){

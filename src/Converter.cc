@@ -181,14 +181,16 @@ float Converter::bboxOverlapratioFormer(const cv::Rect& rect1, const cv::Rect& r
 //}
 
 Eigen::Matrix4d Converter::cvMattoMatrix4d(const cv::Mat &cvMat4) {
-    Eigen::Matrix4d M;
-
-    M << cvMat4.at<float>(0, 0), cvMat4.at<float>(0, 1), cvMat4.at<float>(0, 2), cvMat4.at<float>(0, 3),
-         cvMat4.at<float>(1, 0), cvMat4.at<float>(1, 1), cvMat4.at<float>(1, 2), cvMat4.at<float>(1, 3),
-         cvMat4.at<float>(2, 0), cvMat4.at<float>(2, 1), cvMat4.at<float>(2, 2), cvMat4.at<float>(2, 3),
-         cvMat4.at<float>(3, 0), cvMat4.at<float>(3, 1), cvMat4.at<float>(3, 2), cvMat4.at<float>(3, 3);
-
-    return M;
+    Eigen::Matrix4f eigenMat4f;
+    Eigen::Matrix4d eigenMat4d;
+    std::cout<<"converter debug: "<<cvMat4<<std::endl;
+    //M << cvMat4.at<float>(0, 0), cvMat4.at<float>(0, 1), cvMat4.at<float>(0, 2), cvMat4.at<float>(0, 3),
+    //     cvMat4.at<float>(1, 0), cvMat4.at<float>(1, 1), cvMat4.at<float>(1, 2), cvMat4.at<float>(1, 3),
+    //     cvMat4.at<float>(2, 0), cvMat4.at<float>(2, 1), cvMat4.at<float>(2, 2), cvMat4.at<float>(2, 3),
+    //     cvMat4.at<float>(3, 0), cvMat4.at<float>(3, 1), cvMat4.at<float>(3, 2), cvMat4.at<float>(3, 3);
+    cv::cv2eigen(cvMat4, eigenMat4f);
+    eigenMat4d = eigenMat4f.cast<double>();
+    return eigenMat4d;
 }
 
 
@@ -310,6 +312,10 @@ Matrix3d matrix_33 = Matrix3d::Constant(0.1);
 //11. 从矩阵中取出一部分
 matrix_44.block(0,0,3,3) = matrix_33;
 cout << "左上角３×３的块取出来赋值为Matrix3_3\n" << matrix_44 << endl;
+
+//12.  cvmat和eigen的转化
+cv::cv2eigen(cvMat4, eigenMat4f);
+
 
 */
 

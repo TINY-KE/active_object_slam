@@ -54,6 +54,12 @@ struct Candidate{
     double reward;
 };
 
+struct localCandidate{
+    double angle;
+    double reward;
+    int num;
+};
+
 class NbvGenerator {
 
 public:
@@ -97,7 +103,7 @@ private:
     ros::Publisher publisher_nbv;
     actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>* mActionlib;
     vector<Candidate> mvGlobalCandidate;
-    vector<Candidate> mvLocalCandidate;
+    vector<localCandidate> mvLocalCandidate;
     Candidate NBV;
     vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> mvCloudBoundary;
     vector<PointCloud::Ptr> mvPlanes_filter;
@@ -133,6 +139,10 @@ private:
 private:
     double mGreat_angle = 0;
     float mDivide;
+    int MAM_neckdelay;
+    int mMAM_turn;
+    int MAM_isused;
+    float mLocalNeckRange;
     std::mutex mMutexMamAngle;
     float  mMax_dis;
     float  mMin_dis;

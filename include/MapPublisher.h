@@ -101,13 +101,13 @@ private:
     ros::Publisher publisher_object;
     ros::Publisher publisher_object_points;
     ros::Publisher publisher_IE;
-    ros::Publisher publisher_robotpose;
-    ros::Publisher publisher_mam_rviz;   //NBV MAM
+    //ros::Publisher publisher_robotpose;
+    //ros::Publisher publisher_mam_rviz;   //NBV MAM
 
 
     //tf tree
-    tf::TransformBroadcaster odom_broadcaster;
-    tf::TransformBroadcaster camera_broadcaster;
+    //tf::TransformBroadcaster odom_broadcaster;
+    //tf::TransformBroadcaster camera_broadcaster;
 
     visualization_msgs::Marker mPoints;
     visualization_msgs::Marker mReferencePoints;

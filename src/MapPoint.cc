@@ -239,10 +239,12 @@ void MapPoint::IncreaseFound(int n)
     mnFound+=n;
 }
 
-float MapPoint::GetFoundRatio()
+float MapPoint::GetFoundRatio()  //MapPoint的被观测到的比例，也就是被视野范围内的相机观测到的次数除以可见次数
 {
     unique_lock<mutex> lock(mMutexFeatures);
     return static_cast<float>(mnFound)/mnVisible;
+    //mnFound：当前MapPoint被观测到的次数，即成功匹配的次数。 -->TrackLocalMap的时候，如果这个地图点被当前帧观测到并且匹配上了地图点，并且经过BA优化后还是内点，那么这个地图点的mnFound就+1。也就是这个变量被普通帧看到就+1.
+    //mnVisible：当前MapPoint可见的次数，即被提取为特征点的次数。-->只是说能被当前帧看到，但不一定能匹配上，所以这个时候mnVisible也要+1.
 }
 
 void MapPoint::ComputeDistinctiveDescriptors()
@@ -396,7 +398,15 @@ float MapPoint::GetMaxDistanceInvariance()
     unique_lock<mutex> lock(mMutexPos);
     return 1.2f*mfMaxDistance;
 }
-
+/*                      ___
+    nearer            /_____\       level: n-1   --> dmin
+                     /_______\                             d/dmin=1.2^(n-1-m)
+                    /_________\     level: m     --> d
+                   /___________\                           dmax/d=1.2^(m)
+    farther       /_____________\   level: 0     --> dmax
+    注意金字塔scalefator和距离的关系: 当特征点对应scalefactor为1.2的意思是: 图片分辨率下降1.2倍后, 可以提取出特征点(分辨率更高,肯定也能提出,这里取金字塔中能够提取出该特征点最高层级作为该特征点的层级).
+    同时由当前特征点的距离,推测出所在的层级.
+* */
 int MapPoint::PredictScale(const float &currentDist, KeyFrame* pKF)
 {
     float ratio;
@@ -451,19 +461,19 @@ void MapPoint::UpdateNormalAndDepth()
         return;
 
     cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
-    int n=0;
+    int n=0;   //当前 MapPoint 所被观测到的 KeyFrame 的数量，也就是 MapPoint 在多少个 KeyFrame 中出现过。
     mNormalVectors.clear();
     theta_sVector.clear();
     for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
         cv::Mat Owi = pKF->GetCameraCenter();
-        cv::Mat normali = mWorldPos - Owi;
-        normal = normal + normali/cv::norm(normali);
-        mNormalVectors.push_back(normali/cv::norm(normali));
+        cv::Mat normali = mWorldPos - Owi;  //计算每个观测的视线方向
+        normal = normal + normali/cv::norm(normali);   //将所有视线方向求和得到平均视线方向normal
+        mNormalVectors.push_back(normali/cv::norm(normali)); //MAM
         // compute the viewing angle in the world frame
-        float theta = atan2(normali.at<float>(0,0),normali.at<float>(2,0));
-        theta_sVector.push_back(theta);
+        float theta = atan2(normali.at<float>(0,0),normali.at<float>(1,0));  //MAM 对每个观测视线方向计算在世界坐标系下的观察角度theta.   与y轴的夹角
+        theta_sVector.push_back(theta); //MAM 并将这些角度存储在theta_sVector中。
         n++;
     }
 
@@ -473,26 +483,34 @@ void MapPoint::UpdateNormalAndDepth()
     const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
     const int nLevels = pRefKF->mnScaleLevels;
 
+    //通常说来，距离较近的地图点，将在金字塔较高的地方提出，
+    //距离较远的地图点，在金字塔层数较低的地方提取出（金字塔层数越低，分辨率越高，才能识别出远点）
+    //因此，通过地图点的信息（主要对应描述子），我们可以获得该地图点对应的金字塔层级
+    //从而预测该地图点在什么范围内能够被观测到
     {
         unique_lock<mutex> lock3(mMutexPos);
+        //深度范围：地图点到参考帧（只有一帧）相机中心距离，乘上参考帧中描述子获取金字塔放大尺度得到最大距离mfMaxDistance;
         mfMaxDistance = dist*levelScaleFactor;
+        //最大距离除以整个金字塔最高层的放大尺度得到最小距离mfMinDistance.
         mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
-        mNormalVector = normal/n;
+        mNormalVector = normal/n;  //这里的 normal 变量是所有观测到的 KeyFrame 对当前 MapPoint 计算得到的法线向量的和。将 normal 除以 n 可以得到这些法线向量的平均值，从而计算出当前 MapPoint 的平均法线向量。
         // compute the mean and std of viewing angle
-        compute_std_pts(theta_sVector, theta_mean, theta_std);
+        compute_std_pts(theta_sVector, theta_mean, theta_std); //MAM: 计算theta_sVector的均值和标准偏差
     }
 }
 
 void MapPoint::compute_std_pts(std::vector<float> v, float & mean, float & stdev)
 {
-    float sum = std::accumulate(v.begin(), v.end(), 0.0);
-    mean = sum / v.size();
+    //v中是各参考关键帧对point的观测角度
+
+    float sum = std::accumulate(v.begin(), v.end(), 0.0);  //所有theta的和
+    mean = sum / v.size(); //theta的均值
 
     std::vector<float> diff(v.size());
     std::transform(v.begin(), v.end(), diff.begin(),
-                std::bind2nd(std::minus<float>(), mean));
-    float sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-    stdev = std::sqrt(sq_sum / v.size());
+                std::bind2nd(std::minus<float>(), mean));  // 计算每个theta与平均值的差 diff，
+    float sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);  //计算所有diff的平方和, 得sq_sum
+    stdev = std::sqrt(sq_sum / v.size());  //计算所有diff的标准偏差
 }
 //NBV MAM end
 

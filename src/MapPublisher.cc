@@ -118,8 +118,8 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     publisher_object = nh.advertise<visualization_msgs::Marker>("objectmap", 1000);
     publisher_object_points = nh.advertise<visualization_msgs::Marker>("objectPoints", 1000);
     publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
-    publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
-    publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
+    //publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
+    //publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
 
     publisher.publish(mPoints);
     publisher.publish(mReferencePoints);
@@ -168,7 +168,7 @@ void MapPublisher::Refresh()
         PublishKeyFrames(vKeyFrames);
         //PublishPlane(vMapPlanes);
         PublishObject(vMapObjects);
-        PublishIE(vMapObjects);
+        //PublishIE(vMapObjects);
     }    
 }
 
@@ -386,42 +386,42 @@ void MapPublisher::PublishCurrentCamera(const cv::Mat &Tcw) {
     publisher_curframe.publish(mCurrentCamera);
 
     //（2）相机的坐标和四元数
-    cv::Mat T_w_cam = Tcw.inv();   //初始的相机在世界的坐标
-    cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F);
-    T_w_body = T_w_cam * mT_body_cam.inv();  //初始的机器人底盘在世界的坐标
-    geometry_msgs::PoseWithCovarianceStamped robotpose;
-    robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
-    robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
-    robotpose.pose.pose.position.z = 0.0;
-    //（2.1）gazebo中的四元数和rviz的不同，需要绕着z轴转90度
-    //Eigen::AngleAxisd rotation_vector (-M_PI/2.0, Eigen::Vector3d(0,0,1));
-    //Eigen::Quaterniond q_y_x = Eigen::Quaterniond(rotation_vector);
-    //Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
-    //Eigen::Quaterniond q = q_y_x * q_w_body;
-    //（2.2）不饶z轴转90度
-    Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
-    Eigen::Quaterniond q = q_w_body;
-
-    robotpose.pose.pose.orientation.w = q.w();
-    robotpose.pose.pose.orientation.x = q.x();
-    robotpose.pose.pose.orientation.y = q.y();
-    robotpose.pose.pose.orientation.z = q.z();
-    robotpose.header.frame_id= "odom";
-    robotpose.header.stamp=ros::Time::now();
-    publisher_robotpose.publish(robotpose);
+    //cv::Mat T_w_cam = Tcw.inv();   //初始的相机在世界的坐标
+    //cv::Mat T_w_body = cv::Mat::eye(4, 4, CV_32F);
+    //T_w_body = T_w_cam * mT_body_cam.inv();  //初始的机器人底盘在世界的坐标
+    //geometry_msgs::PoseWithCovarianceStamped robotpose;
+    //robotpose.pose.pose.position.x = T_w_body.at<float>(0, 3);
+    //robotpose.pose.pose.position.y = T_w_body.at<float>(1, 3);
+    //robotpose.pose.pose.position.z = 0.0;
+    ////（2.1）gazebo中的四元数和rviz的不同，需要绕着z轴转90度
+    ////Eigen::AngleAxisd rotation_vector (-M_PI/2.0, Eigen::Vector3d(0,0,1));
+    ////Eigen::Quaterniond q_y_x = Eigen::Quaterniond(rotation_vector);
+    ////Eigen::Quaterniond q_w_body = Converter::toQuaterniond(T_w_body);
+    ////Eigen::Quaterniond q = q_y_x * q_w_body;
+    ////（2.2）不饶z轴转90度
+    //Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_body);
+    //Eigen::Quaterniond q = q_w_body;
+    //
+    //robotpose.pose.pose.orientation.w = q.w();
+    //robotpose.pose.pose.orientation.x = q.x();
+    //robotpose.pose.pose.orientation.y = q.y();
+    //robotpose.pose.pose.orientation.z = q.z();
+    //robotpose.header.frame_id= "odom";
+    //robotpose.header.stamp=ros::Time::now();
+    //publisher_robotpose.publish(robotpose);
 
     //（3）发布tf树
     //发布机器人底盘和odom的tf变换
-    geometry_msgs::TransformStamped odom_trans;
-    ros::Time current_time = ros::Time::now();
-    odom_trans.header.stamp = current_time;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_link";
-    odom_trans.transform.translation.x = robotpose.pose.pose.position.x;
-    odom_trans.transform.translation.y = robotpose.pose.pose.position.y;
-    odom_trans.transform.translation.z = 0.0;
-    odom_trans.transform.rotation = robotpose.pose.pose.orientation; //Quaternion_odom_robot;
-    odom_broadcaster.sendTransform(odom_trans);
+    //geometry_msgs::TransformStamped odom_trans;
+    //ros::Time current_time = ros::Time::now();
+    //odom_trans.header.stamp = current_time;
+    //odom_trans.header.frame_id = "odom";
+    //odom_trans.child_frame_id = "base_link";
+    //odom_trans.transform.translation.x = robotpose.pose.pose.position.x;
+    //odom_trans.transform.translation.y = robotpose.pose.pose.position.y;
+    //odom_trans.transform.translation.z = 0.0;
+    //odom_trans.transform.rotation = robotpose.pose.pose.orientation; //Quaternion_odom_robot;
+    //odom_broadcaster.sendTransform(odom_trans);
 
     //发布camera_depth_optical_frame和base_link的tf变换
     //geometry_msgs::TransformStamped camera_trans;
@@ -686,7 +686,11 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                 double p_z = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;
 
                 // 物体坐标系 -> 世界坐标系
-                Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
+                cv::Mat cvMat4 = obj->mCuboid3D.pose_mat.clone();
+                Eigen::Matrix4f eigenMat4f;
+                cv::cv2eigen(cvMat4, eigenMat4f);
+                //Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
+                Eigen::Matrix4d T = eigenMat4f.cast<double>();
                 Eigen::Matrix3d R = T.block<3, 3>(0, 0);
                 Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
                 geometry_msgs::Point p;

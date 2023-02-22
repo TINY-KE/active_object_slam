@@ -46,7 +46,7 @@ Tworld_camera.qz: -0.364187
 
 Tworld_camera.tx: 0.0
 Tworld_camera.ty: 0.0
-Tworld_camera.tz: 1.2  #this height is 0.2 higher than the height in gazebo
+Tworld_camera.tz: 1.4  #this height is 0.2 higher than the height in gazebo
 
 #translation from baselink frame to camera frame
 #tum
@@ -70,7 +70,7 @@ Trobot_camera.qz: 0.364187
 
 Trobot_camera.tx: 0.0
 Trobot_camera.ty: 0.0
-Trobot_camera.tz: 1.2  #this height is 0.2 higher than the height in gazebo
+Trobot_camera.tz: 1.4  #this height is 0.2 higher than the height in gazebo
 Trobot_camera.down_nbv_height: 0.0
 
 
@@ -154,10 +154,18 @@ SavePath.Keyframe: "KeyFrameTrajectory.txt"
 SavePath.PlaneFeature: "PlaneFeature.txt"
 
 #--------------------------------------------------------------------------------------------
-# NBV
+# Local NBV
 #--------------------------------------------------------------------------------------------
+MAM.isused: 0
+MAM.neckdelay: 100
 MAM.divide: 20
+MAM.NeckRange: 6.28
 MAM.TfDuration: 2.0
+
+#--------------------------------------------------------------------------------------------
+# Global NBV
+#--------------------------------------------------------------------------------------------
+PubNavGoal: 1
 IE.rows: 18
 IE.cols: 18
 IE.P_occ: 0.6
@@ -168,7 +176,8 @@ Plane.Height.Max: 1.0
 Plane.Height.Min: 0.5
 NBV_Angle_correct_factor: -0.5
 Candidate_num_topub: 1
-PubNavGoal: 0
+
+
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

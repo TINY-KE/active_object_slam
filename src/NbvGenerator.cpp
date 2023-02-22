@@ -44,6 +44,10 @@ mpMap(map), mpTracker(pTracking)
     mMax_dis = fSettings["Camera.max_dis"];
     mMin_dis = fSettings["Camera.min_dis"];
     mDivide = fSettings["MAM.divide"];   //NBV MAM,  也用在了global nbv中
+    mLocalNeckRange = fSettings["MAM.NeckRange"];
+    MAM_isused = fSettings["MAM.isused"];
+    MAM_neckdelay = fSettings["MAM.neckdelay"];
+    mMAM_turn = MAM_neckdelay;
 
     float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
           tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
@@ -77,18 +81,18 @@ void NbvGenerator::Run() {
         //2. 旋转并评估 全局候选点
         cv::Mat BestCandidate;
         for(int i=0; i<mvGlobalCandidate.size(); i++ ){
-            auto globalCandidate = mvGlobalCandidate[i];
+            auto globalCandidate_source = mvGlobalCandidate[i];
             //旋转180度
-            vector<Candidate> localCandidate = RotateCandidates(globalCandidate);
+            vector<Candidate> globalCandidate = RotateCandidates(globalCandidate_source);
             //计算视点的评价函数，对condidate筛选
-            for(auto candidate : localCandidate){
+            for(auto candidate : globalCandidate){
                 computeReward(candidate, ObjectMaps);
             }
             //从大到小排序localCandidate
-            std::sort(localCandidate.begin(), localCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
+            std::sort(globalCandidate.begin(), globalCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
             //将最佳角度值, 修改回GlobalCandidate[i]
-            mvGlobalCandidate[i].reward = localCandidate.begin()->reward;
-            mvGlobalCandidate[i].pose = localCandidate.begin()->pose.clone();
+            mvGlobalCandidate[i].reward = globalCandidate.begin()->reward;
+            mvGlobalCandidate[i].pose = globalCandidate.begin()->pose.clone();
         }
 
         //3. 将全局NBV发送给导航模块
@@ -110,20 +114,6 @@ void NbvGenerator::Run() {
                 cv::Mat Twc = mvGlobalCandidate.front().pose;
                 cv::Mat T_w_baselink = Twc * mT_basefootprint_cam.inv();
 
-                //version1： topic
-                //geometry_msgs::PoseStamped goal;
-                //goal.header.frame_id = "map";
-                //goal.pose.position.x =  T_w_baselink.at<float>(0,3);
-                //goal.pose.position.y =  T_w_baselink.at<float>(1,3);
-                //goal.pose.position.z =  0;
-                //Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
-                //goal.pose.orientation.w = q.w();
-                //goal.pose.orientation.x = q.x();
-                //goal.pose.orientation.y = q.y();
-                //goal.pose.orientation.z = q.z();
-                //publisher_nbv.publish(goal);
-
-                //version2： action
                 while(!mActionlib->waitForServer(ros::Duration(5.0))){
                     ROS_INFO("Waiting for the move_base action server to come up");
                 }
@@ -139,23 +129,28 @@ void NbvGenerator::Run() {
                 ActionGoal.target_pose.pose.orientation.y = q.y();
                 ActionGoal.target_pose.pose.orientation.z = q.z();
                 mActionlib->sendGoal(ActionGoal);
-                mActionlib->waitForResult();
-                //if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                //    ROS_INFO("The robot reached the goal!");
-                //else
-                //    ROS_INFO("The base failed to reach the goal!");
 
                 //4. 在导航过程中，生成Local NBV:
-                while(mActionlib->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
+                while(!mActionlib->waitForResult(ros::Duration(0.5))){
                     publishLocalNBV();
                 }
 
-                //5.到达global nbv之后，让机器人扭头到0度
-                ROS_INFO("The base failed to reach the goal!");
-                publishNeckAngle(0.0);
+                //5.导航结束后，让机器人扭头到最佳角度
+                if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+                    ROS_INFO("The robot successed to reach the Global goal!");
+                else
+                    ROS_INFO("The robot failed to reach the Global goal!");
+                publishLocalNBV();
             }
             else{
+                //if(mMAM_turn == MAM_neckdelay)
+                //    publishLocalNBV();
+                //else if(mMAM_turn == 0)
+                //    mMAM_turn == MAM_neckdelay;
+                //else
+                //    mMAM_turn --;
                 publishLocalNBV();
+                usleep( 0.5 * 1000);
             }
 
 
@@ -537,9 +532,9 @@ void NbvGenerator::publishLocalNBV(){
         if(vpPts[i]->isBad())
             continue;
 
-        float minDist = vpPts[i]->GetMinDistanceInvariance();
-        float maxDist = vpPts[i]->GetMaxDistanceInvariance();
-        float foundRatio = vpPts[i]->GetFoundRatio();
+        float minDist = vpPts[i]->GetMinDistanceInvariance();  //根据金字塔计算出的最近可见距离
+        float maxDist = vpPts[i]->GetMaxDistanceInvariance();  //根据金字塔计算出的最远可见距离
+        float foundRatio = vpPts[i]->GetFoundRatio(); //地图点的查找率,如果过低,会被标记为bad point
 
         //float Dist = sqrt((Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))*(Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))+
         //(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(1))*(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(2))+
@@ -548,22 +543,23 @@ void NbvGenerator::publishLocalNBV(){
         //if((Dist > maxDist)||(Dist < minDist))
         //    continue;
 
-        MapData.Map.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0), vpPts[i]->GetWorldPos().at<float>(1), vpPts[i]->GetWorldPos().at<float>(2)});
+        MapData.MapPointsCoordinate.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0), vpPts[i]->GetWorldPos().at<float>(1), vpPts[i]->GetWorldPos().at<float>(2)});
 
-        if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){
+        //观测角度(共视方向)的冗余量,论文中的alpha_max
+        if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){  //如果标准差小于..., 则设置冗余量为10弧度
             theta_interval = 10.0/57.3;
         }else{
             theta_interval = vpPts[i]->theta_std * 2.5;
         }
 
-        MapData.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));
-        MapData.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));
-        MapData.maxDist.push_back(double(maxDist));
-        MapData.minDist.push_back(double(minDist));
-        MapData.foundRatio.push_back(double(foundRatio));
+        MapData.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));    //观测角度(共视方向)的最大值
+        MapData.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));    //观测角度(共视方向)的最小值
+        MapData.maxDist.push_back(double(maxDist));         //最远可见距离
+        MapData.minDist.push_back(double(minDist));         //最近可见距离
+        MapData.foundRatio.push_back(double(foundRatio));   //地图点的查找率
     }
 
-    //2.构建mam对象
+    //2.构建mam camera对象
     camera camera_model(MapData, 20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
     camera_model.setCamera(mfx, mfy, mcx, mcy,  mImageWidth,  mImageHeight, mMax_dis, mMin_dis );
 
@@ -593,47 +589,72 @@ void NbvGenerator::publishLocalNBV(){
     //4.计算扭头的最佳角度
     if(!T_w_basefootprint.empty()){
 
-        //visible_info VI;
-        int visible_pts = 0;
-        double great_angle = -5.0;
+        if(MAM_isused){
+            //visible_info VI;
+            int visible_pts = 0;
+            double great_angle = -5.0;
 
-        //利用速度模型, 生成下一时刻的机器人位姿
+            //利用速度模型, 生成下一时刻的机器人位姿
 
-        //在机器人位姿的基础上，计算最佳扭头的角度
-        cv::Mat body_new;
-        for(int i=0; i<=mDivide; i++){
-            double angle = M_PI/mDivide * i - M_PI/2.0 ;
-            //旋转
-            Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
-            Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
-            //Eigen::Isometry3d trans_matrix;
-            //trans_matrix.rotate(rotation_vector);
-            //trans_matrix.pretranslate(Vector3d(0,0,0));
-            cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+            //在机器人位姿的基础上，计算最佳扭头的角度
+            cv::Mat body_new;
 
-            //平移
-            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
+            for(int i=0; i<=mDivide; i++){
+                double angle = mLocalNeckRange/mDivide * i - mLocalNeckRange/2.0 ;
+                //旋转
+                Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
+                Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
+                //Eigen::Isometry3d trans_matrix;
+                //trans_matrix.rotate(rotation_vector);
+                //trans_matrix.pretranslate(Vector3d(0,0,0));
+                cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
 
-            //总变换矩阵
-            cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
-            rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
-            t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
+                //平移
+                cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
 
-            body_new = T_w_basefootprint * trans_mat;   //旋转之后的机器人位姿
-            cv::Mat T_w_cam = body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
-            int num = camera_model.countVisible(T_w_cam);   //利用相机模型， 计算最佳的扭头角度
-            cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
-            if(num > visible_pts){
-                great_angle = angle;
-                visible_pts = num;
+                //总变换矩阵
+                cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
+                rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
+                t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
+
+                body_new = T_w_basefootprint * trans_mat;   //旋转之后的机器人位姿
+                cv::Mat T_w_cam = body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
+                int num = camera_model.countVisible(T_w_cam);   //利用相机模型， 计算最佳的扭头角度
+                cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
+                if(num > visible_pts){
+                    great_angle = angle;
+                    visible_pts = num;
+                }
+                localCandidate lc;
+                lc.angle = angle;
+                lc.num = num;
+
+                //double localreward = num + ;
             }
+            //unique_lock<mutex> lock(mMutexMamAngle);
+            mGreat_angle = great_angle;//   /M_PI*180 ;
+            //cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
         }
-        //unique_lock<mutex> lock(mMutexMamAngle);
-        mGreat_angle = great_angle;//   /M_PI*180 ;
-        //cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
+        else{
+            //double desk_center_x = -2.0;
+            //double desk_center_y = 0.0;
+            //double direct_x = transform.getOrigin().x() - desk_center_x;
+            //double direct_y = transform.getOrigin().y() - desk_center_y;
+            //
+            cv::Mat desk_center_w = cv::Mat::zeros(4,1,CV_32F);
+            desk_center_w.at<float>(0,0) = -2.0;
+            desk_center_w.at<float>(1,0) = 0.0;
+            desk_center_w.at<float>(2,0) = 0.0;
+            desk_center_w.at<float>(3,0) = 1.0;
+            cv::Mat desk_center_robot = T_w_basefootprint.inv() * desk_center_w;
+            double angle = atan2( desk_center_robot.at<float>(1,0),  desk_center_robot.at<float>(0,0) );  //与x轴的夹角
+            mGreat_angle = angle;
+            cout << "---- angle:" <<mGreat_angle/M_PI*180 << endl;
+
+        }
 
         //5.发布脖子的角度
-        publishNeckAngle(great_angle);
+        publishNeckAngle(mGreat_angle);
 
         //6.可视化local nbv
         {
@@ -643,7 +664,7 @@ void NbvGenerator::publishLocalNBV(){
             mampose.pose.pose.position.z = 0.0;
 
             Eigen::Quaterniond q_w_body = Converter::ExtractQuaterniond(T_w_basefootprint);
-            Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( great_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
+            Eigen::Quaterniond q_body_rotate = Eigen::Quaterniond( Eigen::AngleAxisd( mGreat_angle*M_PI/180.0, Eigen::Vector3d ( 0,0,1 ) )  );     //沿 Z 轴旋转 45 度
             Eigen::Quaterniond q = q_w_body * q_body_rotate;
             mampose.pose.pose.orientation.w = q.w();
             mampose.pose.pose.orientation.x = q.x();
@@ -655,9 +676,12 @@ void NbvGenerator::publishLocalNBV(){
             publisher_mam_rviz.publish(mampose);
         }
     }
+
 }
 
 void NbvGenerator::publishNeckAngle(double  angle){
+    //if(angle==0)
+    //    return;
     std_msgs::Float64 msg;
     msg.data =  angle;
     publisher_mam.publish(msg);

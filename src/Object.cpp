@@ -1748,6 +1748,7 @@ void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
     for (sit = mReObj.end(); sit != mReObj.begin(); sit--)
     {
         int nObjId = sit->first;
+        std::cout<<"debug SearchAndMergeMapObjs_fll: obj_3ds数量："<<obj_3ds.size()  << " ,nObjId: "<<nObjId <<std::endl;
         Object_Map* obj_ass = obj_3ds[nObjId];  // new bug: 可以先检查下是不是费控  查看nObjId是否大于obj_3ds.size(). 或者去掉这一行
         if (sit->second < 3)
             continue;
