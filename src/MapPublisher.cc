@@ -118,6 +118,8 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     publisher_object = nh.advertise<visualization_msgs::Marker>("objectmap", 1000);
     publisher_object_points = nh.advertise<visualization_msgs::Marker>("objectPoints", 1000);
     publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
+    publisher_MainDirection = nh.advertise<visualization_msgs::Marker>("object_MainDirection", 1000);
+    publisher_SumMainDirection = nh.advertise<visualization_msgs::Marker>("object_SumMainDirection", 1000);
     //publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
     //publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
 
@@ -131,17 +133,6 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     //坐标关系,用于生成
     float qx = fSettings["Trobot_camera.qx"], qy = fSettings["Trobot_camera.qy"], qz = fSettings["Trobot_camera.qz"], qw = fSettings["Trobot_camera.qw"],
                 tx = fSettings["Trobot_camera.tx"], ty = fSettings["Trobot_camera.ty"], tz = fSettings["Trobot_camera.tz"];
-    //mT_body_cam = cv::Mat::eye(4, 4, CV_32F);
-    //Eigen::Quaterniond quaternion(Eigen::Vector4d(qx, qy, qz, qw));
-    //Eigen::AngleAxisd rotation_vector(quaternion);
-    //Eigen::Isometry3d T = Eigen::Isometry3d::Identity();
-    //T.rotate(rotation_vector);
-    //T.pretranslate(Eigen::Vector3d(tx, ty, tz));
-    //Eigen::Matrix4d GroundtruthPose_eigen = T.matrix();
-    //cv::Mat cv_mat_32f;
-    //cv::eigen2cv(GroundtruthPose_eigen, cv_mat_32f);
-    //cv_mat_32f.convertTo(mT_body_cam, CV_32F);
-    //新方法：
     mT_body_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
     mQuaternion_robot_camera.x = qx;
     mQuaternion_robot_camera.y = qy;
@@ -150,6 +141,11 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     mTranslation_robot_camera.x = tx;
     mTranslation_robot_camera.y = ty;
     mTranslation_robot_camera.z = tz;
+
+    //ros duration
+    mObject_Duration = fSettings["Viewer.object_Duration"];
+    mDirection_Duration = fSettings["Viewer.direction_Duration"];
+    mIE_Duration = fSettings["Viewer.IE_Duration"];
 }
 
 void MapPublisher::Refresh()
@@ -169,7 +165,7 @@ void MapPublisher::Refresh()
         //PublishPlane(vMapPlanes);
         PublishObject(vMapObjects);
         //PublishIE(vMapObjects);
-    }    
+    }
 }
 
 void MapPublisher::PublishMapPoints(const vector<MapPoint*> &vpMPs, const vector<MapPoint*> &vpRefMPs)
@@ -527,10 +523,10 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         std::uniform_real_distribution<double>  random(0.5,1);
         float r = random(e); float g = random(e); float b = random(e);
 
-        //物体
+        //(1)物体
         visualization_msgs::Marker marker;
         marker.id = ++object_id_init;//object_id_init + i;
-        marker.lifetime = ros::Duration(0.1);
+        marker.lifetime = ros::Duration(mObject_Duration);
         marker.header.frame_id= MAP_FRAME_ID;
         marker.header.stamp=ros::Time::now();
 
@@ -582,11 +578,11 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
 
         publisher_object.publish(marker);
 
-        //物体中的点
+        //(2)物体中的点
         visualization_msgs::Marker marker1;
         marker1.header.frame_id = MAP_FRAME_ID;
         marker1.ns = "ObjectPoints";
-        marker1.lifetime = ros::Duration(0.2);
+        marker1.lifetime = ros::Duration(mObject_Duration);
         marker1.id= ++object_id_init;
         marker1.type = visualization_msgs::Marker::POINTS;
         marker1.scale.x=0.02;
@@ -610,12 +606,12 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         }
         publisher_object_points.publish(marker1);
 
-        //物体中新的点
+        //(3)物体中新的点
         vector<float> color_new = colors_bgr[(vObjs[i]->mnClass+1) % 6];
         visualization_msgs::Marker marker2;
         marker2.header.frame_id = MAP_FRAME_ID;
         marker2.ns = "NewObjectPoints";
-        marker2.lifetime = ros::Duration(0.2);
+        marker2.lifetime = ros::Duration(mObject_Duration);
         marker2.id= ++object_id_init;
         marker2.type = visualization_msgs::Marker::POINTS;
         marker2.scale.x=0.02;
@@ -641,8 +637,67 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         }
         //std::cout<<"[rviz debug:2 ]"<<marker2.points.size() <<std::endl;
         publisher_object_points.publish(marker2);
+
+        //(4)main direction
+        visualization_msgs::Marker marker3;
+        marker3.header.frame_id = MAP_FRAME_ID;
+        marker3.header.stamp = ros::Time::now();
+        marker3.ns = "vector";
+        marker3.lifetime = ros::Duration(mDirection_Duration);
+        marker3.id = marker.id;
+        marker3.type = visualization_msgs::Marker::ARROW;
+        marker3.scale.x = 0.02;
+        marker3.scale.y = 0.02;
+        marker3.scale.z = 0.05;
+        marker3.pose.orientation.w = 1.0;
+        marker3.points.resize(2);
+        marker3.points[0].x = vObjs[i]->mCuboid3D.cuboidCenter.x();
+        marker3.points[0].y = vObjs[i]->mCuboid3D.cuboidCenter.y();
+        marker3.points[0].z = vObjs[i]->mCuboid3D.cuboidCenter.z();
+        marker3.points[1].x = vObjs[i]->mMainDirection.x()/10.0*2.0 + vObjs[i]->mCuboid3D.cuboidCenter.x();
+        marker3.points[1].y = vObjs[i]->mMainDirection.y()/10.0*2.0 + vObjs[i]->mCuboid3D.cuboidCenter.y();
+        marker3.points[1].z = vObjs[i]->mMainDirection.z()/10.0*2.0 + vObjs[i]->mCuboid3D.cuboidCenter.z();
+        marker3.action = visualization_msgs::Marker::ADD;
+        marker3.color.r = 1.0;
+        marker3.color.g = 1.0;
+        marker3.color.b = 0.0;
+        marker3.color.a = 1.0;
+        publisher_MainDirection.publish(marker3);
     }
 
+    //5.全部的观测主方向
+    int object_viewed_num = 0;
+    Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
+    Eigen::Vector3d object_viewed_center_all = Eigen::Vector3d::Zero();
+    for (int i = 0; i < (int)vObjs.size(); i++) {
+        Object_Map *obj3d = vObjs[i];
+            direction_all += obj3d->mMainDirection;
+    }
+    direction_all = direction_all.normalized()/10.0*3.0;
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = MAP_FRAME_ID;
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "vector";
+    marker.lifetime = ros::Duration(mDirection_Duration);
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::ARROW;
+    marker.scale.x = 0.02;
+    marker.scale.y = 0.02;
+    marker.scale.z = 0.05;
+    marker.pose.orientation.w = 1.0;
+    marker.points.resize(2);
+    marker.points[0].x = -2.0;
+    marker.points[0].y = 0.0;
+    marker.points[0].z = 0.0;
+    marker.points[1].x = direction_all.x() - 2.0;
+    marker.points[1].y = direction_all.y() + 0.0;
+    marker.points[1].z = direction_all.z() + 0.0;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.color.r = 0.0;
+    marker.color.g = 0.0;
+    marker.color.b = 1.0;
+    marker.color.a = 1.0;
+    publisher_SumMainDirection.publish(marker);
 }
 
 void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
@@ -655,7 +710,7 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     marker.header.frame_id = MAP_FRAME_ID;
     marker.ns = "InformationEntroy";
     //marker.lifetime = ros::Duration(5.0);
-    marker.lifetime = ros::Duration(0.2);
+    marker.lifetime = ros::Duration(mIE_Duration);
     //marker.id= IE_id ;  //TODO:绝对数字
     marker.type = visualization_msgs::Marker::POINTS;
     marker.scale.x=0.03;
@@ -718,6 +773,81 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     }
 
 }
+
+void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
+    // color.
+    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+    vector<float> color;
+
+    //生成 rviz marker
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = MAP_FRAME_ID;
+    marker.ns = "MainDirection";
+    //marker.lifetime = ros::Duration(5.0);
+    marker.lifetime = ros::Duration(mDirection_Duration);
+    //marker.id= IE_id ;  //TODO:绝对数字
+    marker.type = visualization_msgs::Marker::POINTS;
+    marker.scale.x=0.03;
+    marker.scale.y=0.08;
+    marker.pose.orientation.w=1.0;  //????
+    marker.action=visualization_msgs::Marker::ADD;
+
+
+    for(size_t i=0; i< vObjs.size(); i++){
+        Object_Map* obj = vObjs[i];
+
+        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true))
+        {
+            continue;
+        }
+
+        color = colors_bgr[obj->mnClass % 6];
+        double diameter = sqrt(obj->mCuboid3D.width * obj->mCuboid3D.width   +   obj->mCuboid3D.lenth * obj->mCuboid3D.lenth )/2.0;
+        for(int x=0; x<obj->mIE_rows; x++){
+            double angle_divide = 2*M_PI/obj->mIE_rows;
+            double angle = angle_divide * ( x + 0.5 );
+            double p_x = cos(angle) * diameter;
+            double p_y = sin(angle) * diameter;
+
+            double h_divide =  obj->mCuboid3D.height/obj->mIE_cols;
+            for(int y=0; y<obj->mIE_cols; y++){
+                //计算纵坐标
+                double p_z = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;
+
+                // 物体坐标系 -> 世界坐标系
+                cv::Mat cvMat4 = obj->mCuboid3D.pose_mat.clone();
+                Eigen::Matrix4f eigenMat4f;
+                cv::cv2eigen(cvMat4, eigenMat4f);
+                //Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
+                Eigen::Matrix4d T = eigenMat4f.cast<double>();
+                Eigen::Matrix3d R = T.block<3, 3>(0, 0);
+                Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
+                geometry_msgs::Point p;
+                p.x= p_world[0] + T(0, 3);
+                p.y= p_world[1] + T(1, 3);
+                p.z= p_world[2] + T(2, 3);
+
+                if(obj->mvGridProb_mat.at<float>(x,y) > 0.5){
+                    //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
+                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
+                }
+                else if(obj->mvGridProb_mat.at<float>(x,y) < 0.5){
+                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
+                }
+                else {
+                    marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
+                }
+                marker.id= ++IE_id;
+                marker.points.push_back(p);
+                publisher_IE.publish(marker);
+                //usleep(100);
+            }
+        }
+    }
+
+}
+
 
 void MapPublisher::SetCurrentCameraPose(const cv::Mat &Tcw)    //zhangjiadong  用在map.cc中
 {

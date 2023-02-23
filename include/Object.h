@@ -320,6 +320,7 @@ public:
     void compute_occupied_prob_eachgrid();
     double IE(const double &p);
     void ComputeIE();
+    void ComputeMainDirection();
     double get_information_entroy();
     std::vector<MapPoint* >  GetObjectMappoints();
     std::vector<MapPoint* >  GetNewObjectMappoints();

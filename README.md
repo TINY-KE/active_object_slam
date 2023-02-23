@@ -22,10 +22,16 @@
   + 是不是global nbv的算法 没起作用？
   + computeReward(candidate, ObjectMaps);还没有检查
   + 为什么global nbv的可视化结果和实际发送的导航目标  不一样
++ 为什么reward传不回来？？  
+  + 是不是下面这个front有问题
+    + mvGlobalCandidate[i].reward = globalCandidate.front().reward; 
+    + mvGlobalCandidate[i].pose = globalCandidate.front().pose.clone();
+  + 猜测是一个元素的vector的sort 造成的。
 
 
-+ ~~暂时去掉global nbv的旋转： vector<Candidate> localCandidate = RotateCandidates(globalCandidate);~~
++ 暂时去掉global nbv的旋转： vector<Candidate> localCandidate = RotateCandidates(globalCandidate);
   + 或者减小 旋转角度
+  + globalCandidate.push_back(globalCandidate_source);
 + std::sort(globalCandidate.begin(), globalCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
 + 
 

@@ -257,14 +257,14 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                     cv::putText(mat_test, std::to_string(Iou), cv::Point(0, 500), cv::FONT_HERSHEY_DUPLEX, 1.0,
                                 (0, 255, 0), 2);
                     cv::resize(mat_test, mat_test, cv::Size(640 * 0.5, 480 * 0.5), 0, 0, cv::INTER_CUBIC);
-                    cv::imshow("[MotionIou]", mat_test);
+                    //cv::imshow("[MotionIou]", mat_test);
                 }
-                std::cout<<"[MotionIou] iou:"<<Iou <<std::endl;
+                //std::cout<<"[MotionIou] iou:"<<Iou <<std::endl;
                 if ((Iou > IouThreshold) && (Iou > IouMax))
                 {
                     IouMax = Iou;
                     ObjID_IouMax = i;
-                    std::cout<<"[MotionIou] yes "<<std::endl;
+                    //std::cout<<"[MotionIou] yes "<<std::endl;
                 }
 
             }
@@ -386,13 +386,13 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
         {
             Object_Map* obj3D = ObjectMaps[i];
             if (mclass_id != obj3D->mnClass){
-                std::cout<<"[ProIou]物体class不同"<<std::endl;
+                //std::cout<<"[ProIou]物体class不同"<<std::endl;
                 continue;
             }
 
 
             if (obj3D->bad_3d){
-                std::cout<<"[ProIou]物体bad"<<std::endl;
+                //std::cout<<"[ProIou]物体bad"<<std::endl;
                 continue;
             }
 
@@ -402,7 +402,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             {
                 int df = (int) obj3D->mvObject_2ds.size();
                 if ((mvMapPonits.size() >= 10) && (df > 8)) {
-                    std::cout << "[ProIou]小样本和多物体下使用" << std::endl;
+                    //std::cout << "[ProIou]小样本和多物体下使用" << std::endl;
                     continue;
                 }
             }
@@ -425,11 +425,11 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 cv::putText(mat_test, std::to_string(fIou), cv::Point(0, 500), cv::FONT_HERSHEY_DUPLEX, 1.0,
                             (0, 255, 0), 2);
                 cv::resize(mat_test, mat_test, cv::Size(640 * 0.5, 480 * 0.5), 0, 0, cv::INTER_CUBIC);
-                cv::imshow("[ProIou]", mat_test);
-                std::cout << "[ProIou] " << fIou << " iou1:"
-                          << Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints) << ", iou2:"
-                          << Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints)
-                          << std::endl;
+                //cv::imshow("[ProIou]", mat_test);
+                //std::cout << "[ProIou] " << fIou << " iou1:"
+                //          << Converter::bboxOverlapratio(RectCurrent, obj3D->mRect_byProjectPoints) << ", iou2:"
+                //          << Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3D->mRect_byProjectPoints)
+                //          << std::endl;
             }
             // record the max IoU and map object id.
             // notes: 找到最大重叠目标框
@@ -440,7 +440,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 MaxAssoObjId_byProIou = i;   //AssoObjId_byProIou  ProIouMaxObjId = i;
                 // 这种记录方式是不是有点不科学，毕竟这个不是排序过的
                 vAssoObjIds_byProIou.push_back(i);
-                std::cout<<"[ProIou] yes "<<std::endl;
+                //std::cout<<"[ProIou] yes "<<std::endl;
             }
 
         }
@@ -559,7 +559,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 (t_test_z < tTestData[min((df - 1), 121)][5]))
             {
                 vObjByTId.push_back(i);
-                std::cout<<"[Ttest] yes 1 "<<std::endl;
+                //std::cout<<"[Ttest] yes 1 "<<std::endl;
             }
             // If the T-test is not satisfied, but the IOU is large, reducing the significance.
             else if (fIou > 0.25)
@@ -570,18 +570,18 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                     (t_test_z < tTestData[min((df - 1), 121)][8]))
                 {
                     vObjByTId.push_back(i);
-                    std::cout<<"[Ttest] yes 2 "<<std::endl;
+                    //std::cout<<"[Ttest] yes 2 "<<std::endl;
                 }
 
                 else if ((fIou > 0.25) && ((t_test_x + t_test_y + t_test_z) / 3 < 10))
                 {
                     vObjByTId.push_back(i);
-                    std::cout<<"[Ttest] yes 3 "<<std::endl;
+                    //std::cout<<"[Ttest] yes 3 "<<std::endl;
                 }
                 else
                 {
                     vObjByTIdLower.push_back(i);
-                    std::cout<<"[Ttest] yes 4 "<<std::endl;
+                    //std::cout<<"[Ttest] yes 4 "<<std::endl;
                 }
             }
             else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
@@ -593,7 +593,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
                 fIou_force = max(fIou_force, fIou2_force);
 
                 if (fIou_force > 0.25){
-                    std::cout<<"[Ttest] yes 5 "<<std::endl;
+                    //std::cout<<"[Ttest] yes 5 "<<std::endl;
                     vObjByTIdLower.push_back(i);
                 }
             }
@@ -1080,7 +1080,7 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
         if ((x_pt.size() == 0) || (y_pt.size() == 0) || (z_pt.size() == 0)) {
             this->bad_3d = true;
-            std::cout<<"object->bad 点数为0" <<std::endl;
+            //std::cout<<"object->bad 点数为0" <<std::endl;
             return;
         }
 
@@ -1243,6 +1243,9 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
     // step 8. 计算ie
     this->ComputeIE();
+
+    // step 9. 计算观测主方向
+    this->ComputeMainDirection();
 }
 
 // 移除object3d中的outliers，重新优化物体的坐标和尺度
@@ -1710,10 +1713,10 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
     this->IsolationForestDeleteOutliers();
 
     mCurrentFrame.mvObject_2ds.push_back(Object_2d);
-    std::cout   <<"与旧物体融合成功，cude h:" <<this->mCuboid3D.height
-                <<", cude w:" <<this->mCuboid3D.width
-                <<", cude l:" <<this->mCuboid3D.lenth
-                <<std::endl;
+    //std::cout   <<"与旧物体融合成功，cude h:" <<this->mCuboid3D.height
+    //            <<", cude w:" <<this->mCuboid3D.width
+    //            <<", cude l:" <<this->mCuboid3D.lenth
+    //            <<std::endl;
     return true;
 }
 
@@ -1748,7 +1751,7 @@ void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
     for (sit = mReObj.end(); sit != mReObj.begin(); sit--)
     {
         int nObjId = sit->first;
-        std::cout<<"debug SearchAndMergeMapObjs_fll: obj_3ds数量："<<obj_3ds.size()  << " ,nObjId: "<<nObjId <<std::endl;
+        //std::cout<<"debug SearchAndMergeMapObjs_fll: obj_3ds数量："<<obj_3ds.size()  << " ,nObjId: "<<nObjId <<std::endl;
         Object_Map* obj_ass = obj_3ds[nObjId];  // new bug: 可以先检查下是不是费控  查看nObjId是否大于obj_3ds.size(). 或者去掉这一行
         if (sit->second < 3)
             continue;
@@ -1849,7 +1852,7 @@ bool Object_Map::DoubleSampleTtest_fll(ORB_SLAM2::Object_Map *RepeatObj) {
 
 void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
 {
-    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 1>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 1>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
  // step 1. 将RepeatObj添加到当前obj3d中
     // update points.
     for (int i = 0; i < RepeatObj->mvpMapObjectMappoints.size(); i++)
@@ -1911,8 +1914,8 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
             }
         }
     }
-    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 2>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
-    std::cout<<"RepeatObj->mvObject_2ds.size(): "<<RepeatObj->mvObject_2ds.size()<<std::endl;
+    //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 2>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    //std::cout<<"RepeatObj->mvObject_2ds.size(): "<<RepeatObj->mvObject_2ds.size()<<std::endl;
 
     // step 2. update frame objects.
     //int end;
@@ -1937,7 +1940,7 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
 
         AddObj2d(ObjectFrame);//this->mvObject_2ds.push_back(ObjectFrame);
     }
-    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 3>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 3>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
     // step 3. 将 RepeatObj共视关系,增加到当前obj3d中
     // the co-view relationship
@@ -1960,7 +1963,7 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
                 mmAppearSametime.insert(make_pair(nObjId, 1));
         }
     }
-    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
     // step 4. 更新当前obj3d的最后观测帧的id
     // update the last observed frame.
@@ -1996,13 +1999,13 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
         else if(RepeatObj->mvObject_2ds.size() >=  2 )
         {
             mnLastLastAddID = RepeatObj->mnLastLastAddID;
-            std::cout<<"[mergy debug]: size:" <<RepeatObj->mvObject_2ds.size() <<std::endl;
-            std::cout<<"[mergy debug]: width:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.width <<std::endl;
-            std::cout<<"[mergy debug]: height:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.height <<std::endl;
+            //std::cout<<"[mergy debug]: size:" <<RepeatObj->mvObject_2ds.size() <<std::endl;
+            //std::cout<<"[mergy debug]: width:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.width <<std::endl;
+            //std::cout<<"[mergy debug]: height:" <<RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect.height <<std::endl;
             mLastLastRect = RepeatObj->mvObject_2ds[RepeatObj->mvObject_2ds.size() - 2]->mBox_cvRect;
         }
     }
-    std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 5>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+    //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 5>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
     // step 5. update direction.
     // TODO: 修改类型编号
@@ -2065,7 +2068,7 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
             this->Update_Twobj();
         }
     }
-        std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 6>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
+        //std::cout<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll 6>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl<<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MergeTwoMapObjs_fll>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<std::endl;
 
 }
 
@@ -2528,7 +2531,13 @@ void Object_Map::ComputeIE(){
         }
     mIE = entroy/(mIE_cols*mIE_rows);
 
-    //计算主向量, 注意:这是在world坐标系下描述的
+    //记录栅格的状态??
+}
+
+
+//计算物体的主向量, 注意:这是在world坐标系下描述的
+void Object_Map::ComputeMainDirection(){
+
     double main_x, main_y, main_z;
     for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
         cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
@@ -2539,13 +2548,9 @@ void Object_Map::ComputeIE(){
     double normalize = sqrt( main_x*main_x + main_y*main_y + main_z*main_z );
     main_x = main_x/normalize;
     main_y = main_y/normalize;
-    main_z = main_z/normalize;
-    mMainDirection =  Eigen::Vector3d(main_x, main_y, main_z);
-
-    //记录栅格的状态??
+    main_z = 0.0;//main_z/normalize;
+    mMainDirection =  Eigen::Vector3d(main_x, main_y, main_z).normalized();
 }
-
-
 
 double Object_Map::get_information_entroy(){
     return mIE;

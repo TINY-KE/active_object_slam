@@ -123,7 +123,7 @@ private:
     float mfx, mfy, mcx, mcy;
     float mImageWidth, mImageHeight;
     float down_nbv_height;       //nbv的高度
-    float mMaxPlaneHeight, mMinPlaneHeight;
+    float mMaxPlaneHeight, mMinPlaneHeight, mMinPlaneSafeRadius, mGobalCandidateNum;
     cv::Mat mT_basefootprint_cam;       //相机在机器人底盘上的坐标
     cv::Mat mT_world_initbaselink;     //初始机器人底盘在世界中的坐标
     cv::Mat mT_world_cam;     //初始相机在世界中的坐标

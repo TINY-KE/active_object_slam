@@ -65,6 +65,8 @@ mpMap(map), mpTracker(pTracking)
     down_nbv_height = fSettings["Trobot_camera.down_nbv_height"];
     mMaxPlaneHeight = fSettings["Plane.Height.Max"];
     mMinPlaneHeight = fSettings["Plane.Height.Min"];
+    mMinPlaneSafeRadius = fSettings["Planle.Safe_radius"];
+    mGobalCandidateNum = fSettings["Planle.Gobal_Candidate_Num"];
     mbPubNavGoal = fSettings["PubNavGoal"];
     mTfDuration = fSettings["MAM.TfDuration"];
 
@@ -73,26 +75,38 @@ mpMap(map), mpTracker(pTracking)
 void NbvGenerator::Run() {
     while(1)
     {
+
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         vector<Object_Map*> ObjectMaps = mpMap->GetObjects();
+        mvGlobalCandidate.clear();
+        //在每次global nbv计算前， 计算一遍所有物体的主方向
+        for(auto obj: ObjectMaps)
+            obj->ComputeMainDirection();
+
         //1. 计算全局候选点
         ExtractCandidates(vpMPlanes);
 
         //2. 旋转并评估 全局候选点
         cv::Mat BestCandidate;
+
         for(int i=0; i<mvGlobalCandidate.size(); i++ ){
             auto globalCandidate_source = mvGlobalCandidate[i];
-            //旋转180度
-            vector<Candidate> globalCandidate = RotateCandidates(globalCandidate_source);
-            //计算视点的评价函数，对condidate筛选
-            for(auto candidate : globalCandidate){
-                computeReward(candidate, ObjectMaps);
-            }
-            //从大到小排序localCandidate
-            std::sort(globalCandidate.begin(), globalCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
-            //将最佳角度值, 修改回GlobalCandidate[i]
-            mvGlobalCandidate[i].reward = globalCandidate.begin()->reward;
-            mvGlobalCandidate[i].pose = globalCandidate.begin()->pose.clone();
+            //version1: 旋转180
+            ////旋转180度
+            //vector<Candidate> globalCandidate = RotateCandidates(globalCandidate_source);
+            ////计算视点的评价函数，对condidate筛选
+            //for(auto candidate : globalCandidate){
+            //    computeReward(candidate, ObjectMaps);
+            //}
+            ////从大到小排序localCandidate
+            //std::sort(globalCandidate.begin(), globalCandidate.end(), [](Candidate a, Candidate b)->bool { return a.reward > b.reward; });
+            ////将最佳角度值, 修改回GlobalCandidate[i]
+            //mvGlobalCandidate[i].reward = globalCandidate.front().reward;
+            //mvGlobalCandidate[i].pose = globalCandidate.front().pose.clone();
+
+            //version2： 只处理面向中心的原位置
+            computeReward(mvGlobalCandidate[i], ObjectMaps);
+            ROS_INFO("final test reward:%f", mvGlobalCandidate[i].reward);
         }
 
         //3. 将全局NBV发送给导航模块
@@ -101,17 +115,17 @@ void NbvGenerator::Run() {
             //从大到小排序GlobalCandidate, 队首是NBV
             std::sort(mvGlobalCandidate.begin(), mvGlobalCandidate.end(),
                       [](Candidate a, Candidate b) -> bool { return a.reward > b.reward; });
-            NBV = *mvGlobalCandidate.begin();
+            //NBV = *mvGlobalCandidate.begin();
 
             //可视化
             PublishPlanes();
 
-            //发布桌面边缘的候选点, 发送给movebase导航目标点和rviz可视化
+            //桌面边缘的候选点,rviz可视化
             PublishGlobalNBVRviz(mvGlobalCandidate);
 
             //Global NBV:  将候选点的第一个,发送为movebase的目标点
             if(mbPubNavGoal){
-                cv::Mat Twc = mvGlobalCandidate.front().pose;
+                cv::Mat Twc = mvGlobalCandidate.front().pose.clone();
                 cv::Mat T_w_baselink = Twc * mT_basefootprint_cam.inv();
 
                 while(!mActionlib->waitForServer(ros::Duration(5.0))){
@@ -122,13 +136,14 @@ void NbvGenerator::Run() {
                 ActionGoal.target_pose.header.stamp = ros::Time::now();
                 ActionGoal.target_pose.pose.position.x = T_w_baselink.at<float>(0,3);
                 ActionGoal.target_pose.pose.position.y = T_w_baselink.at<float>(1,3);
-                ActionGoal.target_pose.pose.position.y = 0.0;
+                ActionGoal.target_pose.pose.position.z = 0.0;
                 Eigen::Quaterniond q = Converter::ExtractQuaterniond(T_w_baselink);
                 ActionGoal.target_pose.pose.orientation.w = q.w();
                 ActionGoal.target_pose.pose.orientation.x = q.x();
                 ActionGoal.target_pose.pose.orientation.y = q.y();
                 ActionGoal.target_pose.pose.orientation.z = q.z();
                 mActionlib->sendGoal(ActionGoal);
+                ROS_INFO("The robot try to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
 
                 //4. 在导航过程中，生成Local NBV:
                 while(!mActionlib->waitForResult(ros::Duration(0.5))){
@@ -137,9 +152,9 @@ void NbvGenerator::Run() {
 
                 //5.导航结束后，让机器人扭头到最佳角度
                 if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-                    ROS_INFO("The robot successed to reach the Global goal!");
+                    ROS_INFO("The robot successed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y );
                 else
-                    ROS_INFO("The robot failed to reach the Global goal!");
+                    ROS_INFO("The robot failed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
                 publishLocalNBV();
             }
             else{
@@ -156,7 +171,7 @@ void NbvGenerator::Run() {
 
         }
 
-        usleep(10*1000);
+        //usleep(10*1000);
 
     }
 }
@@ -243,8 +258,8 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         mvCloudBoundary.push_back(cloud_boundary);
 
         //计算candidates
-        double safe_radius = 0.5;
-        int divide = 20;
+        double safe_radius = mMinPlaneSafeRadius;
+        int divide = mGobalCandidateNum;
         int step = floor( cloud_boundary->points.size() / divide);
 
         for(int i=0; i< divide; i++){
@@ -284,7 +299,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
             cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
             Candidate candidate;
-            candidate.pose = Camera_mat;
+            candidate.pose = Camera_mat.clone();
             mvGlobalCandidate.push_back(candidate);
         }
         // 桌面高度的 水平面的数量
@@ -444,7 +459,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
     // color.
     std::vector<vector<float> > colors_bgr{ {255,0,0},  {255,125,0},  {255,255,0 },  {0,255,0 },    {0,0,255},  {0,255,255},  {255,0,255},  {0,0,0}    };
 
-    mCandidate.points.clear();
+
 
     for(int i=0; i < mCandidate_num_topub/*candidates.size()*/; i++)
     {
@@ -463,7 +478,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         cv::Mat p3 = (cv::Mat_<float>(4, 1) << -d, -d * 0.8, d * 0.5, 1);
         cv::Mat p4 = (cv::Mat_<float>(4, 1) << -d, d * 0.8, d * 0.5, 1);
 
-        cv::Mat Twc = candidates[i].pose;//Tcw.inv();
+        cv::Mat Twc = candidates[i].pose.clone();//Tcw.inv();
         cv::Mat ow = Twc * o;
         cv::Mat p1w = Twc * p1;
         cv::Mat p2w = Twc * p2;
@@ -487,6 +502,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         msgs_p4.y = p4w.at<float>(1);
         msgs_p4.z = p4w.at<float>(2);
 
+        mCandidate.points.clear();
         mCandidate.points.push_back(msgs_o);
         mCandidate.points.push_back(msgs_p1);
         mCandidate.points.push_back(msgs_o);
@@ -505,7 +521,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         mCandidate.points.push_back(msgs_p1);
 
         mCandidate.id= mtest ++;
-        mCandidate.lifetime = ros::Duration(1);
+        mCandidate.lifetime = ros::Duration(5.0);
         mCandidate.header.stamp = ros::Time::now();
         mCandidate.color.r=float(colors_bgr[i][0]/255.0);
         mCandidate.color.b=float(colors_bgr[i][1]/255.0);
@@ -518,6 +534,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         //mCandidate.color.b=0.0f;
         //mCandidate.color.g=0.0f;
         //publisher_candidate_unsort.publish(mCandidate);
+        ROS_INFO("Candidate %d, x:%f, y:%f, reward:%f", i, Twc.at<float>(0,3), Twc.at<float>(1,3), candidates[i].reward);
 
     }
 }
@@ -692,25 +709,52 @@ void NbvGenerator::RequestFinish()
     mbFinishRequested = true;
 }
 
-double NbvGenerator::computeCosAngle(cv::Mat &candidate, cv::Mat &objectPose, Eigen::Vector3d &ie){
-    Eigen::Vector3d view(   objectPose.at<float>(0,3)-candidate.at<float>(0,3),
-                            objectPose.at<float>(1,3)-candidate.at<float>(1,3),
-                            objectPose.at<float>(2,3)-candidate.at<float>(2,3)      );
-    double cos = view.dot(ie) / (view.norm() * ie.norm()); //角度cos值
-    return cos;
+double NbvGenerator::computeCosAngle(cv::Mat &candidate_pose, cv::Mat &objectPose, Eigen::Vector3d &ie){
+    Eigen::Vector3d view(   objectPose.at<float>(0,3)-candidate_pose.at<float>(0,3),
+                            objectPose.at<float>(1,3)-candidate_pose.at<float>(1,3),
+                            0.0     );
+    double cosTheta  = view.dot(ie) / (view.norm() * ie.norm()); //角度cos值
+    return (cosTheta); //std::acos(cosTheta)
 }
 
 void NbvGenerator::computeReward(Candidate &candidate, vector<Object_Map*> obj3ds){
     double reward = 0;
+    int object_viewed_num = 0;
+    //Eigen::Vector4d robot_view_point_basefoot(1.0, 0.0, 0.0, 1.0);
+    //Eigen::Matrix4d T_w_basefoot = Converter::cvMattoMatrix4d( candidate.pose* mT_basefootprint_cam.inv()  );
+    //Eigen::Vector4d robot_view_point_world = T_w_basefoot * robot_view_point_basefoot;
+    //Eigen::Vector3d robot_view_world (
+    //            robot_view_point_world[0] - T_w_basefoot(0,3) ,
+    //            robot_view_point_world[1] - T_w_basefoot(1,3) ,
+    //            0.0
+    //        );
+    Eigen::Matrix4d T_w_basefoot = Converter::cvMattoMatrix4d( candidate.pose* mT_basefootprint_cam.inv()  );
+    Eigen::Vector3d robot_view_world (
+                -2.0 - T_w_basefoot(0,3) ,
+                0.0 - T_w_basefoot(1,3) ,
+                0.0
+            );
+    Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
+
     for (int i = 0; i < (int)obj3ds.size(); i++) {
         Object_Map *obj3d = obj3ds[i];
         bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
-        if(viewed){
-            double CosAngle = computeCosAngle(candidate.pose, obj3d->mCuboid3D.pose_mat, obj3d->mMainDirection);
+        //if(viewed)
+        {
+            //double CosTheta = computeCosAngle(candidate.pose, obj3d->mCuboid3D.pose_mat, obj3d->mMainDirection);
             // reward = 概率统计置信度 + 信息熵
-            reward += obj3d->mStatistics * CosAngle * obj3d->mIE;
+            //reward += obj3d->mStatistics * CosTheta * obj3d->mIE;
+            //reward +=  CosTheta;
+            direction_all += obj3d->mMainDirection;
+            object_viewed_num ++;
         }
     }
+    double cosTheta  = robot_view_world.dot(direction_all) / (robot_view_world.norm() * direction_all.norm()); //角度cos值
+    reward = cosTheta;
+    ROS_INFO("Reward compute x:%f, y:%f, reward:%f",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward);
+    ROS_INFO_STREAM("  robot_view_world:" << robot_view_world.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
+    ROS_INFO_STREAM("  direction_all:" << direction_all.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
+
     candidate.reward = reward;
 }
 

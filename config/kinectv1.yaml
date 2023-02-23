@@ -112,6 +112,11 @@ Viewer.pangolin: 0
 Viewer.rviz: 1
 Viewer.readlocalobject: 0
 Viewer.show_object3d_frame: 0
+
+Viewer.object_Duration: 0.1
+Viewer.direction_Duration: 0.1
+Viewer.IE_Duration: 0.1
+
 #--------------------------------------------------------------------------------------------
 # Plane Extraction Parameters
 #--------------------------------------------------------------------------------------------
@@ -174,8 +179,10 @@ IE.P_prior: 0.5
 IE.Threshold: 3
 Plane.Height.Max: 1.0
 Plane.Height.Min: 0.5
-NBV_Angle_correct_factor: -0.5
-Candidate_num_topub: 1
+Planle.Safe_radius: 0.7
+Planle.Gobal_Candidate_Num: 36
+NBV_Angle_correct_factor: 0 #-0.5
+Candidate_num_topub: 7
 
 
 #--------------------------------------------------------------------------------------------
@@ -209,4 +216,5 @@ Candidate_num_topub: 1
 #75,  #花瓶
 #66,  #键盘
 #41   #杯子
-yolo_class: [77, 73,56, 39,  63, 75,  66,  41]
+yolo_class: [77, 73, 56, 39,  63, 75,  66,  41]   #先去掉笔记本电脑 63
+#yolo_class: [77, 73, 56, 39,  75,  66,  41]

@@ -74,6 +74,7 @@ public:
     //void PublishPlane(const vector<MapPlane *> &vpMPls );
     void PublishObject(const vector<Object_Map*> &vpObjs );
     void PublishIE(const vector<Object_Map*> &vObjs );
+    void PublishMainDirection(const vector<Object_Map*> &vObjs );
     geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
     geometry_msgs::Point corner_to_marker(const std::vector<float>& v);
     geometry_msgs::Point corner_to_marker(const std::vector<double>& v);
@@ -101,6 +102,8 @@ private:
     ros::Publisher publisher_object;
     ros::Publisher publisher_object_points;
     ros::Publisher publisher_IE;
+    ros::Publisher publisher_MainDirection;
+    ros::Publisher publisher_SumMainDirection;
     //ros::Publisher publisher_robotpose;
     //ros::Publisher publisher_mam_rviz;   //NBV MAM
 
@@ -137,6 +140,9 @@ private:
     const char* GRAPH_NAMESPACE = "Graph";
     const char* CAMERA_NAMESPACE = "Camera";
 
+    float mObject_Duration;
+    float mDirection_Duration;
+    float mIE_Duration;
 
 //plane
 public:
