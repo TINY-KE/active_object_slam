@@ -79,6 +79,23 @@ void NbvGenerator::Run() {
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         vector<Object_Map*> ObjectMaps = mpMap->GetObjects();
         mvGlobalCandidate.clear();
+
+        //如果所有物体都结束建图，则可以结束active建图.
+        //todo： 应该改为，前景物体都结束建图，则对应的背景物体结束建图；如果所有背景物体都结束建图，则可以结束active建图.
+        if(  ObjectMaps.size() != 0 )
+        {
+            mbEnd_active_map = true;
+            for(auto obj: ObjectMaps){
+                if(!obj->end_build){
+                    mbEnd_active_map = false;
+                }
+            }
+        }
+        if(mbEnd_active_map){
+            ROS_ERROR("End Active Mapping ！！！");
+            break;
+        }
+
         //在每次global nbv计算前， 计算一遍所有物体的主方向
         for(auto obj: ObjectMaps)
             obj->ComputeMainDirection();
@@ -146,13 +163,15 @@ void NbvGenerator::Run() {
                 ROS_INFO("The robot try to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
 
                 //4. 在导航过程中，生成Local NBV:
-                while(!mActionlib->waitForResult(ros::Duration(0.5))){
+                while(!mActionlib->waitForResult(ros::Duration(0.1))){
                     publishLocalNBV();
                 }
 
-                //5.导航结束后，让机器人扭头到最佳角度
-                if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
+                //5.导航结束后，让机器人扭头到最佳角度。如果到达了nbv，则将它存入nbvs_old
+                if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
                     ROS_INFO("The robot successed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y );
+                    mNBVs_old.push_back(mvGlobalCandidate.front());
+                }
                 else
                     ROS_INFO("The robot failed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
                 publishLocalNBV();
@@ -709,52 +728,114 @@ void NbvGenerator::RequestFinish()
     mbFinishRequested = true;
 }
 
-double NbvGenerator::computeCosAngle(cv::Mat &candidate_pose, cv::Mat &objectPose, Eigen::Vector3d &ie){
-    Eigen::Vector3d view(   objectPose.at<float>(0,3)-candidate_pose.at<float>(0,3),
-                            objectPose.at<float>(1,3)-candidate_pose.at<float>(1,3),
-                            0.0     );
-    double cosTheta  = view.dot(ie) / (view.norm() * ie.norm()); //角度cos值
-    return (cosTheta); //std::acos(cosTheta)
+double NbvGenerator::computeCosAngle_Signed( Eigen::Vector3d &v1 /*基坐标轴*/,  Eigen::Vector3d &v2, bool isSigned/*为1时，角度范围为360度*/){
+    //Eigen::Vector3d view(   objectPose.at<float>(0,3)-candidate_pose.at<float>(0,3),
+    //                        objectPose.at<float>(1,3)-candidate_pose.at<float>(1,3),
+    //                        0.0     );
+    //double cosTheta  = view.dot(ie) / (view.norm() * ie.norm()); //角度cos值
+    //return (cosTheta); //std::acos(cosTheta)
+    double cosValNew = v1.dot(v2) / (v1.norm()*v2.norm()); //通过向量的点乘, 计算角度cos值
+    double angleNew = acos(cosValNew) * 180 / M_PI;     //弧度角
+
+    // 如果为360度内的角度，则以v1是基坐标轴，如果v2逆时针旋转到zerovec，则修正夹角
+    if(isSigned){
+        if (v2.cross(v1)(2) > 0) {
+            angleNew = 360 - angleNew;
+        }
+    }
+
+    return angleNew;
 }
 
-void NbvGenerator::computeReward(Candidate &candidate, vector<Object_Map*> obj3ds){
-    double reward = 0;
-    int object_viewed_num = 0;
-    //Eigen::Vector4d robot_view_point_basefoot(1.0, 0.0, 0.0, 1.0);
-    //Eigen::Matrix4d T_w_basefoot = Converter::cvMattoMatrix4d( candidate.pose* mT_basefootprint_cam.inv()  );
-    //Eigen::Vector4d robot_view_point_world = T_w_basefoot * robot_view_point_basefoot;
-    //Eigen::Vector3d robot_view_world (
-    //            robot_view_point_world[0] - T_w_basefoot(0,3) ,
-    //            robot_view_point_world[1] - T_w_basefoot(1,3) ,
-    //            0.0
-    //        );
-    Eigen::Matrix4d T_w_basefoot = Converter::cvMattoMatrix4d( candidate.pose* mT_basefootprint_cam.inv()  );
-    Eigen::Vector3d robot_view_world (
-                -2.0 - T_w_basefoot(0,3) ,
-                0.0 - T_w_basefoot(1,3) ,
-                0.0
-            );
-    Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
+void NbvGenerator::addOldNBV(Candidate &candidate){
+    mNBVs_old.push_back(candidate);
+    for (int i = 0; i < mNBVs_old.size(); i++) {
+        //for (int j = i + 1; j < mNBVs_old.size(); j++) {
+            double dis = sqrt( (mNBVs_old[i].pose.at<float>(0,3)-candidate.pose.at<float>(0,3)) * (mNBVs_old[i].pose.at<float>(0,3)-candidate.pose.at<float>(0,3)) +
+                               (mNBVs_old[i].pose.at<float>(1,3)-candidate.pose.at<float>(1,3)) * (mNBVs_old[i].pose.at<float>(1,3)-candidate.pose.at<float>(1,3))
+                            );
+            if(dis>mNBVs_scale)
+                mNBVs_scale = dis;
+        //}
+    }
+}
 
+void NbvGenerator::clearOldNBV(){
+    mNBVs_old.clear();
+    mNBVs_scale = 0.0;
+}
+
+
+//计算每个候选视点的 评价函数
+void NbvGenerator::computeReward(Candidate &candidate, vector<Object_Map*> obj3ds){
+
+
+    //机器人底盘的世界坐标
+    Eigen::Matrix4d T_w_basefoot = Converter::cvMattoMatrix4d( candidate.pose* mT_basefootprint_cam.inv()  );
+
+    //reward = 所有物体的（关联置信度*非完整性评价*观测角度）  +   与已有的NBV的距离
+
+    //1.所有物体的（关联置信度*非完整性评价*观测角度
+    double np_reward = 0;
+    double IE_reward = 0;
+    double object_reward = 0;
+    int object_viewed_num = 0;
+    Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
     for (int i = 0; i < (int)obj3ds.size(); i++) {
         Object_Map *obj3d = obj3ds[i];
         bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
-        //if(viewed)
+        if(viewed)
         {
-            //double CosTheta = computeCosAngle(candidate.pose, obj3d->mCuboid3D.pose_mat, obj3d->mMainDirection);
-            // reward = 概率统计置信度 + 信息熵
-            //reward += obj3d->mStatistics * CosTheta * obj3d->mIE;
-            //reward +=  CosTheta;
-            direction_all += obj3d->mMainDirection;
+            //（1）关联置信度
+            np_reward = 0;
+
+            // (2)物体的完整性评价 mIE
+            IE_reward = obj3d->mIE;
+
+            // (3) Candidate和物体最佳视角 之间的视线夹角.
+            Eigen::Vector3d direction = obj3d->mMainDirection;
             object_viewed_num ++;
+            Eigen::Vector3d robot_view_object (
+                obj3d->mCuboid3D.cuboidCenter(0) - T_w_basefoot(0,3) ,
+                obj3d->mCuboid3D.cuboidCenter(1) - T_w_basefoot(1,3) ,
+                0.0
+            );
+            double cosTheta  = robot_view_object.dot(direction) / (robot_view_object.norm() * direction.norm()); //角度cos值
+            object_reward += /*np_reward **/ IE_reward * cosTheta;
         }
     }
-    double cosTheta  = robot_view_world.dot(direction_all) / (robot_view_world.norm() * direction_all.norm()); //角度cos值
-    reward = cosTheta;
-    ROS_INFO("Reward compute x:%f, y:%f, reward:%f",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward);
-    ROS_INFO_STREAM("  robot_view_world:" << robot_view_world.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
-    ROS_INFO_STREAM("  direction_all:" << direction_all.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
+    //Eigen::Vector3d robot_view_world (
+    //            -2.0 - T_w_basefoot(0,3) ,
+    //            0.0 - T_w_basefoot(1,3) ,
+    //            0.0
+    //        );
+    //double cosTheta_all  = robot_view_world.dot(direction_all) / (robot_view_world.norm() * direction_all.norm()); //角度cos值
 
+
+
+    // 2. 与nbvs old之间的距离
+
+    Eigen::Vector3d v1(1,0,0);
+    Eigen::Vector3d v_deskcentor(-2.0, 0.0 ,0.0);
+    double angle_oldNBV = 0;
+    for( auto nbv: mNBVs_old){
+        Eigen::Vector3d v2( v_deskcentor(0)-nbv.pose.at<float>(0,3),
+                            v_deskcentor(1)-nbv.pose.at<float>(1,3),
+                            0.0);
+        angle_oldNBV += computeCosAngle_Signed(v1, v2, 1);
+    }
+    angle_oldNBV /= mNBVs_old.size();
+    Eigen::Vector3d v2 (    v_deskcentor(0)-candidate.pose.at<float>(0,3),
+                            v_deskcentor(1)-candidate.pose.at<float>(1,3),
+                                    0.0  );
+    double angle_Candidate = computeCosAngle_Signed(v1, v2, 1);
+    double dis_reward =  fabs(angle_Candidate-angle_oldNBV)  / M_PI;
+
+    //3. 两项相加
+    double reward = object_reward + 0.5*dis_reward;
+    ROS_INFO("Reward compute x:%f, y:%f, reward:%f",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward);
+    //ROS_INFO_STREAM("  robot_view_world:" << robot_view_world.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
+    //ROS_INFO_STREAM("  direction_all:" << direction_all.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
     candidate.reward = reward;
 }
 

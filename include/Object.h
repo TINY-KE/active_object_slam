@@ -22,6 +22,10 @@
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 #include "isolation_forest.h"
 
+//ros rviz
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 extern std::string WORK_SPACE_PATH;
 extern std::string yamlfile_object;
@@ -241,6 +245,7 @@ public:
     int mnId;                           //全局的id
     int mnClass;
     bool bad_3d = false;                //用途：（1）如果为true，则不view  （2）在localMapping、 等地方，应用
+    bool end_build = false;             // 当NBV generator模块认为物体已经建立完毕,就不用再添加新的点了.但是还是可以用于数据关联.
     int mnConfidence_foractive;
     Cuboid3D mCuboid3D;                 // cuboid.
     cv::Mat mSumPointsPos;
@@ -248,7 +253,7 @@ public:
     float mStandar_x, mStandar_y, mStandar_z;
     float mCenterStandar_x, mCenterStandar_y, mCenterStandar_z;
     float mCenterStandar;
-
+    float mIForest_thresh;
     //物体中的特征点
     std::vector< MapPoint*> mvpMapObjectMappoints;
     std::vector< MapPoint*> mvpMapObjectMappoints_NewForActive;     //物体中新添加的特征点，用于更新占据概率地图
@@ -298,7 +303,7 @@ public:
     int mIE_rows, mIE_cols;
 
     void IE_RecoverInit();
-    int mIEThreshold;                                       //用于判定, 某列grid是否有效
+    int mIEThresholdPointNum;                                       //用于判定, 某列grid是否有效
     Eigen::Vector3d mMainDirection;                         //通过特征点计算的主方向,用于view的 ie
     double mStatistics = 1;                                 //检验统计量
 
@@ -317,9 +322,16 @@ public:
 
     void compute_grid_xy(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y);
     cv::Mat compute_pointnum_eachgrid();
+    void compute_perceptionNum_eachgrid();
+    float log2(float x);
+    float mIEThresholdEndMapping;
     void compute_occupied_prob_eachgrid();
     double IE(const double &p);
     void ComputeIE();
+    void PublishIE();
+    int mbPublishIEwheel;
+    ros::NodeHandle nh;
+    ros::Publisher publisher_IE;
     void ComputeMainDirection();
     double get_information_entroy();
     std::vector<MapPoint* >  GetObjectMappoints();
@@ -332,6 +344,10 @@ protected:
 // object3d 筛选候选点 *
 public:
     bool WheatherInRectFrameOf(const cv::Mat &Tcw, const float &fx, const float &fy, const float &cx, const float &cy, const float &ImageWidth, const float &ImageHeight);  //计算到任意帧的投影
+
+
+private:
+    float mnViewField;
 };
 
 

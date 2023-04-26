@@ -93,6 +93,13 @@ public:
     vector<BoxSE> darknetRosMsgToBoxSE(vector<darknet_ros_msgs::BoundingBox>& boxes);
 };
 
+//darknet_ros_msgs::BoundingBox shrink(const darknet_ros_msgs::BoundingBox& box1, const darknet_ros_msgs::BoundingBox& box2) {
+//    int xmin1 = box1.xmin, ymin1 = box1.ymin, xmax1 = box1.xmax, ymax1 = box1.ymax;
+//    int xmin2 = box2.xmin, ymin2 = box2.ymin, xmax2 = box2.xmax, ymax2 = box2.ymax;
+//    if()
+//}
+
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "RGBD");
@@ -226,3 +233,12 @@ vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::Boundi
         std::sort(boxes_online.begin(), boxes_online.end(), [](BoxSE a, BoxSE b) -> bool { return a.m_score > b.m_score; });
         return boxes_online;
 }
+
+//float computeIntersectionOverUnion(const darknet_ros_msgs::BoundingBox& box1, const darknet_ros_msgs::BoundingBox& box2) {
+//    float interArea = std::max(0.f, std::min(box1.x2, box2.x2) - std::max(box1.x1, box2.x1)) *
+//                      std::max(0.f, std::min(box1.y2, box2.y2) - std::max(box1.y1, box2.y1));
+//    float box1Area = (box1.x2 - box1.x1) * (box1.y2 - box1.y1);
+//    float box2Area = (box2.x2 - box2.x1) * (box2.y2 - box2.y1);
+//    float unionArea = box1Area + box2Area - interArea;
+//    return interArea / unionArea;
+//}

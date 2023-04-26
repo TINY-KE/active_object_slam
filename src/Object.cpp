@@ -4,6 +4,7 @@
 
 #include "Object.h"
 #include "Converter.h"
+
 namespace ORB_SLAM2
 {
 
@@ -752,11 +753,16 @@ int Object_2D::creatObject()
     Object3D->ComputeMeanAndDeviation_3D();
     Object3D->IsolationForestDeleteOutliers();
     Object3D->ComputeMeanAndDeviation_3D();
-    //mpMap->mvObjectMap.push_back(ObjectMapSingle);
-    mpMap->AddObject(Object3D);
-    std::cout<<"存入map"<<std::endl;
-
-    return 1;  //创建物体成功
+    //当创建了一个新的物体，则计算它的IE
+    //Object3D->ComputeIE();
+    if( Object3D->mCuboid3D.lenth/Object3D->mCuboid3D.width>3 || Object3D->mCuboid3D.width/Object3D->mCuboid3D.lenth>3  )
+        return 2;   //物体的长宽比，太畸形
+    else{
+        //mpMap->mvObjectMap.push_back(ObjectMapSingle);
+        mpMap->AddObject(Object3D);
+        std::cout<<"存入map"<<std::endl;
+        return 1;  //创建物体成功
+    }
 }
 
 //  nonparametric test.
@@ -1006,6 +1012,8 @@ void Object_2D::AddPotentialAssociatedObjects( vector<Object_Map*> obj3ds, int A
 // object3d 通用函数部分 *
 // ************************************
 void Object_Map::ComputeMeanAndDeviation_3D() {
+    if(end_build)
+        return;
     mSumPointsPos = cv::Mat::zeros(3,1,CV_32F);
     // remove bad points.
     {
@@ -1243,6 +1251,10 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
     // step 8. 计算ie
     this->ComputeIE();
+    if(mIE < mIEThresholdEndMapping )
+        end_build = true;
+    if(mbPublishIEwheel)
+        this->PublishIE();
 
     // step 9. 计算观测主方向
     this->ComputeMainDirection();
@@ -1253,55 +1265,78 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 // 答：似乎是专属于biForest下的ComputeMeanAndStandard
 // remove outliers and refine the object position and scale by IsolationForest.
 void Object_Map::IsolationForestDeleteOutliers(){
+    if(end_build)
+        return;
+
     if(!iforest_flag)
         return;
-
-    //if ((this->mnClass == 75) || (this->mnClass == 64) || (this->mnClass == 65))
+    //if ((this->mnClass == 75) /*vase花瓶*/ || (this->mnClass == 64) /*mouse鼠标*/ || (this->mnClass == 65) /*remote遥控器*/ )
     //    return;
 
-    float th = 0.6;
-    if (this->mnClass == 62)
-        th = 0.65;
+    //(1)通过if语句设置阈值，如果this->mnClass == 62，阈值为0.65，否则为0.6。
+    float th = mIForest_thresh;
+    if (this->mnClass == 62/*tv电视*/)
+        th = 0.65;  // 阈值更高了,说明剔除的点变少了.说明这个物体的点相对分散
 
-    // notes: 相对于传统的srand()，std::mt19937拥有更好的性能。
-    //std::mt19937 rng(12345);
+    //(2)创建一个vector data来存储MapPoint对象的3D坐标。
     std::vector<std::array<float, 3>> data; // uint32_t
-
     if (mvpMapObjectMappoints.size() < 30)
         return;
+    if ((this->mnClass == 75) /*vase花瓶*/){
+        for (size_t i = 0; i < mvpMapObjectMappoints.size(); i++)
+        {
+            // 将point的坐标，从cv::mat转为std::array
+            MapPoint *pMP = mvpMapObjectMappoints[i];
+            cv::Mat pos = pMP->GetWorldPos();
 
-    // 将point的坐标，从cv::mat转为std::array
-    for (size_t i = 0; i < mvpMapObjectMappoints.size(); i++)
-    {
-        MapPoint *pMP = mvpMapObjectMappoints[i];
-        cv::Mat pos = pMP->GetWorldPos();
+            std::array<float, 3> temp;
+            temp[0] = pos.at<float>(0);
+            temp[1] = pos.at<float>(1);
+            temp[2] = 0.0;
+            data.push_back(temp);
+        }
+    }
+    else{
+        for (size_t i = 0; i < mvpMapObjectMappoints.size(); i++)
+        {
+            // 将point的坐标，从cv::mat转为std::array
+            MapPoint *pMP = mvpMapObjectMappoints[i];
+            cv::Mat pos = pMP->GetWorldPos();
 
-        std::array<float, 3> temp;
-        temp[0] = pos.at<float>(0);
-        temp[1] = pos.at<float>(1);
-        temp[2] = pos.at<float>(2);
-        data.push_back(temp);
+            std::array<float, 3> temp;
+            temp[0] = pos.at<float>(0);
+            temp[1] = pos.at<float>(1);
+            temp[2] = pos.at<float>(2);
+            data.push_back(temp);
+        }
     }
 
-    // 删除很多 被注释的内容
 
+    // (3)构建随机森林 筛选器: 创建一个Isolation Forest算法实例forest，并使用data来构建树，并指定采样数量为mvpMapObjectMappoints的一半。
 
-    // STEP 3 构建随机森林 筛选器
+    auto now = std::chrono::system_clock::now();
+    auto seed = now.time_since_epoch().count();// 获取当前时间的时间戳作为种子
+    std::mt19937 rng(seed);// 根据种子生成随机数生成器
+    std::uniform_int_distribution<uint32_t> dist(0, std::numeric_limits<uint32_t>::max());
+    uint32_t random_uint32 = dist(rng);
     iforest::IsolationForest<float, 3> forest; // uint32_t
-    if (!forest.Build(50, 12345, data, ((int)mvpMapObjectMappoints.size() / 2)))
-                 //数的数量, ??, 输入的数据,  采样的数量(此处是data的一半)
+    if (!forest.Build(50, random_uint32, data, ((int)mvpMapObjectMappoints.size() / 2)))
+                    //数的数量, 随机数生成器的种子12345, 输入的数据,  采样的数量(此处是data的一半)
     {
         std::cerr << "Failed to build Isolation Forest.\n";
         return;
     }
     std::vector<double> anomaly_scores;
 
-    // STEP 4 计算Anomaly_score, 并将大于阈值的point, 标记为outlier
+    // (4)计算Anomaly_score, 并将大于阈值的point, 标记为outlier:
+    // 使用GetAnomalyScores函数来计算每个MapPoint对象的Anomaly_score
     if (!forest.GetAnomalyScores(data, anomaly_scores))
     {
         std::cerr << "Failed to calculate anomaly scores.\n";
         return;
     }
+
+    //(5)将Anomaly_score大于阈值的点的索引存储在outlier_ids vector中。
     std::vector<int> outlier_ids;
     for (uint32_t i = 0; i < (int)mvpMapObjectMappoints.size(); i++)
     {
@@ -1313,7 +1348,8 @@ void Object_Map::IsolationForestDeleteOutliers(){
     if (outlier_ids.empty())
         return;
 
-    // step 5. 将 outliers 从object3d的mvpMapObjectMappoints 中移除.
+    // (6)将 outliers 从object3d的mvpMapObjectMappoints 中移除.
+    // 遍历mvpMapObjectMappoints，对于outlier_ids中的每个索引，从mvpMapObjectMappoints中删除相应的MapPoint对象，并从mSumPointsPos中减去该MapPoint对象的位置
     int id_Mappoint = -1;
     int id_MOutpoint_out = 0;
     unique_lock<mutex> lock(mMutexMapPoints); // lock.
@@ -1571,7 +1607,7 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
     }
 
     // step 2. update the ID of the last frame
-    // 更新last和lastlast的 frame id 和 物体检测框
+    // 更新: last和lastlast的 frame id 和 物体检测框
     if (mnLastAddID != (int)mCurrentFrame.mnId)
     {
         mnLastLastAddID = mnLastAddID;
@@ -1586,131 +1622,133 @@ bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, in
 
     Object_2d->mnId = mnId;
 
-    // step 3. Add the point cloud of the frame object to the map object
-    // 融合
-    for (size_t j = 0; j < Object_2d->mvMapPonits.size(); ++j)
+
     {
-        MapPoint *pMP = Object_2d->mvMapPonits[j];
-
-        cv::Mat pointPos = pMP->GetWorldPos();
-        cv::Mat mDis = mAveCenter3D - pointPos;
-        float fDis = sqrt(mDis.at<float>(0) * mDis.at<float>(0) + mDis.at<float>(1) * mDis.at<float>(1) + mDis.at<float>(2) * mDis.at<float>(2));
-
-        float th = 1.0;
-        if (mvObject_2ds.size() > 5)
-            th = 0.9;
-
-        if (fDis > th * mCuboid3D.mfRMax)
-            continue;
-
-        pMP->object_mnId = mnId;
-        pMP->object_class = mnClass;
-
-        // 记录此point被此object3d看见的次数
-        map<int, int>::iterator sit;
-        sit = pMP->viewdCount_forObjectId.find(this->mnId);
-        if (sit != pMP->viewdCount_forObjectId.end())
+        // step 3. Add the point cloud of the frame object to the map object
+        // 将当前帧的点云添加到， map中的已有物体中。
+        for (size_t j = 0; j < Object_2d->mvMapPonits.size(); ++j)
         {
-            int sit_sec = sit->second;
-            pMP->viewdCount_forObjectId.erase(this->mnId);   //zhang报错
-            pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, sit_sec + 1));
-        }
-        else
-        {
-            pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, 1));
-        }
+            MapPoint *pMP = Object_2d->mvMapPonits[j];
 
+            cv::Mat pointPos = pMP->GetWorldPos();
+            cv::Mat mDis = mAveCenter3D - pointPos;
+            float fDis = sqrt(mDis.at<float>(0) * mDis.at<float>(0) + mDis.at<float>(1) * mDis.at<float>(1) + mDis.at<float>(2) * mDis.at<float>(2));
 
-        // notes: 检查有无重复地图点，并添加新的地图点
-        {
-            unique_lock<mutex> lock(mMutexMapPoints);
-            bool new_point = true;
-            // old points.
-            for (size_t m = 0; m < mvpMapObjectMappoints.size(); ++m)
+            float th = 1.0;
+            if (mvObject_2ds.size() > 5)
+                th = 0.9;
+
+            if (fDis > th * mCuboid3D.mfRMax)
+                continue;
+
+            pMP->object_mnId = mnId;
+            pMP->object_class = mnClass;
+
+            // 记录此point被此object3d看见的次数
+            map<int, int>::iterator sit;
+            sit = pMP->viewdCount_forObjectId.find(this->mnId);
+            if (sit != pMP->viewdCount_forObjectId.end())
             {
-                cv::Mat obj_curr_pos = pMP->GetWorldPos();
-                cv::Mat obj_map_pos = mvpMapObjectMappoints[m]->GetWorldPos();
+                int sit_sec = sit->second;
+                pMP->viewdCount_forObjectId.erase(this->mnId);   //zhang报错
+                pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, sit_sec + 1));
+            }
+            else
+            {
+                pMP->viewdCount_forObjectId.insert(make_pair(this->mnId, 1));
+            }
 
-                if (cv::countNonZero(obj_curr_pos - obj_map_pos) == 0)
+
+            // notes: 检查有无重复地图点，并添加新的地图点
+            {
+                unique_lock<mutex> lock(mMutexMapPoints);
+                bool new_point = true;
+                // old points.
+                for (size_t m = 0; m < mvpMapObjectMappoints.size(); ++m)
                 {
-                    mvpMapObjectMappoints[m]->feature_uvCoordinate = pMP->feature_uvCoordinate;
-                    new_point = false;
-                    break;
+                    cv::Mat obj_curr_pos = pMP->GetWorldPos();
+                    cv::Mat obj_map_pos = mvpMapObjectMappoints[m]->GetWorldPos();
+
+                    if (cv::countNonZero(obj_curr_pos - obj_map_pos) == 0)
+                    {
+                        mvpMapObjectMappoints[m]->feature_uvCoordinate = pMP->feature_uvCoordinate;
+                        new_point = false;
+                        break;
+                    }
+                }
+                // new point.
+                if (new_point)
+                {
+                    mvpMapObjectMappoints.push_back(pMP);
+
+                    mvpMapObjectMappoints_NewForActive.push_back(pMP);
+
+                    cv::Mat x3d = pMP->GetWorldPos();
+                    mSumPointsPos += x3d;
                 }
             }
-            // new point.
-            if (new_point)
-            {
-                mvpMapObjectMappoints.push_back(pMP);
-
-                mvpMapObjectMappoints_NewForActive.push_back(pMP);
-
-                cv::Mat x3d = pMP->GetWorldPos();
-                mSumPointsPos += x3d;
-            }
         }
-    }
 
-    // step 4. the historical point cloud is projected into the image, and the points not in the box(should not on the edge) are removed.
-    // 将历史point投影到图像中，如果不在box中，则提出
-    if ((Object_2d->mBox_cvRect.x > 25) && (Object_2d->mBox_cvRect.y > 25) &&
-        (Object_2d->mBox_cvRect.x + Object_2d->mBox_cvRect.width < mCurrentFrame.mColorImage.cols - 25) &&
-        (Object_2d->mBox_cvRect.y + Object_2d->mBox_cvRect.height < mCurrentFrame.mColorImage.rows - 25))
-    {
-        unique_lock<mutex> lock(mMutexMapPoints); // lock.
-        vector<MapPoint *>::iterator pMP;
-        for (pMP = mvpMapObjectMappoints.begin();
-             pMP != mvpMapObjectMappoints.end();)
+        // step 4. the historical point cloud is projected into the image, and the points not in the box(should not on the edge) are removed.
+        // 将历史point投影到图像中，如果不在box中，则提出
+        if ((Object_2d->mBox_cvRect.x > 25) && (Object_2d->mBox_cvRect.y > 25) &&
+            (Object_2d->mBox_cvRect.x + Object_2d->mBox_cvRect.width < mCurrentFrame.mColorImage.cols - 25) &&
+            (Object_2d->mBox_cvRect.y + Object_2d->mBox_cvRect.height < mCurrentFrame.mColorImage.rows - 25))
         {
-            // 在map中找到当前物体点上的物体类别
-            int sit_sec = 0;
-            map<int , int>::iterator sit;
-            sit = (*pMP)->viewdCount_forObjectId.find(mnId);
-            if (sit != (*pMP)->viewdCount_forObjectId.end())
+            unique_lock<mutex> lock(mMutexMapPoints); // lock.
+            vector<MapPoint *>::iterator pMP;
+            for (pMP = mvpMapObjectMappoints.begin();
+                 pMP != mvpMapObjectMappoints.end();)
             {
-                sit_sec = sit->second;
-            }
-            if (sit_sec > 8)
-            {
-                ++pMP;
-                continue;
-            }
-
-            cv::Mat PointPosWorld = (*pMP)->GetWorldPos();
-            cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
-
-            const float xc = PointPosCamera.at<float>(0);
-            const float yc = PointPosCamera.at<float>(1);
-            const float invzc = 1.0 / PointPosCamera.at<float>(2);
-
-            float u = mCurrentFrame.fx * xc * invzc + mCurrentFrame.cx;
-            float v = mCurrentFrame.fy * yc * invzc + mCurrentFrame.cy;
-
-            if ((u > 0 && u < mCurrentFrame.mColorImage.cols) && (v > 0 && v < mCurrentFrame.mColorImage.rows))
-            {
-                if (!Object_2d->mBox_cvRect.contains(cv::Point2f(u, v)))
+                // 在map中找到当前物体点上的物体类别
+                int sit_sec = 0;
+                map<int , int>::iterator sit;
+                sit = (*pMP)->viewdCount_forObjectId.find(mnId);
+                if (sit != (*pMP)->viewdCount_forObjectId.end())
                 {
-                    pMP = mvpMapObjectMappoints.erase(pMP);
-                    mSumPointsPos -= PointPosWorld;
+                    sit_sec = sit->second;
+                }
+                if (sit_sec > 8)
+                {
+                    ++pMP;
+                    continue;
+                }
+
+                cv::Mat PointPosWorld = (*pMP)->GetWorldPos();
+                cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+                const float xc = PointPosCamera.at<float>(0);
+                const float yc = PointPosCamera.at<float>(1);
+                const float invzc = 1.0 / PointPosCamera.at<float>(2);
+
+                float u = mCurrentFrame.fx * xc * invzc + mCurrentFrame.cx;
+                float v = mCurrentFrame.fy * yc * invzc + mCurrentFrame.cy;
+
+                if ((u > 0 && u < mCurrentFrame.mColorImage.cols) && (v > 0 && v < mCurrentFrame.mColorImage.rows))
+                {
+                    if (!Object_2d->mBox_cvRect.contains(cv::Point2f(u, v)))
+                    {
+                        pMP = mvpMapObjectMappoints.erase(pMP);
+                        mSumPointsPos -= PointPosWorld;
+                    }
+                    else
+                    {
+                        ++pMP;
+                    }
                 }
                 else
                 {
                     ++pMP;
                 }
             }
-            else
-            {
-                ++pMP;
-            }
         }
+
+        // step 5. update object mean.
+        this->ComputeMeanAndDeviation_3D();
+
+        // step 6. i-Forest.
+        this->IsolationForestDeleteOutliers();
     }
-
-    // step 5. update object mean.
-
-    this->ComputeMeanAndDeviation_3D();
-
-    // step 6. i-Forest.
-    this->IsolationForestDeleteOutliers();
 
     mCurrentFrame.mvObject_2ds.push_back(Object_2d);
     //std::cout   <<"与旧物体融合成功，cude h:" <<this->mCuboid3D.height
@@ -1746,12 +1784,18 @@ bool Object_Map::WhetherOverlap(Object_Map *CompareObj)
 // ************************************
 void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
 {
+    //首先检查mReObj是否为空
+    if(mReObj.empty())
+        return;
+
+    //融合潜在的关联物体。
     map<int, int>::iterator sit;
     std::vector<Object_Map*> obj_3ds = mpMap->GetObjects();
     for (sit = mReObj.end(); sit != mReObj.begin(); sit--)
     {
         int nObjId = sit->first;
         //std::cout<<"debug SearchAndMergeMapObjs_fll: obj_3ds数量："<<obj_3ds.size()  << " ,nObjId: "<<nObjId <<std::endl;
+        //ROS_INFO("SearchAndMergeMapObjs_fll: %d, %d", nObjId, sit->second );
         Object_Map* obj_ass = obj_3ds[nObjId];  // new bug: 可以先检查下是不是费控  查看nObjId是否大于obj_3ds.size(). 或者去掉这一行
         if (sit->second < 3)
             continue;
@@ -2076,7 +2120,7 @@ void Object_Map::MergeTwoMapObjs_fll(Object_Map *RepeatObj)
 // 融合两个重叠的物体. 要经过iou、volume、AppearSametime、yolo class， 四关考验
 void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float overlap_x, float overlap_y, float overlap_z) {
     bool bIou = false;       // false: Iou is large.
-    bool bVolume = false;    // false: small volume difference.
+    bool bVolumeDiss = false;    // false: small volume difference.
     bool bSame_time = false; // false: doesn't simultaneous appearance.
     bool bClass = false;     // false: different classes.
 
@@ -2094,9 +2138,9 @@ void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float
     //体积差异是否过大, 体积相差超过两倍,
     // compute the volume difference
     if ((fThis_obj_volume > 2 * fOverlap_obj_volume) || (fOverlap_obj_volume > 2 * fThis_obj_volume))
-        bVolume = true;
+        bVolumeDiss = true;
     else
-        bVolume = false;
+        bVolumeDiss = false;
 
     // 如果两个物体同时出现的次数大于3,
     // whether simultaneous appearance.
@@ -2120,9 +2164,9 @@ void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float
 
 
     // case 1: IOU is large, the volume difference is small, doesn't simultaneous appearance, same class --> the same object, merge them.
-    // iou大, 体积接近, 多次同时出现, class相同,  则认为是同一个物体
+    // iou大, 体积接近, 很少同时出现, class相同,  则认为是同一个物体
     // 此种情况下，将两个物体融合
-    if ((bIou == true) && (bVolume == false) && (bSame_time == false) && (bClass == true))
+    if ((bIou == true) && (bVolumeDiss == false) && (bSame_time == false) && (bClass == true))
     {
         if (this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size())
         {
@@ -2137,18 +2181,26 @@ void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float
     }
 
     // case 2: may be a false detection.
-    // 此种情况下，将错误识别的物体删除
-    else if ((bVolume == true) && (bSame_time == false) && (bClass == true))
+    // 此种情况下，将错误识别的物体删除。
+    // zhangjiadong： 原程序将体积较小的删除？？？我认为不合理，改为将观测较少的物体删除
+    else if ((bVolumeDiss == true) && (bSame_time == false) && (bClass == true))
     {
-        if ((this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size()) && (fThis_obj_volume > fOverlap_obj_volume))
+        if ((this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size()) /*&& (fThis_obj_volume > fOverlap_obj_volume)*/ )
             OverlapObj->bad_3d = true;
-        else if ((this->mvObject_2ds.size() < OverlapObj->mvObject_2ds.size()) && (fThis_obj_volume < fOverlap_obj_volume))
+        else if ((this->mvObject_2ds.size() < OverlapObj->mvObject_2ds.size()) /*&& (fThis_obj_volume < fOverlap_obj_volume)*/ )
+            this->bad_3d = true;
+    }
+    else if ((bVolumeDiss == true) && (bClass == false))
+    {
+        if ((this->mvObject_2ds.size() >= OverlapObj->mvObject_2ds.size()) /*&& (fThis_obj_volume > fOverlap_obj_volume)*/ )
+            OverlapObj->bad_3d = true;
+        else if ((this->mvObject_2ds.size() < OverlapObj->mvObject_2ds.size()) /*&& (fThis_obj_volume < fOverlap_obj_volume)*/ )
             this->bad_3d = true;
     }
 
     // case 3: divide the overlap area of two objects equally.  (No significant effect.)
     // 此种情况下，将重叠部分均分
-    else if ((bIou == true) && (bVolume == false) && (bSame_time == true) && (bClass == true))
+    else if ((bIou == true) && (bVolumeDiss == false) && (bSame_time == true) && (bClass == true))
     {
         this->DivideEquallyTwoObjs_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
         OverlapObj->DivideEquallyTwoObjs_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
@@ -2160,7 +2212,7 @@ void Object_Map::DealTwoOverlapObjs_fll(ORB_SLAM2::Object_Map *OverlapObj, float
     // case 4: big one gets smaller, the smaller one stays the same. (No significant effect.)
     // 重叠小, 体积相差大,多次同时出现,class不同.  说明是大物体,体积太大的了,挤占了小物体的空间
     // 此种情况下，缩小 大物体的体积
-    else if ((bIou == false) && (bVolume == true) && (bSame_time == true) && (bClass == false))
+    else if ((bIou == false) && (bVolumeDiss == true) && (bSame_time == true) && (bClass == false))
     {
         if (fThis_obj_volume > fOverlap_obj_volume)
             this->BigToSmall_fll(OverlapObj, overlap_x, overlap_y, overlap_z);
@@ -2362,12 +2414,18 @@ Object_Map::Object_Map() {
     mP_occ = fSettings["IE.P_occ"];
     mP_free = fSettings["IE.P_free"];
     mP_prior = fSettings["IE.P_prior"];
-    mIEThreshold = fSettings["IE.Threshold"];
+    mIEThresholdPointNum = fSettings["IE.ThresholdPointNum"];
     IE_RecoverInit();
+
+    mIForest_thresh = fSettings["IForest.Threshold"];
+    publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
+    mbPublishIEwheel = fSettings["IE.PublishIEwheel"];
+    mIEThresholdEndMapping =  fSettings["IE.ThresholdEndMapping"];
+    mnViewField =  fSettings["ViewField"];
 }
 
 double Object_Map::IE(const double &p){
-    return -1*p*log(p) - (1-p)*log(1-p);
+    return -1*p*log2(p) - (1-p)*log2(1-p);
 }
 
 // 重置每个grid的: point数量,信息熵
@@ -2409,10 +2467,18 @@ void Object_Map::compute_grid_xy(const Eigen::Vector3d &zero_vec, const Eigen::V
     //acos()的正常范围是0~180度.
     // 因此如果point_vec的y值大于0, 则直接采用angleNew
     // 反之, 角度等于 180+(180-angleNew) = 360-angleNew
-    if(point_vec(1) >= 0)
-        x = floor(angleNew/(360.0/mIE_cols));
-    else
-        x = floor((360.0-angleNew)/(360.0/mIE_cols));
+
+    //version1:
+    //if(point_vec(1) >= 0)
+    //    x = floor(angleNew/(360.0/mIE_cols));
+    //else
+    //    x = floor((360.0-angleNew)/(360.0/mIE_cols));
+
+    //version2: 如果pointvec逆时针旋转到zerovec，则修正夹角
+    if (v2.cross(v1)(2) > 0) {
+        angleNew = 360 - angleNew;
+    }
+    x = floor(angleNew/(360.0/mIE_cols));
 
     y = floor(
                 (  (point_vec(2)  + mCuboid3D.height/2 ) /mCuboid3D.height) * mIE_rows
@@ -2429,11 +2495,11 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
     double center_y = cuboidCenter1;
     double center_z = cuboidCenter2;
     //object在世界的位姿
-    cv::Mat T_w2o_mat = mCuboid3D.pose_mat;
-    Eigen::Isometry3d T_w2o = ORB_SLAM2::Converter::toSE3Quat(T_w2o_mat);
+    cv::Mat T_w_o_mat = mCuboid3D.pose_mat;
+    Eigen::Isometry3d T_w_o = ORB_SLAM2::Converter::toSE3Quat(T_w_o_mat);
     //物体坐标系下, 指向x轴的向量
     Eigen::Vector3d zero_vec( 1,0,0);
-    zero_vec = T_w2o* zero_vec;
+    zero_vec = T_w_o* zero_vec;
 
     for (int i = 0; i < mvpMapObjectMappoints.size(); ++i) {
         cv::Mat point_pose = mvpMapObjectMappoints[i]->GetWorldPos();
@@ -2454,43 +2520,115 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
     return mvPointNum_mat;
 }
 
+//首先记录每个栅格被投影到的所有点，然后查看每个点被当前物体观察到的次数，记录下最大的次数。没有点的栅格，记录同一列的栅格的平均值。
+void Object_Map::compute_perceptionNum_eachgrid() {
+    float cuboidCenter0 = (mCuboid3D.corner_2[0] + mCuboid3D.corner_8[0])/2.0;
+    float cuboidCenter1 = (mCuboid3D.corner_2[1] + mCuboid3D.corner_8[1]) / 2.0;
+    float cuboidCenter2 = (mCuboid3D.corner_2[2] + mCuboid3D.corner_8[2])/2.0 ;
+    double center_x = cuboidCenter0;
+    double center_y = cuboidCenter1;
+    double center_z = cuboidCenter2;
+
+    //object在世界的位姿
+    cv::Mat T_w_o_mat = mCuboid3D.pose_mat;
+    Eigen::Isometry3d T_w_o = ORB_SLAM2::Converter::toSE3Quat(T_w_o_mat);
+    //物体坐标系下, 指向x轴的向量
+    Eigen::Vector3d zero_vec( 1,0,0);
+    zero_vec = T_w_o* zero_vec;
+
+    //更新有point的栅格的数值
+    for (auto pMP : mvpMapObjectMappoints) {
+        cv::Mat point_pose = pMP->GetWorldPos();
+        Eigen::Vector3d point_vec( point_pose.at<float>(0)-center_x, point_pose.at<float>(1)-center_y, point_pose.at<float>(2)-center_z);
+        int x = -1 , y = -1;
+        compute_grid_xy(zero_vec, point_vec, x, y);
+        if( x>=0 && x<=mIE_cols && y>=0 && y<=mIE_rows ) {
+            map<int, int>::iterator sit;
+            int viewdCount;
+            sit = pMP->viewdCount_forObjectId.find(this->mnId);
+            if (sit != pMP->viewdCount_forObjectId.end())
+            {
+                viewdCount = sit->second;
+            }
+            else
+            {
+                ROS_ERROR("IE Error: cant find point viewd Count for ObjectId");
+            }
+
+            //将此栅格上point的最大viewCount记录下来
+            if(viewdCount>mvPointNum_mat.at<float>(x,y))
+                mvPointNum_mat.at<float>(x,y) = viewdCount;
+        }
+        else{
+            ROS_ERROR("compute grid xy < 0,%d,%d",x,y);
+        }
+    }
+
+
+}
+
 //计算每个grid的占据概率
+float Object_Map::log2(float x){
+    float y = std::log(x) / std::log(2.0);
+    return y;
+}
 void Object_Map::compute_occupied_prob_eachgrid(){
     std::cout<<"debug 每个grid的point数量与占据概率：";
     for(int x=0; x<mIE_rows; x++){
 
         //计算这一行的点的总数
         int num_onecol = 0;
+        int num_nozero = 0;
         for(int y=0; y<mIE_cols; y++){
             num_onecol +=  mvPointNum_mat.at<float>(x,y);
+            if( mvPointNum_mat.at<float>(x,y) != 0 )
+                num_nozero ++;
         }
 
 
         //总数大于阈值，才认为管材的有效
-        if(num_onecol > mIEThreshold){
+        if(num_onecol > mIEThresholdPointNum){
+            //记录此列的point的平均值,用于没有point投影的栅格
+            int ave = ceil(num_onecol/ num_nozero);
+
             //当前列的观测到认为有效，即当前列的grid，认为是free或occupied
             for(int y=0; y<mIE_rows; y++){
-                double lnv_p ;
+                double l_lnv ;
+                double l_last = log2(   (1-log2(mvGridProb_mat.at<float>(x,y)))
+                                  /  log2(mvGridProb_mat.at<float>(x,y))
+                                 );
+                double l_last_fake = 0.0;
                 int PointNum = mvPointNum_mat.at<float>(x,y);
                 int ObserveNum = mvObject_2ds.size();
                 //if(ObserveNum==0) ObserveNum=40;//todo:  这是因为在融合的时候,有一步没把mvObject_2ds融合
                 if(PointNum == 0){
+                    PointNum = ave;
+
                     //free
                     //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
-                    //lnv_p = log(mP_prior) + ObserveNum * (log(mP_free) -log(mP_prior));
-                    lnv_p = ObserveNum * log( mP_free/ (1.0 - mP_free));
 
+                    //version1: 通过观测的次数，来进行更新概率最接近雷达建图的方式，每次观测都更新栅格的概率。点云的作用在于构建了一个用于判断观测类型（free,占据，未知）的视觉物体建模模型，类似于雷达的传感器模型。
+                    // 而且观测次数ObserveNum应该等于1，因为
+                    //l_lnv = ObserveNum * log( mP_free/ (1.0 - mP_free));
+
+                    //version2： 根据每个格子的点的数量更新栅格概率。 我觉得问题在于，点可能永远不会变动，因为点是地图中真实存在的，数量有限。
+                    //l_lnv = l_last +  mNewPointNum * log( mP_free/ (1.0 - mP_free));
+
+                    //version3: 根据格子里面的point“被当前物体观测到”的次数。
+                    l_lnv = PointNum * log2( mP_free/ (1.0 - mP_free));
                 }
                 else{
                     //occupied
                     //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
                     //lnv_p = log(mP_prior) + ObserveNum * (log(mP_occ) - log(mP_prior));
-                    lnv_p = ObserveNum * log( mP_occ/ (1.0 - mP_occ));
+                    l_lnv = PointNum * log2(mP_occ / (1.0 - mP_occ));
                 }
                 //mvGridProb_mat.at<float>(x,y) = exp(lnv_p);
-                double bel = 1.0 - 1.0 / (1.0 + exp(lnv_p));
+                double bel = 1.0 - 1.0 / (1.0 + exp(l_lnv));
+                if(bel>0.99)  bel=0.99;
+                if(bel<0.01)  bel=0.01;
                 mvGridProb_mat.at<float>(x,y) = (float) bel;
-                std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<","<<ObserveNum<<","<<lnv_p<<")， ";
+                //std::cout << mvPointNum_mat.at<float>(x,y) << "(" << mvGridProb_mat.at<float>(x,y) << "," << ObserveNum << "," << l_lnv << ")， ";
             }
         }
         else{
@@ -2498,7 +2636,7 @@ void Object_Map::compute_occupied_prob_eachgrid(){
              for(int y=0; y<mIE_rows; y++){
                  //unkonwn
                  mvGridProb_mat.at<float>(x,y) = mP_prior;
-                 std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<")， ";
+                 //std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<")， ";
              }
         }
     }
@@ -2509,8 +2647,11 @@ void Object_Map::compute_occupied_prob_eachgrid(){
 //计算每个grid的信息熵
 void Object_Map::ComputeIE(){
     IE_RecoverInit();
+
     // 计算每个grid的点数
-    compute_pointnum_eachgrid();
+    //compute_pointnum_eachgrid();
+    compute_perceptionNum_eachgrid();
+
     //计算每个grid的占据概率
     compute_occupied_prob_eachgrid();
 
@@ -2529,11 +2670,87 @@ void Object_Map::ComputeIE(){
         for(int y=0; y<mIE_rows; y++){
             entroy += mvInforEntroy_mat.at<float>(x,y);
         }
+
     mIE = entroy/(mIE_cols*mIE_rows);
 
     //记录栅格的状态??
 }
 
+
+void Object_Map::PublishIE(){
+    // color.
+    //std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+    //vector<float> color;
+
+    //生成 rviz marker
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "map";
+    marker.ns = "InformationEntroy";
+    marker.lifetime = ros::Duration(0.5);
+    marker.id= mnId;
+    marker.type = visualization_msgs::Marker::POINTS;
+    marker.scale.x=0.03;
+    marker.scale.y=0.08;
+    marker.pose.orientation.w=1.0;  //????
+    marker.action=visualization_msgs::Marker::ADD;
+
+
+    //for(size_t i=0; i< vObjs.size(); i++)
+    {
+
+        if((this->mvpMapObjectMappoints.size() < 10) || (this->bad_3d == true))
+        {
+            return;
+        }
+
+        //color = colors_bgr[obj->mnClass % 6];
+        double diameter = sqrt(mCuboid3D.width * mCuboid3D.width   +   mCuboid3D.lenth * mCuboid3D.lenth )/2.0;
+        for(int x=0; x<mIE_rows; x++){
+            double angle_divide = 2*M_PI/mIE_rows;
+            double angle = angle_divide * ( x + 0.5 );
+            double p_x = cos(angle) * diameter;
+            double p_y = sin(angle) * diameter;
+
+            double h_divide =  mCuboid3D.height/mIE_cols;
+            for(int y=0; y<mIE_cols; y++){
+                //计算纵坐标
+                double p_z = h_divide * (y+0.5) - mCuboid3D.height/2.0;
+
+                // 物体坐标系 -> 世界坐标系
+                cv::Mat cvMat4 = mCuboid3D.pose_mat.clone();
+                Eigen::Matrix4f eigenMat4f;
+                cv::cv2eigen(cvMat4, eigenMat4f);
+                //Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
+                Eigen::Matrix4d T = eigenMat4f.cast<double>();
+                Eigen::Matrix3d R = T.block<3, 3>(0, 0);
+                Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
+                geometry_msgs::Point p;
+                p.x= p_world[0] + T(0, 3);
+                p.y= p_world[1] + T(1, 3);
+                p.z= p_world[2] + T(2, 3);
+
+                if(mvGridProb_mat.at<float>(x,y) > 0.5){
+                    //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
+                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
+                    //marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
+                    marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 0.7;
+                }
+                else if(mvGridProb_mat.at<float>(x,y) < 0.5){
+                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
+                    marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
+                }
+                else {
+                    marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
+                }
+
+                marker.points.push_back(p);
+                //usleep(100);
+            }
+        }
+    }
+    publisher_IE.publish(marker);
+}
 
 //计算物体的主向量, 注意:这是在world坐标系下描述的
 void Object_Map::ComputeMainDirection(){
@@ -2561,51 +2778,61 @@ double Object_Map::get_information_entroy(){
 // ************************************
 // object3d 筛选候选点 *
 // ************************************
-bool Object_Map::WheatherInRectFrameOf(const cv::Mat &Tcw, const float &fx, const float &fy, const float &cx, const float &cy, const float &ImageWidth, const float &ImageHeight)
+bool Object_Map::WheatherInRectFrameOf(const cv::Mat &Twc, const float &fx, const float &fy, const float &cx, const float &cy, const float &ImageWidth, const float &ImageHeight)
 {
-    const cv::Mat Rcw = Tcw.rowRange(0, 3).colRange(0, 3);
-    const cv::Mat tcw = Tcw.rowRange(0, 3).col(3);
-    vector<float> x_pt;
-    vector<float> y_pt;
-    for (int j = 0; j < mvpMapObjectMappoints.size(); j++)
-    {
-        MapPoint *pMP = mvpMapObjectMappoints[j];
-        cv::Mat PointPosWorld = pMP->GetWorldPos();
+    //(1) 判断是否在物体检测框内
+    //const cv::Mat Rcw = Tcw.rowRange(0, 3).colRange(0, 3);
+    //const cv::Mat tcw = Tcw.rowRange(0, 3).col(3);
+    //vector<float> x_pt;
+    //vector<float> y_pt;
+    //for (int j = 0; j < mvpMapObjectMappoints.size(); j++)
+    //{
+    //    MapPoint *pMP = mvpMapObjectMappoints[j];
+    //    cv::Mat PointPosWorld = pMP->GetWorldPos();
+    //
+    //    cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+    //
+    //    const float xc = PointPosCamera.at<float>(0);
+    //    const float yc = PointPosCamera.at<float>(1);
+    //    const float invzc = 1.0 / PointPosCamera.at<float>(2);
+    //
+    //    float u = fx * xc * invzc + cx;
+    //    float v = fy * yc * invzc + cy;
+    //
+    //    x_pt.push_back(u);
+    //    y_pt.push_back(v);
+    //
+    //}
+    //
+    //if (x_pt.size() == 0)
+    //    return false;
+    //
+    //sort(x_pt.begin(), x_pt.end());
+    //sort(y_pt.begin(), y_pt.end());
+    //float x_min = x_pt[0];
+    //float x_max = x_pt[x_pt.size() - 1];
+    //float y_min = y_pt[0];
+    //float y_max = y_pt[y_pt.size() - 1];
+    //
 
-        cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+    ////Camera.width: 640
+    ////Camera.height: 480
+    //if (x_min < 0)
+    //    return false;
+    //if (y_min < 0)
+    //    return false;
+    //if (x_max > ImageWidth)
+    //    return false;
+    //if (y_max > ImageHeight)
+    //    return false;
 
-        const float xc = PointPosCamera.at<float>(0);
-        const float yc = PointPosCamera.at<float>(1);
-        const float invzc = 1.0 / PointPosCamera.at<float>(2);
 
-        float u = fx * xc * invzc + cx;
-        float v = fy * yc * invzc + cy;
-
-        x_pt.push_back(u);
-        y_pt.push_back(v);
-
-    }
-
-    if (x_pt.size() == 0)
-        return false;
-
-    sort(x_pt.begin(), x_pt.end());
-    sort(y_pt.begin(), y_pt.end());
-    float x_min = x_pt[0];
-    float x_max = x_pt[x_pt.size() - 1];
-    float y_min = y_pt[0];
-    float y_max = y_pt[y_pt.size() - 1];
-
-    if (x_min < 0)
-        return false;
-    if (y_min < 0)
-        return false;
-    if (x_max > ImageWidth)
-        return false;
-    if (y_max > ImageHeight)
-        return false;
-    //Camera.width: 640
-    //Camera.height: 480
+    //(2)相机的中心与物体的距离
+    double dist =  sqrt(   (mCuboid3D.cuboidCenter(0)-Twc.at<float>(0,3)) * (mCuboid3D.cuboidCenter(0)-Twc.at<float>(0,3))
+                        +  (mCuboid3D.cuboidCenter(1)-Twc.at<float>(1,3)) * (mCuboid3D.cuboidCenter(1)-Twc.at<float>(1,3))
+                        );
+    if(dist<mnViewField)
+        return true;
 }
 
 

@@ -375,6 +375,10 @@ void Viewer::read_local_object_file(){
             cv::Mat WorldPos(vec);
 
             point->SetWorldPos(WorldPos) ;
+            // 设置随机数种子,生成 1 到 3之间的随机数
+            std::srand(std::time(0));
+            int random_num = std::rand() % 3 + 1;
+            point->viewdCount_forObjectId.insert(make_pair(vObjects[ object_num ]->mnId, random_num));
             vObjects[ object_num ]-> mvpMapObjectMappoints.push_back( point );
             //mpMapPub -> mpMap->mvObjectMap[ object_num ]->mvpMapObjectMappoints.push_back( &point );
         }

@@ -101,10 +101,31 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     mReferencePoints.color.r =1.0f;
     mReferencePoints.color.a = 1.0;
 
-    //Configure IE grid
-    IE_id = 7;
+    //Configure IE text
+    mIEtext.header.frame_id = "map";
+    mIEtext.header.stamp = ros::Time::now();
+    mIEtext.ns = "text_marker";
+    mIEtext.id = 7;
+    mIEtext.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    mIEtext.action = visualization_msgs::Marker::ADD;
+    mIEtext.pose.position.x = -2.0;
+    mIEtext.pose.position.y = 0.0;
+    mIEtext.pose.position.z = 2.0;
+    mIEtext.pose.orientation.x = 0.0;
+    mIEtext.pose.orientation.y = 0.0;
+    mIEtext.pose.orientation.z = 0.0;
+    mIEtext.pose.orientation.w = 1.0;
+    mIEtext.scale.x = 1.0;
+    mIEtext.scale.y = 1.0;
+    mIEtext.scale.z = 1.0;
+    mIEtext.color.r = 1.0;
+    mIEtext.color.g = 0.0;
+    mIEtext.color.b = 0.0;
+    mIEtext.color.a = 1.0;
+    mIEtext.text = "Hello, world!";
 
-    //Configure MapObjectPoints
+    //Configure IE grid
+    IE_id = 8;
 
     //Configure MapObjects
     object_id_init = 46;
@@ -122,6 +143,7 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     publisher_SumMainDirection = nh.advertise<visualization_msgs::Marker>("object_SumMainDirection", 1000);
     //publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
     //publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
+    publisher_IEtext = nh.advertise<visualization_msgs::Marker>("IEtext", 1);
 
     publisher.publish(mPoints);
     publisher.publish(mReferencePoints);
@@ -165,6 +187,7 @@ void MapPublisher::Refresh()
         //PublishPlane(vMapPlanes);
         PublishObject(vMapObjects);
         //PublishIE(vMapObjects);
+
     }
 }
 
@@ -499,16 +522,6 @@ geometry_msgs::Point MapPublisher::corner_to_marker(const std::vector<double>& v
 
 void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
 
-    //for(size_t i=vObjs.size(); i<object_num_last ; i++)
-    //{
-    //    visualization_msgs::Marker marker;
-    //    marker.id = object_id_init + i;
-    //    marker.header.frame_id= MAP_FRAME_ID;
-    //    marker.header.stamp=ros::Time::now();
-    //    marker.action = visualization_msgs::Marker::DELETE;
-    //    publisher.publish(marker);
-    //}
-    //object_num_last = vObjs.size();
 
     for(size_t i=0; i< vObjs.size(); i++)
     {
@@ -525,7 +538,7 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
 
         //(1)物体
         visualization_msgs::Marker marker;
-        marker.id = ++object_id_init;//object_id_init + i;
+        marker.id = vObjs[i]->mnId;//++object_id_init;//object_id_init + i;
         marker.lifetime = ros::Duration(mObject_Duration);
         marker.header.frame_id= MAP_FRAME_ID;
         marker.header.stamp=ros::Time::now();
@@ -663,6 +676,27 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         marker3.color.b = 0.0;
         marker3.color.a = 1.0;
         publisher_MainDirection.publish(marker3);
+
+        //(5)IE text
+        mIEtext.lifetime = ros::Duration(mDirection_Duration);
+        mIEtext.id = vObjs[i]->mnId;
+        mIEtext.pose.position.x = vObjs[i]->mCuboid3D.cuboidCenter.x();
+        mIEtext.pose.position.y = vObjs[i]->mCuboid3D.cuboidCenter.y();
+        mIEtext.pose.position.z = 2.0;
+        mIEtext.scale.x = 0.2;
+        mIEtext.scale.y = 0.2;
+        mIEtext.scale.z = 0.2;
+        mIEtext.color.r = color[2]/255.0;
+        mIEtext.color.g = color[1]/255.0;
+        mIEtext.color.b = color[0]/255.0;
+        mIEtext.color.a = 1.0;
+        ROS_ERROR("IEtext:%f",vObjs[i]->mIE );
+        ROS_ERROR_STREAM(to_string(double(vObjs[i]->mIE)));
+        mIEtext.text = to_string(double(vObjs[i]->mIE) );
+        std::cout<<"PointNum_mat:"<<vObjs[i]->mvPointNum_mat<<std::endl;
+        std::cout<<"GridProb_mat:"<<vObjs[i]->mvGridProb_mat<<std::endl;
+        std::cout<<"InforEntroy_mat:"<<vObjs[i]->mvInforEntroy_mat<<std::endl;
+        publisher_IEtext.publish(mIEtext);
     }
 
     //5.全部的观测主方向
@@ -698,6 +732,7 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
     marker.color.b = 1.0;
     marker.color.a = 1.0;
     publisher_SumMainDirection.publish(marker);
+
 }
 
 void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
@@ -714,7 +749,7 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     //marker.id= IE_id ;  //TODO:绝对数字
     marker.type = visualization_msgs::Marker::POINTS;
     marker.scale.x=0.03;
-    marker.scale.y=0.08;
+    marker.scale.y=0.1;
     marker.pose.orientation.w=1.0;  //????
     marker.action=visualization_msgs::Marker::ADD;
 
@@ -753,25 +788,34 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                 p.y= p_world[1] + T(1, 3);
                 p.z= p_world[2] + T(2, 3);
 
+                std_msgs::ColorRGBA c;
                 if(obj->mvGridProb_mat.at<float>(x,y) > 0.5){
                     //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
-                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
+                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
+                    //marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
+                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 0.7;
+                    c.r =color[2]/255.0; c.g = color[1]/255.0; c.b = color[0]/255.0; c.a = 0.7;
                 }
                 else if(obj->mvGridProb_mat.at<float>(x,y) < 0.5){
                     //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
-                    marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
+                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
+                    //marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
+                    c.r =color[2]/255.0; c.g = color[1]/255.0; c.b = color[0]/255.0; c.a = 0.15;
                 }
                 else {
-                    marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
+                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 0.5;
+                    c.r =0.0; c.g = 0.0; c.b = 0.0; c.a = 0.1;
                 }
-                marker.id= ++IE_id;
+
                 marker.points.push_back(p);
-                publisher_IE.publish(marker);
+                marker.colors.push_back(c);
                 //usleep(100);
             }
         }
     }
-
+    //version all_publish:
+    marker.id= 0;
+    publisher_IE.publish(marker);
 }
 
 void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
@@ -785,7 +829,6 @@ void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
     marker.ns = "MainDirection";
     //marker.lifetime = ros::Duration(5.0);
     marker.lifetime = ros::Duration(mDirection_Duration);
-    //marker.id= IE_id ;  //TODO:绝对数字
     marker.type = visualization_msgs::Marker::POINTS;
     marker.scale.x=0.03;
     marker.scale.y=0.08;

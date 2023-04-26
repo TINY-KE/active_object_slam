@@ -10,8 +10,6 @@
         <param name="rosbag" value="false" type="bool"/>
         <!-- <param name="gravity_aixs" value="2" type="int"/> -->
         <param name="gravity_aixs" value="3" type="int"/>
- l
-
 
         <!-- KINECT DK-->
         <param name="rgb_topic" value="/rgb/image_raw" type="string"/>
@@ -41,5 +39,5 @@
         <!-- kinectdk_720.yaml -->
     </node>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz"/>
+<!--    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find active_eao_new)/rviz/active_slam.rviz"/>-->
 </launch>

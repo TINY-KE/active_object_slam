@@ -106,7 +106,7 @@ private:
     ros::Publisher publisher_SumMainDirection;
     //ros::Publisher publisher_robotpose;
     //ros::Publisher publisher_mam_rviz;   //NBV MAM
-
+    ros::Publisher publisher_IEtext;
 
     //tf tree
     //tf::TransformBroadcaster odom_broadcaster;
@@ -119,7 +119,7 @@ private:
     visualization_msgs::Marker mCovisibilityGraph;
     visualization_msgs::Marker mMST;
     visualization_msgs::Marker mCurrentCamera;
-
+    visualization_msgs::Marker mIEtext;
 
 
     int object_id_init;

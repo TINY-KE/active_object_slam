@@ -110,7 +110,7 @@ Viewer.ViewpointF: 500
 
 Viewer.pangolin: 0
 Viewer.rviz: 1
-Viewer.readlocalobject: 0
+Viewer.readlocalobject: 1
 Viewer.show_object3d_frame: 0
 
 Viewer.object_Duration: 0.1
@@ -159,6 +159,11 @@ SavePath.Keyframe: "KeyFrameTrajectory.txt"
 SavePath.PlaneFeature: "PlaneFeature.txt"
 
 #--------------------------------------------------------------------------------------------
+# foreground object
+#--------------------------------------------------------------------------------------------
+IForest.Threshold: 0.6
+
+#--------------------------------------------------------------------------------------------
 # Local NBV
 #--------------------------------------------------------------------------------------------
 MAM.isused: 0
@@ -176,14 +181,16 @@ IE.cols: 18
 IE.P_occ: 0.6
 IE.P_free: 0.4
 IE.P_prior: 0.5
-IE.Threshold: 3
+IE.ThresholdPointNum: 3
+IE.PublishIEwheel: 0
+IE.ThresholdEndMapping: 0.42   #设置为极小值，即可关闭end_build
 Plane.Height.Max: 1.0
 Plane.Height.Min: 0.5
 Planle.Safe_radius: 0.7
 Planle.Gobal_Candidate_Num: 36
 NBV_Angle_correct_factor: 0 #-0.5
 Candidate_num_topub: 7
-
+ViewField: 0.7
 
 #--------------------------------------------------------------------------------------------
 # yolo

@@ -60,6 +60,7 @@ struct localCandidate{
     int num;
 };
 
+
 class NbvGenerator {
 
 public:
@@ -94,6 +95,7 @@ private:
     const char* MAP_FRAME_ID = "map"; //  odom   imu_link   /ORB_SLAM/World    map
     float fCameraSize;
     float fPointSize;
+    bool mbEnd_active_map = false;
 
     ros::Publisher publisher_centroid;
     ros::Publisher pubCloud;
@@ -105,19 +107,22 @@ private:
     vector<Candidate> mvGlobalCandidate;
     vector<localCandidate> mvLocalCandidate;
     Candidate NBV;
+    vector<Candidate> mNBVs_old; //存储已到达的NBV，从而使下一个NBV尽量已到达的位置。
+    double mNBVs_scale = 0;
     vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> mvCloudBoundary;
     vector<PointCloud::Ptr> mvPlanes_filter;
 
     void ExtractCandidates(const vector<MapPlane *> &vpMPs);
     vector<Candidate> RotateCandidates(Candidate& initPose);
-    double computeCosAngle(cv::Mat &candidate, cv::Mat &objectPose, Eigen::Vector3d &ie);
+    double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
     void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
     void ExtractNBV();
     void PublishPlanes();
     void PublishNBV();
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
     void PublishGlobalNBVRviz(const vector<Candidate> &candidates);
-
+    void addOldNBV(Candidate &candidate);
+    void clearOldNBV();
 
 private:
     float mfx, mfy, mcx, mcy;

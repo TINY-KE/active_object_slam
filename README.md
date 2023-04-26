@@ -1,6 +1,6 @@
 # Active-EAO-Fusion
 **目标：试图调整 EAO-SLAM ，建立物体级active slam**
-
+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
 **TODO**
 + 改良信息熵的计算公式
 + int ObserveNum = mvObject_2ds.size();  
@@ -27,6 +27,23 @@
     + mvGlobalCandidate[i].reward = globalCandidate.front().reward; 
     + mvGlobalCandidate[i].pose = globalCandidate.front().pose.clone();
   + 猜测是一个元素的vector的sort 造成的。
++ 两个物体融合之后是怎么重新估计yaw？
+  + 如果是track的时候 融合的，直接利用当前帧的line重新估计
+  + 如果是localmap的时候怎么办？？
++ 估计yaw时，怎么还有个if(obj3d->mnClass == 56)   // chair.
++ 为什么1111.avi视频里面有个  右上角的nbv没过去？
++ 与nbvs old之间的距离. 当一个 物体群,创建完毕之后,就清空nbvs old.
++ 怎么设计结束条件:?
+  + 当物体的
+
++ 如果一个物体的长宽比大于5，就去除掉。后端也加上
++ zhangjiadong： 原程序将体积较小的删除？？？我认为不合理，改为将观测较少的物体删除
++ 怎么降低最后的旋转速度
++ 检查融合时，object2d的融合  好像有遗留问题
++ 事实证明，在移动过程中，物体会频繁更新。因为ie的更新  也应该放在localmap中
++ 研究MergeTwoMapObjs_fll(中的viewdCount_forObjectId
++ float mnViewField 移到nbvgenerator中
+
 
 
 + 暂时去掉global nbv的旋转： vector<Candidate> localCandidate = RotateCandidates(globalCandidate);
@@ -119,7 +136,7 @@
   + Converter::bboxOverlapratio(bbox1, bbox2)
   + 
 
-+ UpdateObject()\MergePotentialAssObjs()\WhetherOverlapObject(); 为什么都是在localMapping中.
++ UpdateAllMapObject()\MergePotentialAssObjs()\WhetherOverlapObject(); 为什么都是在localMapping中.
   + localMapping是对全局的map做处理, 例如: 全局的物体 mpMap->GetObjects();
   + 前端(tracker)负责生成物体, 后端负责优化物体(融合和位姿优化).
   

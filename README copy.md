@@ -320,7 +320,7 @@
   + Converter::bboxOverlapratio(bbox1, bbox2)
   + 
 
-+ UpdateObject()\MergePotentialAssObjs()\WhetherOverlapObject(); 为什么都是在localMapping中.
++ UpdateAllMapObject()\MergePotentialAssObjs()\WhetherOverlapObject(); 为什么都是在localMapping中.
   + localMapping是对全局的map做处理, 例如: 全局的物体 mpMap->GetObjects();
   + 前端(tracker)负责生成物体, 后端负责优化物体(融合和位姿优化).
   

@@ -124,7 +124,7 @@ protected:
 
     //[active slam]
 public:
-    void UpdateObject();            // update object.
+    void UpdateAllMapObject();            // update object.
     void MergePotentialAssObjs();   // merge potentially associated objects.
     void WhetherOverlapObject();    // determine whether two objects overlap.
     std::mutex mMutexObject;

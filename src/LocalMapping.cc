@@ -46,29 +46,33 @@ void LocalMapping::SetTracker(Tracking *pTracker)
 
 void LocalMapping::Run()
 {
+    //LocalMapping线程负责对新加入的KeyFrames和MapPoints筛选融合，剔除冗余的KeyFrames和MapPoints，
+    // 维护稳定的KeyFrame集合，传给后续的LoopClosing线程。
+    // 对当前新生成的关键帧mpCurrentKeyFrame，进行一系列处理
+
 
     mbFinished = false;
 
     while(1)
     {
-        // Tracking will see that Local Mapping is busy
+        // Tracking will see that Local Mapping is busy,  禁止Local Mapping线程接收新的关键帧
         SetAcceptKeyFrames(false);
 
         // Check if there are keyframes in the queue
         if(CheckNewKeyFrames())
         {
-            // BoW conversion and insertion in Map
+            // BoW conversion and insertion in Map  处理新的关键帧
             ProcessNewKeyFrame();
 
-            // Check recent MapPoints
+            // Check recent MapPoints  剔除不合格地图点
             MapPointCulling();
 
-            // Triangulate new MapPoints
+            // Triangulate new MapPoints  三角化恢复新地图点
             CreateNewMapPoints();
 
             if(!CheckNewKeyFrames())
             {
-                // Find more matches in neighbor keyframes and fuse point duplications
+                // Find more matches in neighbor keyframes and fuse point duplications  融合当前帧与相邻帧重复的地图点
                 SearchInNeighbors();
             }
 
@@ -76,21 +80,20 @@ void LocalMapping::Run()
 
             if(!CheckNewKeyFrames() && !stopRequested())
             {
-                // Local BA
+                // Local BA   局部BA优化
                 if(mpMap->KeyFramesInMap()>2)
                     Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame,&mbAbortBA, mpMap);
 
-                // Check redundant local Keyframes
+                // Check redundant local Keyframes  剔除冗余关键帧
                 KeyFrameCulling();
             }
 
             mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
-            //[active slam]
-
-            UpdateObject();
-            MergePotentialAssObjs();
-            WhetherOverlapObject();
+            ////[active slam]
+            //UpdateAllMapObject();
+            //MergePotentialAssObjs();
+            //WhetherOverlapObject();
 
         }
         else if(Stop())
@@ -103,6 +106,11 @@ void LocalMapping::Run()
             if(CheckFinish())
                 break;
         }
+
+        //[active slam]
+        UpdateAllMapObject();
+        MergePotentialAssObjs();
+        WhetherOverlapObject();
 
         ResetIfRequested();
 
@@ -194,7 +202,7 @@ void LocalMapping::MapPointCulling()
         {
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(pMP->GetFoundRatio()<0.25f )
+        else if(pMP->GetFoundRatio()<0.25f )  //在关键帧中被观测到的次数占总观测次数的比例
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
@@ -767,7 +775,7 @@ bool LocalMapping::isFinished()
 
 //[active slam]
 //更新地图中物体的均值和方差
-void LocalMapping::UpdateObject()
+void LocalMapping::UpdateAllMapObject()
 {
     unique_lock<mutex> lock(mMutexObject);
 
@@ -785,7 +793,7 @@ void LocalMapping::UpdateObject()
             continue;
         }
 
-        //Obj->IsolationForestDeleteOutliers();
+        Obj->IsolationForestDeleteOutliers();
         Obj->ComputeMeanAndDeviation_3D();
     }
     // todo remove objects with too few observations.(see tracking thread)
