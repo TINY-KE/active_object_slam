@@ -32,6 +32,10 @@
 #include<opencv2/features2d/features2d.hpp>
 #include<opencv2/core/eigen.hpp>
 
+//#include "sophus/so3.h"
+//#include "sophus/se3.h"
+
+
 namespace ORB_SLAM2
 {
 
@@ -77,7 +81,7 @@ public:
     static Eigen::Matrix4d Isometry3dtoMatrix4d(const Eigen::Isometry3d &Iso );
     static Eigen::Matrix4d cvMattoMatrix4d(const cv::Mat &cvMat4);
     static Eigen::Isometry3d cvMattoIsometry3d(const cv::Mat &cvMat4);
-
+    static g2o::SE3Quat cvMattoG2oSE3Quat(const cv::Mat &cvMat4);
 
 };
 

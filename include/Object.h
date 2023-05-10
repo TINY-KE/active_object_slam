@@ -245,6 +245,7 @@ public:
     int mnId;                           //全局的id
     int mnClass;
     bool bad_3d = false;                //用途：（1）如果为true，则不view  （2）在localMapping、 等地方，应用
+    bool backgroud_object = false;      //用途：如果为true，则被参与位姿更新和物体优化
     bool end_build = false;             // 当NBV generator模块认为物体已经建立完毕,就不用再添加新的点了.但是还是可以用于数据关联.
     int mnConfidence_foractive;
     Cuboid3D mCuboid3D;                 // cuboid.

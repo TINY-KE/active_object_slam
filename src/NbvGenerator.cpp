@@ -100,10 +100,11 @@ void NbvGenerator::Run() {
         for(auto obj: ObjectMaps)
             obj->ComputeMainDirection();
 
-        //1. 计算全局候选点
+        //1. 筛选平面，并挑选全局候选点
         ExtractCandidates(vpMPlanes);
+        PublishPlanes();  //可视化 筛选后的平面
 
-        //2. 旋转并评估 全局候选点
+        //2. 旋转（旋转暂时停用）并评估 全局候选点
         cv::Mat BestCandidate;
 
         for(int i=0; i<mvGlobalCandidate.size(); i++ ){
@@ -134,8 +135,8 @@ void NbvGenerator::Run() {
                       [](Candidate a, Candidate b) -> bool { return a.reward > b.reward; });
             //NBV = *mvGlobalCandidate.begin();
 
-            //可视化
-            PublishPlanes();
+            //可视化平面
+            //PublishPlanes();
 
             //桌面边缘的候选点,rviz可视化
             PublishGlobalNBVRviz(mvGlobalCandidate);
@@ -244,6 +245,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         voxel.setInputCloud(allCloudPoints);
         voxel.filter(*tmp);
 
+        //计算点云的最小值和最大值    void getMinMax3D (const pcl::PointCloud<PointT> &cloud, PointT &min_pt, PointT &max_pt)
 
         // 计算allCloudPoint的中心点
         vector<float> vec_x,vec_y,vec_z;
@@ -263,6 +265,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         //cout<< "mean z2:"<<mean_z<<std::endl;
         pcl::getMeanStd(vec_x, mean_x, stddev_x);
         pcl::getMeanStd(vec_y, mean_y, stddev_y);
+
 
         //用于plane的展示
         mvPlanes_filter.push_back(tmp);
@@ -412,8 +415,140 @@ void  NbvGenerator::PublishPlanes()
     pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
     colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
     pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
+
+    //publishBackgroudObject(colored_pcl_ptr);
 }
 
+void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr allCloudPoints ){
+    // 定义最小值和最大值
+    Eigen::Vector4f minPoint;
+    Eigen::Vector4f maxPoint;
+    pcl::PointXYZ minPt, maxPt;
+
+    // 计算点云的最小值和最大值
+    //pcl::getMinMax3D(*allCloudPoints, minPoint, maxPoint);
+    if (allCloudPoints->points.empty()) {
+        minPoint << 0.0f, 0.0f, 0.0f, 0.0f;
+        maxPoint << 0.0f, 0.0f, 0.0f, 0.0f;
+        std::cerr << "Error occurred! 背景物体点云数量为0" << std::endl;
+        std::exit(EXIT_FAILURE); // 退出程序
+    }
+
+    float x_min = std::numeric_limits<float>::max();
+    float y_min = std::numeric_limits<float>::max();
+    float z_min = std::numeric_limits<float>::max();
+    float x_max = -std::numeric_limits<float>::max();
+    float y_max = -std::numeric_limits<float>::max();
+    float z_max = -std::numeric_limits<float>::max();
+
+    for (const auto& pt : allCloudPoints->points) {
+        if (pt.x < x_min) x_min = pt.x;
+        if (pt.y < y_min) y_min = pt.y;
+        if (pt.z < z_min) z_min = pt.z;
+        if (pt.x > x_max) x_max = pt.x;
+        if (pt.y > y_max) y_max = pt.y;
+        if (pt.z > z_max) z_max = pt.z;
+    }
+
+    minPoint << x_min, y_min, z_min, 0.0f;
+    maxPoint << x_max, y_max, z_max, 0.0f;
+
+
+    // 从最小值和最大值创建一个轴对齐的包围盒
+    //pcl::PointXYZ min(minPoint[0], minPoint[1], minPoint[2]);
+    //pcl::PointXYZ max(maxPoint[0], maxPoint[1], maxPoint[2]);
+    //pcl::PointCloud<pcl::PointXYZ>::Ptr boundingBox(new pcl::PointCloud<pcl::PointXYZ>);
+
+    // Create an object in the map.
+    std::cout<<"可视化背景物体"<<std::endl;
+    Object_Map *Object3D = new Object_Map;
+    //Object3D->mvObject_2ds.push_back(obj2d);   // 2D objects in each frame associated with this 3D map object.
+    Object3D->mnId = 0;             // 3d objects in the map.
+    Object3D->mnClass = 60 /*餐桌*/;      // object class.
+    Object3D->mnConfidence_foractive = 1;              // object confidence = mObjectFrame.size().
+    //Object3D->mnAddedID_nouse = mCurrentFrame.mnId;        // added id.
+    //Object3D->mnLastAddID = mCurrentFrame.mnId;      // last added id.
+    //Object3D->mnLastLastAddID = mCurrentFrame.mnId;  // last last added id.
+    //Object3D->mLastRect = obj2d->mBox_cvRect;             // last rect.
+    //Object3D->mPredictRect = obj->mBoxRect;       // for iou.
+    //Object3D->mSumPointsPos = 0; //cv::Mat::zeros(3,1,CV_32F);
+    //Object3D->mAveCenter3D = obj2d->mPos_world;  ; //cv::Mat::zeros(3,1,CV_32F);
+    //     8------7
+    //    /|     /|
+    //   / |    / |
+    //  5------6  |
+    //  |  4---|--3
+    //  | /    | /
+    //  1------2
+    // lenth ：corner_2[0] - corner_1[0]
+    // width ：corner_2[1] - corner_3[1]
+    // height：corner_2[2] - corner_6[2]
+    Object3D->backgroud_object = true;
+    Object3D->mCuboid3D.corner_1 = Eigen::Vector3d(x_min, y_min, 0);
+    Object3D->mCuboid3D.corner_2 = Eigen::Vector3d(x_max, y_min, 0);
+    Object3D->mCuboid3D.corner_3 = Eigen::Vector3d(x_max, y_max, 0);
+    Object3D->mCuboid3D.corner_4 = Eigen::Vector3d(x_min, y_max, 0);
+    Object3D->mCuboid3D.corner_5 = Eigen::Vector3d(x_min, y_min, z_max);
+    Object3D->mCuboid3D.corner_6 = Eigen::Vector3d(x_max, y_min, z_max);
+    Object3D->mCuboid3D.corner_7 = Eigen::Vector3d(x_max, y_max, z_max);
+    Object3D->mCuboid3D.corner_8 = Eigen::Vector3d(x_min, y_max, z_max);
+
+    //(1)物体
+    visualization_msgs::Marker marker;
+    marker.id = 0;
+    //marker.lifetime = ros::Duration(1);
+    marker.header.frame_id= MAP_FRAME_ID;
+    marker.header.stamp=ros::Time::now();
+
+    marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
+    marker.action = visualization_msgs::Marker::ADD;
+    //marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
+    marker.color.r = 255.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    marker.scale.x = 0.01;
+    //     8------7
+    //    /|     /|
+    //   / |    / |
+    //  5------6  |
+    //  |  4---|--3
+    //  | /    | /
+    //  1------2
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_1));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_2));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_2));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_3));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_3));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_4));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_4));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_1));
+
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_5));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_1));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_6));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_2));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_7));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_3));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_8));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_4));
+
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_5));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_6));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_6));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_7));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_7));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_8));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_8));
+    marker.points.push_back(corner_to_marker(Object3D->mCuboid3D.corner_5));
+
+    publisher_object_backgroud.publish(marker);
+}
+
+geometry_msgs::Point NbvGenerator::corner_to_marker(Eigen::Vector3d& v){
+    geometry_msgs::Point point;
+    point.x = v[0];
+    point.y = v[1];
+    point.z = v[2];
+    return point;
+}
 
 void NbvGenerator::BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution)
     {   // BoundaryExtraction(cloud, cloud_boundary, 200);

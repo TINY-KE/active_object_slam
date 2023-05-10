@@ -105,6 +105,7 @@ public:
     double PointDistanceFromPlane(const cv::Mat &plane, PointCloud::Ptr boundry, bool out=false);
     void SearchMatchedPlanes(KeyFrame *pKF, cv::Mat Scw, const std::vector<MapPlane *> &vpPlanes, std::vector<MapPlane *> &vpMatched, bool out=false);
     std::vector<long unsigned int> GetRemovedPlanes();
+    Object_Map* computeMinandMax(MapPlane * plane);
 protected:
     float mfDisTh;
     float mfAngleTh;

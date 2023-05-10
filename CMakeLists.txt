@@ -70,6 +70,8 @@ find_package(catkin REQUIRED COMPONENTS
   darknet_ros_msgs
 )  #for ros
 
+find_package(Sophus REQUIRED)
+
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 
@@ -88,7 +90,8 @@ ${PROJECT_SOURCE_DIR}/include
 ${Pangolin_INCLUDE_DIRS}
 ${PCL_INCLUDE_DIRS}
 )
-
+include_directories(${Sophus_INCLUDE_DIRS})
+include_directories( "/usr/local/include/sophus" )
 # add_definitions( ${PCL_DEFINITIONS} )
 # link_directories( ${PCL_LIBRARY_DIRS} )
 
@@ -150,6 +153,7 @@ add_library(${PROJECT_NAME}_lib SHARED
 target_link_libraries(${PROJECT_NAME}_lib
    ${OpenCV_LIBS}
    ${EIGEN3_LIBS}
+#   ${Sophus_LIBRARIES}
    ${Pangolin_LIBRARIES}
    ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
    ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
@@ -162,6 +166,8 @@ target_link_libraries(${PROJECT_NAME}_lib
    ${PROJECT_SOURCE_DIR}/Thirdparty/EDLines/EDLinesLib.a
    ${PROJECT_SOURCE_DIR}/Thirdparty/EDTest/EDLib.a
    ${PROJECT_SOURCE_DIR}/Thirdparty/Line3Dpp/build/libline3Dpp.so
+
+
 )
 
 
@@ -169,4 +175,7 @@ target_link_libraries(${PROJECT_NAME}_lib
 # Node for RGB-D camera
 add_executable(active_rgbd ros_src/init_test.cpp)
 target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
+
+add_executable(rviz_dae ros_src/rviz_dae.cpp)
+target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
 

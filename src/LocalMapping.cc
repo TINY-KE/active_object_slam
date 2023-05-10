@@ -788,7 +788,7 @@ void LocalMapping::UpdateAllMapObject()
     {
         Object_Map* Obj = vObjs[i];
 
-        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true))
+        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true) ||  Obj->backgroud_object)
         {
             continue;
         }
@@ -814,7 +814,7 @@ void LocalMapping::MergePotentialAssObjs()
     {
         Object_Map* Obj = vObjs[i];
 
-        if(Obj->bad_3d)
+        if(Obj->bad_3d||Obj->backgroud_object)
             continue;
 
         // localmap thread
@@ -844,7 +844,7 @@ void LocalMapping::WhetherOverlapObject()
     {
         Object_Map* Obj = obj_3ds[i];
 
-        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true) || (Obj->mvObject_2ds.size() < 10))
+        if((Obj->mvpMapObjectMappoints.size() < 10) || (Obj->bad_3d == true) || Obj->backgroud_object  || (Obj->mvObject_2ds.size() < 10))
         {
             continue;
         }
@@ -856,7 +856,7 @@ void LocalMapping::WhetherOverlapObject()
 
             Object_Map* Obj2 = obj_3ds[j];
 
-            if((Obj2->mvpMapObjectMappoints.size() < 10) || (Obj2->bad_3d == true) || (Obj2->mvObject_2ds.size() < 10))
+            if((Obj2->mvpMapObjectMappoints.size() < 10) || (Obj2->bad_3d == true) || Obj->backgroud_object  || (Obj2->mvObject_2ds.size() < 10))
             {
                 continue;
             }

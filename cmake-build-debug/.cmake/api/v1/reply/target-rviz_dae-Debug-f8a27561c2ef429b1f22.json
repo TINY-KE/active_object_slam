@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "devel/lib/active_eao_new/active_rgbd"
+			"path" : "devel/lib/active_eao_new/rviz_dae"
 		}
 	],
 	"backtrace" : 1,
@@ -51,19 +51,19 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 170,
+				"line" : 179,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 171,
+				"line" : 180,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 150,
+				"line" : 153,
 				"parent" : 0
 			},
 			{
@@ -353,7 +353,19 @@
 			{
 				"command" : 14,
 				"file" : 0,
-				"line" : 83,
+				"line" : 85,
+				"parent" : 0
+			},
+			{
+				"command" : 14,
+				"file" : 0,
+				"line" : 93,
+				"parent" : 0
+			},
+			{
+				"command" : 14,
+				"file" : 0,
+				"line" : 94,
 				"parent" : 0
 			}
 		]
@@ -652,6 +664,14 @@
 					"path" : "/home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/people/include"
 				},
 				{
+					"backtrace" : 56,
+					"path" : "/home/zhjd/thirdparty/Sophus"
+				},
+				{
+					"backtrace" : 57,
+					"path" : "/usr/local/include/sophus"
+				},
+				{
 					"backtrace" : 2,
 					"isSystem" : true,
 					"path" : "/home/zhjd/thirdparty/opencv3.4.10/opencv-3.4.10/build"
@@ -809,7 +829,7 @@
 			"id" : "active_eao_new_lib::@6890427a1f51a3e7e1df"
 		}
 	],
-	"id" : "active_rgbd::@6890427a1f51a3e7e1df",
+	"id" : "rviz_dae::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -823,7 +843,7 @@
 				"role" : "flags"
 			},
 			{
-				"fragment" : "-Wl,-rpath,/home/zhjd/active_eao/src/active_eao/lib:/home/zhjd/thirdparty/opencv3.4.10/opencv-3.4.10/build/lib:/home/zhjd/ws_active/devel/lib:/usr/local/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/DBoW2/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/g2o/lib:/opt/ros/melodic/lib:/home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib:/usr/lib/x86_64-linux-gnu/hdf5/openmpi:/usr/lib/x86_64-linux-gnu/openmpi/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/Line3Dpp/build",
+				"fragment" : "-Wl,-rpath,/home/zhjd/active_eao/src/active_eao/lib:/home/zhjd/thirdparty/opencv3.4.10/opencv-3.4.10/build/lib:/usr/local/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/DBoW2/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/g2o/lib:/opt/ros/melodic/lib:/home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib:/usr/lib/x86_64-linux-gnu/hdf5/openmpi:/usr/lib/x86_64-linux-gnu/openmpi/lib:/home/zhjd/active_eao/src/active_eao/Thirdparty/Line3Dpp/build",
 				"role" : "libraries"
 			},
 			{
@@ -2702,7 +2722,7 @@
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "/home/zhjd/ws_active/devel/lib/libboost_system.so",
+				"fragment" : "/usr/local/lib/libboost_system.so",
 				"role" : "libraries"
 			},
 			{
@@ -3772,7 +3792,7 @@
 			},
 			{
 				"backtrace" : 3,
-				"fragment" : "/home/zhjd/ws_active/devel/lib/libboost_system.so",
+				"fragment" : "/usr/local/lib/libboost_system.so",
 				"role" : "libraries"
 			},
 			{
@@ -4020,8 +4040,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "active_rgbd",
-	"nameOnDisk" : "active_rgbd",
+	"name" : "rviz_dae",
+	"nameOnDisk" : "rviz_dae",
 	"paths" : 
 	{
 		"build" : ".",
@@ -4042,7 +4062,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "ros_src/init_test.cpp",
+			"path" : "ros_src/rviz_dae.cpp",
 			"sourceGroupIndex" : 0
 		}
 	],

@@ -6,12 +6,13 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /IE1/Namespaces1
+        - /IE_cylinder1/Namespaces1
+        - /plane1
         - /DepthCloud1/Auto Size1
         - /TF1/Frames1
         - /TF1/Tree1
         - /object_MainDirection1/Namespaces1
-      Splitter Ratio: 0.5297504663467407
+      Splitter Ratio: 0.5289255976676941
     Tree Height: 718
   - Class: rviz/Selection
     Name: Selection
@@ -31,7 +32,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: plane
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -59,20 +60,36 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: false
-      Marker Topic: /object_ie
-      Name: IE
+      Marker Topic: /object_ie_cylinder
+      Name: IE_cylinder
       Namespaces:
         {}
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
+      Marker Topic: /object_ie_ellipse
+      Name: IE_ellipse
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: false
+      Marker Topic: /object_ie_half
+      Name: IE_half
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: false
       Marker Topic: /IEtext
       Name: IEtext
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /objectPoints
@@ -86,10 +103,10 @@ Visualization Manager:
       Marker Topic: /objectmap
       Name: objectmap
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
-    - Alpha: 0.029999999329447746
+    - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
         Max Value: 10
@@ -101,7 +118,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -116,13 +133,13 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /candidate
       Name: candidate
       Namespaces:
-        {}
+        Candidate: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -130,39 +147,40 @@ Visualization Manager:
       Marker Topic: /Point
       Name: Point
       Namespaces:
-        {}
+        MapPoints: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /CoView
       Name: Marker
       Namespaces:
-        {}
+        Graph: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /KeyFrame
       Name: Marker
       Namespaces:
-        {}
+        Graph: true
+        KeyFrames: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /candidate_unsort
       Name: Marker
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /candidate
       Name: Point
       Namespaces:
-        {}
+        Candidate: true
       Queue Size: 100
       Value: true
     - Alpha: 0.699999988079071
@@ -275,105 +293,64 @@ Visualization Manager:
       Frames:
         All Enabled: false
         back_caster_link:
-          Value: false
+          Value: true
         base_footprint:
           Value: true
         base_link:
-          Value: false
+          Value: true
         camera_depth_frame:
-          Value: false
+          Value: true
         camera_depth_optical_frame:
-          Value: false
+          Value: true
         camera_link:
-          Value: false
+          Value: true
         camera_rgb_frame:
-          Value: false
+          Value: true
         camera_rgb_optical_frame:
-          Value: false
+          Value: true
         front_caster_link:
-          Value: false
+          Value: true
         laser:
-          Value: false
-        map:
-          Value: false
+          Value: true
         odom:
-          Value: false
+          Value: true
         plate_1_link:
-          Value: false
+          Value: true
         plate_2_link:
-          Value: false
+          Value: true
         platform_1:
-          Value: false
+          Value: true
         platform_2:
-          Value: false
+          Value: true
         shell_link:
-          Value: false
+          Value: true
         standoff_2in_1_link:
-          Value: false
+          Value: true
         standoff_2in_2_link:
-          Value: false
+          Value: true
         standoff_2in_3_link:
-          Value: false
+          Value: true
         standoff_2in_4_link:
-          Value: false
+          Value: true
         standoff_2in_5_link:
-          Value: false
+          Value: true
         standoff_2in_6_link:
-          Value: false
+          Value: true
         standoff_2in_7_link:
-          Value: false
+          Value: true
         standoff_2in_8_link:
-          Value: false
+          Value: true
         wheel_left_link:
-          Value: false
+          Value: true
         wheel_right_link:
-          Value: false
+          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          odom:
-            base_footprint:
-              base_link:
-                back_caster_link:
-                  {}
-                front_caster_link:
-                  {}
-                plate_1_link:
-                  plate_2_link:
-                    laser:
-                      {}
-                standoff_2in_1_link:
-                  standoff_2in_5_link:
-                    {}
-                standoff_2in_2_link:
-                  standoff_2in_6_link:
-                    {}
-                standoff_2in_3_link:
-                  standoff_2in_7_link:
-                    {}
-                standoff_2in_4_link:
-                  standoff_2in_8_link:
-                    {}
-              platform_1:
-                platform_2:
-                  camera_rgb_frame:
-                    camera_depth_frame:
-                      camera_depth_optical_frame:
-                        {}
-                    camera_link:
-                      {}
-                    camera_rgb_optical_frame:
-                      {}
-              shell_link:
-                {}
-              wheel_left_link:
-                {}
-              wheel_right_link:
-                {}
+        {}
       Update Interval: 0
       Value: true
     - Alpha: 0.30000001192092896
@@ -498,7 +475,7 @@ Visualization Manager:
       Marker Topic: /object_MainDirection
       Name: object_MainDirection
       Namespaces:
-        {}
+        vector: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -506,12 +483,36 @@ Visualization Manager:
       Marker Topic: /object_SumMainDirection
       Name: object_SumMainDirection
       Namespaces:
+        vector: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: false
+      Marker Topic: /dae_model_marker
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /objectmap_groudtruth
+      Name: objectmap_groudtruth
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /objectmap_backgroud
+      Name: objectmap_backgroud
+      Namespaces:
         {}
       Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
-    Background Color: 46; 52; 54
+    Background Color: 255; 255; 255
     Default Light: true
     Fixed Frame: map
     Frame Rate: 30
@@ -536,21 +537,26 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -0.030000023543834686
-      Class: rviz/TopDownOrtho
+      Class: rviz/ThirdPersonFollower
+      Distance: 4.0597381591796875
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
+      Focal Point:
+        X: -1.3918826580047607
+        Y: -0.7816785573959351
+        Z: 4.458181138033979e-6
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 234.76260375976562
+      Pitch: 1.0847958326339722
       Target Frame: <Fixed Frame>
-      Value: TopDownOrtho (rviz)
-      X: -1.7067008018493652
-      Y: -0.09585599601268768
+      Value: ThirdPersonFollower (rviz)
+      Yaw: 5.318044662475586
     Saved: ~
 Window Geometry:
   Displays:

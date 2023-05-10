@@ -148,7 +148,8 @@ int main(int argc, char **argv)
 
     // (4)Save camera trajectory
     SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
-
+    SLAM.SaveObjects("/home/zhjd/active_eao/src/active_eao/eval/Objects.txt",
+                    "/home/zhjd/active_eao/src/active_eao/eval/Objects_with_points.txt");
     ros::shutdown();
 
     return 0;
@@ -189,6 +190,7 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
 
     cv::Mat Tcw;
     Tcw = mpSLAM->TrackRGBD(cv_ptrRGB->image,  cv_ptrD->image,  cv_ptrRGB->header.stamp.toSec(),  BboxVector);
+
 
 }
 

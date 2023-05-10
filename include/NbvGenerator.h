@@ -98,7 +98,6 @@ private:
     bool mbEnd_active_map = false;
 
     ros::Publisher publisher_centroid;
-    ros::Publisher pubCloud;
     ros::Publisher publisher_candidate;
     int mtest = 5;
     ros::Publisher publisher_candidate_unsort;
@@ -117,12 +116,21 @@ private:
     double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
     void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
     void ExtractNBV();
-    void PublishPlanes();
     void PublishNBV();
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
     void PublishGlobalNBVRviz(const vector<Candidate> &candidates);
     void addOldNBV(Candidate &candidate);
     void clearOldNBV();
+
+//plane和背景物体的可视化
+private:
+    ros::Publisher pubCloud;
+    ros::Publisher publisher_object_backgroud = nh.advertise<visualization_msgs::Marker>("objectmap_backgroud", 1000);
+    //MapPublisher mappublisher;
+    void PublishPlanes();
+    void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
+    geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
+
 
 private:
     float mfx, mfy, mcx, mcy;

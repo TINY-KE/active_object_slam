@@ -1062,7 +1062,7 @@ void Tracking::CreatObject_intrackmotion(){
             nGoodObjId++;;
 
             // Create an object in the map.
-            std::cout<<"【debug】INIT物体"<<std::endl;
+            std::cout<<"【debug】INIT前景物体"<<std::endl;
             Object_Map *Object3D = new Object_Map;
             Object3D->mvObject_2ds.push_back(obj2d);   // 2D objects in each frame associated with this 3D map object.
             Object3D->mnId = nGoodObjId;             // 3d objects in the map.
@@ -1076,7 +1076,7 @@ void Tracking::CreatObject_intrackmotion(){
             Object3D->mSumPointsPos = 0; //cv::Mat::zeros(3,1,CV_32F);
             Object3D->mAveCenter3D = obj2d->mPos_world;  ; //cv::Mat::zeros(3,1,CV_32F);
 
-            std::cout<<"【debug】INIT物体 存入特征点"<<std::endl;
+            std::cout<<"【debug】INIT前景物体 存入特征点"<<std::endl;
             // add properties of the point and save it to the object.
 
             for (size_t i = 0; i < obj2d->mvMapPonits.size(); i++)
@@ -1098,15 +1098,15 @@ void Tracking::CreatObject_intrackmotion(){
 
             // save this 2d object to current frame (associates with a 3d object in the map).
             mCurrentFrame.mvObject_2ds.push_back(obj2d);
-            std::cout<<"【debug】INIT物体 存入obj2d"<<std::endl;
+            std::cout<<"【debug】INIT前景物体 存入obj2d"<<std::endl;
 
             // updata map object.
             Object3D->ComputeMeanAndDeviation_3D();
-            std::cout<<"【debug】INIT物体 计算均值"<<std::endl;
+            std::cout<<"【debug】INIT前景物体 计算均值"<<std::endl;
             //mpMap->mvObjectMap.push_back(ObjectMapSingle);
             mpMap->AddObject(Object3D);
-            std::cout<<"【debug】INIT物体 存入map"<<std::endl;
-            std::cout<<"【debug】INIT物体 物体id:"<<Object3D->mnLastAddID<<", 帧id:"<<mCurrentFrame.mnId<<std::endl;
+            std::cout<<"【debug】INIT前景物体 存入map"<<std::endl;
+            std::cout<<"【debug】INIT前景物体 物体id:"<<Object3D->mnLastAddID<<", 帧id:"<<mCurrentFrame.mnId<<std::endl;
             //物体初始化完成
             mbObjectIni = true;
             mnObjectIniFrameID = mCurrentFrame.mnId;
@@ -1127,7 +1127,7 @@ void Tracking::CreatObject_intrackmotion(){
         for (int i = 0; i < (int)obj_3ds.size(); i++)
         {
             Object_Map* obj3d = obj_3ds[i];
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d  || obj3d->backgroud_object)
                 continue;
 
             // object appeared in the last 30 frames.
@@ -1171,7 +1171,7 @@ void Tracking::CreatObject_intrackmotion(){
         for (int i = (int)obj_3ds_new.size() - 1; i >= 0; i--)
         {
             Object_Map* obj3d = obj_3ds_new[i];
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d  || obj3d->backgroud_object)
                 continue;
 
             // not been observed in the last 30 frames.
@@ -1190,7 +1190,7 @@ void Tracking::CreatObject_intrackmotion(){
                     {
                         for (int j = (int)obj_3ds_new.size() - 1; j >= 0; j--)
                         {
-                            if (obj_3ds_new[j]->bad_3d || (i == j))
+                            if (obj_3ds_new[j]->bad_3d || (i == j)   || obj_3ds_new[j]->backgroud_object)
                                 continue;
 
                             bool overlap = obj_3ds_new[i]->WhetherOverlap(obj_3ds_new[j]) ;
@@ -1232,7 +1232,7 @@ void Tracking::CreatObject_intrackmotion(){
         {
             Object_Map* obj3d = obj_3ds_new[i];
 
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d   || obj3d->backgroud_object)
                 continue;
             //如果超过5帧,此物体没有被观测到,略过
             if (obj3d->mnLastAddID < mCurrentFrame.mnId - 5)
@@ -1639,6 +1639,8 @@ void Tracking::CreateNewKeyFrame(bool CreateByObjs)
                         mCurrentFrame.mvpMapPlanes[i]->mbSeen = true;
                         // 只有在关键帧中才更新平面系数
                         mpMap->AddMapPlane(mCurrentFrame.mvpMapPlanes[i]);
+                        //Object_Map* ob =  mpMap->computeMinandMax(mCurrentFrame.mvpMapPlanes[i]);
+                        //mpMap->AddObject(ob);
                     }
                     continue;
                 }
@@ -1647,8 +1649,10 @@ void Tracking::CreateNewKeyFrame(bool CreateByObjs)
                 if (mCurrentFrame.mvbPlaneOutlier[i])
                     continue;
                 cv::Mat p3D = mCurrentFrame.ComputePlaneWorldCoeff(i);
-                MapPlane *pNewMP = new MapPlane(p3D, pKF, i, mpMap);
+                MapPlane *pNewMP = new MapPlane(p3D, pKF, i, mpMap);  //输入了，平面的向量、关键帧的指针、平面在关键帧中的序号、全局地图的指针。
                 mpMap->AddMapPlane(pNewMP);
+                //Object_Map* ob =  mpMap->computeMinandMax(pNewMP);
+                //mpMap->AddObject(ob);
                 pKF->AddMapPlane(pNewMP, i);
 
             }

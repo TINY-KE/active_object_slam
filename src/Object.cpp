@@ -210,7 +210,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             Object_Map* obj3d = ObjectMaps[i];
             if (mclass_id != obj3d->mnClass)
                 continue;
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d||obj3d->backgroud_object)
                 continue;
             if ((mpCurrentFrame->mnId-1) == obj3d->mnLastAddID )   //如果是临近的两帧， 则可以用IOU关联。
             {
@@ -300,7 +300,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             Object_Map* obj3d = ObjectMaps[i];
             if (mclass_id != obj3d->mnClass)
                 continue;
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d||obj3d->backgroud_object)
                 continue;
 
             // step 2.1 nonparametric test.
@@ -392,7 +392,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             }
 
 
-            if (obj3D->bad_3d){
+            if (obj3D->bad_3d||obj3D->backgroud_object){
                 //std::cout<<"[ProIou]物体bad"<<std::endl;
                 continue;
             }
@@ -522,7 +522,7 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             if (mclass_id != obj3d->mnClass)
                 continue;
 
-            if (obj3d->bad_3d)
+            if (obj3d->bad_3d||obj3d->backgroud_object)
                 continue;
 
             // t-test results in 3 directions.
@@ -1800,7 +1800,7 @@ void Object_Map::SearchAndMergeMapObjs_fll(Map *mpMap)
         if (sit->second < 3)
             continue;
 
-        if (obj_ass->bad_3d)
+        if (obj_ass->bad_3d  || obj_ass->backgroud_object )
             continue;
 
         // 通过双样本Ttest测试，验证是否是同一个物体
@@ -2698,7 +2698,7 @@ void Object_Map::PublishIE(){
     //for(size_t i=0; i< vObjs.size(); i++)
     {
 
-        if((this->mvpMapObjectMappoints.size() < 10) || (this->bad_3d == true))
+        if((this->mvpMapObjectMappoints.size() < 10) || (this->bad_3d == true)  || this->backgroud_object)
         {
             return;
         }

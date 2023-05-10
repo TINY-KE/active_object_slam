@@ -138,7 +138,10 @@ MapPublisher::MapPublisher(Map* pMap, const string &strSettingPath):mpMap(pMap),
     publisher_CoView = nh.advertise<visualization_msgs::Marker>("CoView", 1000);
     publisher_object = nh.advertise<visualization_msgs::Marker>("objectmap", 1000);
     publisher_object_points = nh.advertise<visualization_msgs::Marker>("objectPoints", 1000);
-    publisher_IE = nh.advertise<visualization_msgs::Marker>("object_ie", 1000);
+    publisher_IE_maindirection = nh.advertise<visualization_msgs::Marker>("object_ie_maindirection", 1000);
+    publisher_IE_cylinder = nh.advertise<visualization_msgs::Marker>("object_ie_cylinder", 1000);
+    publisher_IE_ellipse = nh.advertise<visualization_msgs::Marker>("object_ie_ellipse", 1000);
+    publisher_IE_half = nh.advertise<visualization_msgs::Marker>("object_ie_half", 1000);
     publisher_MainDirection = nh.advertise<visualization_msgs::Marker>("object_MainDirection", 1000);
     publisher_SumMainDirection = nh.advertise<visualization_msgs::Marker>("object_SumMainDirection", 1000);
     //publisher_robotpose = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1000);
@@ -528,7 +531,7 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
 
         // color.
         std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
-        vector<float> color = colors_bgr[vObjs[i]->mnClass % 6];
+        vector<float> color = colors_bgr[ (vObjs[i]->mnClass +4) % 6];  //+1还是粉色/红色    +2绿色  +3蓝色  +4橙色   +5黄色
 
 
         //用于物体的颜色随机
@@ -543,10 +546,13 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         marker.header.frame_id= MAP_FRAME_ID;
         marker.header.stamp=ros::Time::now();
 
-        if((vObjs[i]->mvpMapObjectMappoints.size() < 10) || (vObjs[i]->bad_3d == true))
-        {
-            continue;
+        if(!vObjs[i]->backgroud_object){
+            if((vObjs[i]->mvpMapObjectMappoints.size() < 10) || (vObjs[i]->bad_3d == true)   )
+            {
+                continue;
+            }
         }
+
         marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
         marker.action = visualization_msgs::Marker::ADD;
         marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
@@ -598,8 +604,8 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         marker1.lifetime = ros::Duration(mObject_Duration);
         marker1.id= ++object_id_init;
         marker1.type = visualization_msgs::Marker::POINTS;
-        marker1.scale.x=0.02;
-        marker1.scale.y=0.02;
+        marker1.scale.x=0.01;
+        marker1.scale.y=0.01;
         marker1.pose.orientation.w=1.0;  //????
         marker1.action=visualization_msgs::Marker::ADD;
         marker1.color.r = color[2]/255.0; marker1.color.g = color[1]/255.0; marker1.color.b = color[0]/255.0; marker1.color.a = 0.5;
@@ -740,41 +746,72 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
     vector<float> color;
 
-    //生成 rviz marker
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = MAP_FRAME_ID;
-    marker.ns = "InformationEntroy";
+    //生成 rviz marker _cylinder
+    visualization_msgs::Marker marker_cylinder;
+    marker_cylinder.header.frame_id = MAP_FRAME_ID;
+    marker_cylinder.ns = "InformationEntroy";
     //marker.lifetime = ros::Duration(5.0);
-    marker.lifetime = ros::Duration(mIE_Duration);
-    //marker.id= IE_id ;  //TODO:绝对数字
-    marker.type = visualization_msgs::Marker::POINTS;
-    marker.scale.x=0.03;
-    marker.scale.y=0.1;
-    marker.pose.orientation.w=1.0;  //????
-    marker.action=visualization_msgs::Marker::ADD;
+    marker_cylinder.lifetime = ros::Duration(mIE_Duration);
+    marker_cylinder.id= IE_id ;  //TODO:绝对数字
+    marker_cylinder.type = visualization_msgs::Marker::POINTS;
+    marker_cylinder.scale.x=0.03;
+    marker_cylinder.scale.y=0.1;
+    marker_cylinder.pose.orientation.w=1.0;  //????
+    marker_cylinder.action=visualization_msgs::Marker::ADD;
 
+    //生成 rviz marker _ellipse
+    visualization_msgs::Marker marker_ellipse;
+    marker_ellipse.header.frame_id = MAP_FRAME_ID;
+    marker_ellipse.ns = "InformationEntroy";
+    //marker.lifetime = ros::Duration(5.0);
+    marker_ellipse.lifetime = ros::Duration(mIE_Duration);
+    marker_ellipse.id= IE_id ;  //TODO:绝对数字
+    marker_ellipse.type = visualization_msgs::Marker::POINTS;
+    marker_ellipse.scale.x=0.03;
+    marker_ellipse.scale.y=0.1;
+    marker_ellipse.pose.orientation.w=1.0;  //????
+    marker_ellipse.action=visualization_msgs::Marker::ADD;
+
+    //生成 rviz marker _half
+    visualization_msgs::Marker marker_half;
+    marker_half.header.frame_id = MAP_FRAME_ID;
+    marker_half.ns = "InformationEntroy";
+    //marker.lifetime = ros::Duration(5.0);
+    marker_half.lifetime = ros::Duration(mIE_Duration);
+    marker_half.id= IE_id ;  //TODO:绝对数字
+    marker_half.type = visualization_msgs::Marker::POINTS;
+    marker_half.scale.x=0.03;
+    marker_half.scale.y=0.1;
+    marker_half.pose.orientation.w=1.0;  //????
+    marker_half.action=visualization_msgs::Marker::ADD;
 
     for(size_t i=0; i< vObjs.size(); i++){
         Object_Map* obj = vObjs[i];
 
-        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true))
+        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true)  || obj->backgroud_object )
         {
             continue;
         }
 
-        color = colors_bgr[obj->mnClass % 6];
-        double diameter = sqrt(obj->mCuboid3D.width * obj->mCuboid3D.width   +   obj->mCuboid3D.lenth * obj->mCuboid3D.lenth )/2.0;
+        color = colors_bgr[(obj->mnClass) % 6];  //+1还是粉色/红色    +2绿色  +3蓝色  +4橙色   +5黄色
+        double diameter_init = sqrt(obj->mCuboid3D.width * obj->mCuboid3D.width   +   obj->mCuboid3D.lenth * obj->mCuboid3D.lenth )/2.0;
+        double a_aix_ellipse = diameter_init * 1.2;  //水平方向
+        double b_aix_ellipse = obj->mCuboid3D.height / 2.0 * 1.2;   //垂直方向
+        double a_aix_half = diameter_init * 1.2;  //水平方向
+        double b_aix_half = obj->mCuboid3D.height ;   //垂直方向
         for(int x=0; x<obj->mIE_rows; x++){
-            double angle_divide = 2*M_PI/obj->mIE_rows;
-            double angle = angle_divide * ( x + 0.5 );
-            double p_x = cos(angle) * diameter;
-            double p_y = sin(angle) * diameter;
 
-            double h_divide =  obj->mCuboid3D.height/obj->mIE_cols;
             for(int y=0; y<obj->mIE_cols; y++){
-                //计算纵坐标
-                double p_z = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;
 
+                //version:  圆柱
+                double h_divide =  obj->mCuboid3D.height/obj->mIE_rows;
+                //z
+                double p_z_cylinder = h_divide * (y+0.5) - obj->mCuboid3D.height/2.0;  //纵坐标
+                //xy
+                double angle_divide_xy = 2 * M_PI / obj->mIE_cols;
+                double angle = angle_divide_xy * (x + 0.5 );
+                double p_x_cylinder = cos(angle) * diameter_init;
+                double p_y_cylinder = sin(angle) * diameter_init;
                 // 物体坐标系 -> 世界坐标系
                 cv::Mat cvMat4 = obj->mCuboid3D.pose_mat.clone();
                 Eigen::Matrix4f eigenMat4f;
@@ -782,11 +819,49 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                 //Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
                 Eigen::Matrix4d T = eigenMat4f.cast<double>();
                 Eigen::Matrix3d R = T.block<3, 3>(0, 0);
-                Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
-                geometry_msgs::Point p;
-                p.x= p_world[0] + T(0, 3);
-                p.y= p_world[1] + T(1, 3);
-                p.z= p_world[2] + T(2, 3);
+                Eigen::Vector3d p_world_cylinder = R * Eigen::Vector3d(p_x_cylinder, p_y_cylinder, p_z_cylinder);
+                geometry_msgs::Point p_cylinder;
+                p_cylinder.x= p_world_cylinder[0] + T(0, 3);
+                p_cylinder.y= p_world_cylinder[1] + T(1, 3);
+                p_cylinder.z= p_world_cylinder[2] + T(2, 3);
+                marker_cylinder.points.push_back(p_cylinder);
+
+                //version: 椭圆
+                double angle_divide_z =  M_PI / obj->mIE_rows;
+                double theta = angle_divide_z * (y+0.5) - M_PI/2.0;
+                double xy_project = a_aix_ellipse * cos(theta);  //水平面的投影
+                //z
+                double p_z_ellipse = b_aix_ellipse * sin(theta);  //纵坐标
+                double diameter = xy_project;
+                //xy
+                double p_x_ellipse = cos(angle) * diameter;
+                double p_y_ellipse = sin(angle) * diameter;
+                // 物体坐标系 -> 世界坐标系
+                geometry_msgs::Point p_ellipse;
+                Eigen::Vector3d p_world_ellipse = R * Eigen::Vector3d(p_x_ellipse, p_y_ellipse, p_z_ellipse);
+                p_ellipse.x= p_world_ellipse[0] + T(0, 3);
+                p_ellipse.y= p_world_ellipse[1] + T(1, 3);
+                p_ellipse.z= p_world_ellipse[2] + T(2, 3);
+                marker_ellipse.points.push_back(p_ellipse);
+
+                //version: 半椭圆
+                angle_divide_z =  M_PI / obj->mIE_rows /2.0;
+                theta = angle_divide_z * (y) ;
+                double xy_project_half = a_aix_half * cos(theta);  //水平面的投影
+                //z
+                double p_z_half = b_aix_half * sin(theta);  //纵坐标
+                diameter = xy_project_half;
+                //xy
+                double p_x_half = cos(angle) * diameter;
+                double p_y_half = sin(angle) * diameter;
+                // 物体坐标系 -> 世界坐标系
+                geometry_msgs::Point p_half;
+                Eigen::Vector3d p_world_half = R * Eigen::Vector3d(p_x_half, p_y_half, p_z_half);
+                p_half.x= p_world_half[0] + T(0, 3);
+                p_half.y= p_world_half[1] + T(1, 3);
+                p_half.z= p_world_half[2] + T(2, 3) - obj->mCuboid3D.height/2.0;
+                marker_half.points.push_back(p_half);
+
 
                 std_msgs::ColorRGBA c;
                 if(obj->mvGridProb_mat.at<float>(x,y) > 0.5){
@@ -807,15 +882,19 @@ void MapPublisher::PublishIE(const vector<Object_Map*> &vObjs ){
                     c.r =0.0; c.g = 0.0; c.b = 0.0; c.a = 0.1;
                 }
 
-                marker.points.push_back(p);
-                marker.colors.push_back(c);
+
+                marker_cylinder.colors.push_back(c);
+                marker_ellipse.colors.push_back(c);
+                marker_half.colors.push_back(c);
                 //usleep(100);
             }
         }
     }
     //version all_publish:
-    marker.id= 0;
-    publisher_IE.publish(marker);
+    //marker.id= 0;
+    publisher_IE_cylinder.publish(marker_cylinder);
+    publisher_IE_ellipse.publish(marker_ellipse);
+    publisher_IE_half.publish(marker_half);
 }
 
 void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
@@ -839,7 +918,7 @@ void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
     for(size_t i=0; i< vObjs.size(); i++){
         Object_Map* obj = vObjs[i];
 
-        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true))
+        if((obj->mvpMapObjectMappoints.size() < 10) || (obj->bad_3d == true)  || obj->backgroud_object )
         {
             continue;
         }
@@ -883,7 +962,7 @@ void MapPublisher::PublishMainDirection(const vector<Object_Map*> &vObjs ){
                 }
                 marker.id= ++IE_id;
                 marker.points.push_back(p);
-                publisher_IE.publish(marker);
+                publisher_IE_maindirection.publish(marker);
                 //usleep(100);
             }
         }

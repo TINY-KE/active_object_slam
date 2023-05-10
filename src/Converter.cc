@@ -239,6 +239,25 @@ Eigen::Isometry3d Converter::cvMattoIsometry3d(const cv::Mat &cvMat4){
             );
 }
 
+g2o::SE3Quat Converter::cvMattoG2oSE3Quat(const cv::Mat &cvMat4){
+    //version1:
+    //    // 将 cv::Mat 类型的 mCuboid3D.pose_mat 转换为 Sophus::SE3d 类型
+    //    Eigen::Matrix4d eigenPose;
+    //    cv::cv2eigen(cvMat4, eigenPose);
+    //    Sophus::SE3 se3Pose(eigenPose);
+    //
+    //    // 将 Sophus::SE3d 类型的 se3Pose 转换为 g2o::SE3Quat 类型
+    //    g2o::SE3Quat g2oPose(se3Pose.matrix());
+
+    //version2:
+    Eigen::Matrix4d T;
+    cv::cv2eigen(cvMat4, T);
+    Eigen::Matrix3d R = T.block<3,3>(0,0);
+    Eigen::Vector3d t = T.block<3,1>(0,3);
+    g2o::SE3Quat g2oPose(R, t);
+    return  g2oPose;
+}
+
 Eigen::Quaterniond Converter::ExtractQuaterniond(const Eigen::Isometry3d &Iso){
     Eigen::Quaterniond q = Eigen::Quaterniond(Iso.rotation());
     return q;

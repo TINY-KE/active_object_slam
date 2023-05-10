@@ -2154,6 +2154,10 @@
 			"path" : "cmake-build-debug/catkin_generated/ordered_paths.cmake"
 		},
 		{
+			"isExternal" : true,
+			"path" : "/home/zhjd/thirdparty/Sophus/build/SophusConfig.cmake"
+		},
+		{
 			"path" : "cmake_modules/FindEigen3.cmake"
 		},
 		{

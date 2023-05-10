@@ -120,6 +120,9 @@ public:
     // SaveMap(const string &filename);
     // LoadMap(const string &filename);
 
+    //保存物体地图
+    void SaveObjects(const string &filename, const string &filename_with_point);
+
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();

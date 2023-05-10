@@ -101,7 +101,10 @@ private:
     ros::Publisher publisher_CoView;
     ros::Publisher publisher_object;
     ros::Publisher publisher_object_points;
-    ros::Publisher publisher_IE;
+    ros::Publisher publisher_IE_maindirection;
+    ros::Publisher publisher_IE_cylinder;
+    ros::Publisher publisher_IE_ellipse;
+    ros::Publisher publisher_IE_half;
     ros::Publisher publisher_MainDirection;
     ros::Publisher publisher_SumMainDirection;
     //ros::Publisher publisher_robotpose;
