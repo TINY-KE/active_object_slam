@@ -546,8 +546,9 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         marker.header.frame_id= MAP_FRAME_ID;
         marker.header.stamp=ros::Time::now();
 
-        if(!vObjs[i]->backgroud_object){
-            if((vObjs[i]->mvpMapObjectMappoints.size() < 10) || (vObjs[i]->bad_3d == true)   )
+        //if(!vObjs[i]->backgroud_object)
+        {
+            if(/*(vObjs[i]->mvpMapObjectMappoints.size() < 10) ||*/ (vObjs[i]->bad_3d == true) || vObjs[i]->backgroud_object  )
             {
                 continue;
             }
@@ -696,12 +697,12 @@ void MapPublisher::PublishObject(const vector<Object_Map*> &vObjs ){
         mIEtext.color.g = color[1]/255.0;
         mIEtext.color.b = color[0]/255.0;
         mIEtext.color.a = 1.0;
-        ROS_ERROR("IEtext:%f",vObjs[i]->mIE );
-        ROS_ERROR_STREAM(to_string(double(vObjs[i]->mIE)));
+        //ROS_ERROR("IEtext:%f",vObjs[i]->mIE );
+        //ROS_ERROR_STREAM(to_string(double(vObjs[i]->mIE)));
         mIEtext.text = to_string(double(vObjs[i]->mIE) );
-        std::cout<<"PointNum_mat:"<<vObjs[i]->mvPointNum_mat<<std::endl;
-        std::cout<<"GridProb_mat:"<<vObjs[i]->mvGridProb_mat<<std::endl;
-        std::cout<<"InforEntroy_mat:"<<vObjs[i]->mvInforEntroy_mat<<std::endl;
+        //std::cout<<"PointNum_mat:"<<vObjs[i]->mvPointNum_mat<<std::endl;
+        //std::cout<<"GridProb_mat:"<<vObjs[i]->mvGridProb_mat<<std::endl;
+        //std::cout<<"InforEntroy_mat:"<<vObjs[i]->mvInforEntroy_mat<<std::endl;
         publisher_IEtext.publish(mIEtext);
     }
 

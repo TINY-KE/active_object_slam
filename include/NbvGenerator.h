@@ -125,7 +125,7 @@ private:
 //plane和背景物体的可视化
 private:
     ros::Publisher pubCloud;
-    ros::Publisher publisher_object_backgroud = nh.advertise<visualization_msgs::Marker>("objectmap_backgroud", 1000);
+    ros::Publisher publisher_object_backgroud;
     //MapPublisher mappublisher;
     void PublishPlanes();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );

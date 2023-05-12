@@ -20,6 +20,7 @@ mpMap(map), mpTracker(pTracking)
 {
     publisher_centroid = nh.advertise<visualization_msgs::Marker>("centriod", 1000);
     pubCloud = nh.advertise<sensor_msgs::PointCloud2>("plane", 1000);
+    publisher_object_backgroud = nh.advertise<visualization_msgs::Marker>("objectmap_backgroud", 1000);
     publisher_candidate = nh.advertise<visualization_msgs::Marker>("candidate", 1000);
     publisher_candidate_unsort = nh.advertise<visualization_msgs::Marker>("candidate_unsort", 1000);
     publisher_nbv = nh.advertise<geometry_msgs::PoseStamped>("/move_base_simple/goal", 1);
@@ -184,7 +185,7 @@ void NbvGenerator::Run() {
                 //    mMAM_turn == MAM_neckdelay;
                 //else
                 //    mMAM_turn --;
-                publishLocalNBV();
+                //publishLocalNBV();
                 usleep( 0.5 * 1000);
             }
 
@@ -208,6 +209,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
     voxel.setLeafSize(0.002, 0.002, 0.002);
 
     int num=0; //平面的数量
+    std::cerr << "PublishPlanes: 平面的数量为"<< vpMPs.size()  << std::endl;
     for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
     {
         // 计算平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
@@ -216,9 +218,12 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        //cout<< "垂直夹角angle:"<<angle<<std::endl;
-        if ((angle < 0.2) && (angle > -0.2))
+        cout<< "垂直夹角angle:"<<angle<<std::endl;
+        if ((angle < 0.2) && (angle > -0.2)){
             continue;
+            cout<< "不是水平面:"<<angle<<std::endl;
+        }
+
 
         //计算当前平面,在各关键帧中对应的平面
         map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
@@ -329,7 +334,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
     }
 
     //cout << "-------" << endl;
-    //cout << "桌面高度的水平面的数量: " <<num << endl << endl;
+    cout << "桌面高度的水平面的数量: " <<num << endl << endl;
 }
 
 vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
@@ -366,6 +371,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
 
 void  NbvGenerator::PublishPlanes()
 {
+    std::cerr << "PublishPlanes: 背景物体的数量为"<< mvPlanes_filter.size()  << std::endl;
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
 
@@ -374,6 +380,8 @@ void  NbvGenerator::PublishPlanes()
     colored_pcl_ptr->points.clear();
     int index=0;
     for(auto tmp : mvPlanes_filter){
+
+
         index++;
         vector<float> color = colors_bgr[index%6];
         //tmp转为pcl::PointXYZRGB, 才能显示颜色
@@ -416,7 +424,7 @@ void  NbvGenerator::PublishPlanes()
     colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
     pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
 
-    //publishBackgroudObject(colored_pcl_ptr);
+    publishBackgroudObject(colored_pcl_ptr);
 }
 
 void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr allCloudPoints ){
@@ -431,7 +439,8 @@ void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr
         minPoint << 0.0f, 0.0f, 0.0f, 0.0f;
         maxPoint << 0.0f, 0.0f, 0.0f, 0.0f;
         std::cerr << "Error occurred! 背景物体点云数量为0" << std::endl;
-        std::exit(EXIT_FAILURE); // 退出程序
+        //std::exit(EXIT_FAILURE); // 退出程序
+        return;
     }
 
     float x_min = std::numeric_limits<float>::max();
@@ -463,7 +472,7 @@ void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     std::cout<<"可视化背景物体"<<std::endl;
     Object_Map *Object3D = new Object_Map;
     //Object3D->mvObject_2ds.push_back(obj2d);   // 2D objects in each frame associated with this 3D map object.
-    Object3D->mnId = 0;             // 3d objects in the map.
+    Object3D->mnId = 100;             // 3d objects in the map.
     Object3D->mnClass = 60 /*餐桌*/;      // object class.
     Object3D->mnConfidence_foractive = 1;              // object confidence = mObjectFrame.size().
     //Object3D->mnAddedID_nouse = mCurrentFrame.mnId;        // added id.
@@ -492,6 +501,14 @@ void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     Object3D->mCuboid3D.corner_6 = Eigen::Vector3d(x_max, y_min, z_max);
     Object3D->mCuboid3D.corner_7 = Eigen::Vector3d(x_max, y_max, z_max);
     Object3D->mCuboid3D.corner_8 = Eigen::Vector3d(x_min, y_max, z_max);
+    Object3D->mCuboid3D.cuboidCenter = Eigen::Vector3d((x_max + x_min) / 2, (y_max + y_min) / 2, (z_max + 0.0) / 2);
+    //std::cout<<"debug:publishBackgroudObject1:"<<Object3D->mCuboid3D.corner_2[0]-Object3D->mCuboid3D.corner_1[0]<<", "<<Object3D->mCuboid3D.width<<", "<<Object3D->mCuboid3D.height<<", "<<std::endl;
+    //std::cout<<"debug:publishBackgroudObject1:"<<Object3D->mCuboid3D.corner_2[0]-Object3D->mCuboid3D.corner_1[0]<<", "<<Object3D->mCuboid3D.corner_3[1]-Object3D->mCuboid3D.corner_2[1]<<", "<<Object3D->mCuboid3D.corner_3[2]<<", "<<std::endl;
+    Object3D->mCuboid3D.lenth = x_max - x_min;
+    Object3D->mCuboid3D.width = y_max - y_min;
+    Object3D->mCuboid3D.height = z_max - 0.0;
+    Object3D->Update_Twobj();
+    mpMap->AddObject(Object3D);
 
     //(1)物体
     visualization_msgs::Marker marker;

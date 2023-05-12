@@ -1154,11 +1154,11 @@ void Tracking::CreatObject_intrackmotion(){
 
             // 融入旧的物体或者生成新的物体
             int result = obj_2ds[k]->creatObject();
-            switch (result) {
-                case -1:   cout << "检测框靠近边缘" << endl;   break;
-                case 0:    cout << "融入旧的物体中" << endl;   break;
-                case 1:    cout << "生成新的物体" << endl;     break;
-            }
+            //switch (result) {
+            //    case -1:   cout << "检测框靠近边缘" << endl;   break;
+            //    case 0:    cout << "融入旧的物体中" << endl;   break;
+            //    case 1:    cout << "生成新的物体" << endl;     break;
+            //}
         }
 
 

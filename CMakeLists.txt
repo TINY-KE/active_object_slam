@@ -179,3 +179,12 @@ target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
 add_executable(rviz_dae ros_src/rviz_dae.cpp)
 target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
 
+add_executable(evo evo/evo.cpp)
+target_link_libraries(evo
+         ${OpenCV_LIBS}
+         ${EIGEN3_LIBS}
+         /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1
+         ${catkin_LIBRARIES}  #for ros
+         ${PCL_LIBRARIES}
+        )
+

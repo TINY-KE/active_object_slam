@@ -183,7 +183,7 @@ float Converter::bboxOverlapratioFormer(const cv::Rect& rect1, const cv::Rect& r
 Eigen::Matrix4d Converter::cvMattoMatrix4d(const cv::Mat &cvMat4) {
     Eigen::Matrix4f eigenMat4f;
     Eigen::Matrix4d eigenMat4d;
-    std::cout<<"converter debug: "<<cvMat4<<std::endl;
+    //std::cout<<"converter debug: "<<cvMat4<<std::endl;
     //M << cvMat4.at<float>(0, 0), cvMat4.at<float>(0, 1), cvMat4.at<float>(0, 2), cvMat4.at<float>(0, 3),
     //     cvMat4.at<float>(1, 0), cvMat4.at<float>(1, 1), cvMat4.at<float>(1, 2), cvMat4.at<float>(1, 3),
     //     cvMat4.at<float>(2, 0), cvMat4.at<float>(2, 1), cvMat4.at<float>(2, 2), cvMat4.at<float>(2, 3),

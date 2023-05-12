@@ -89,6 +89,7 @@
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/active_eao_new_lib.dir
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/active_rgbd.dir
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/rviz_dae.dir
+/home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/evo.dir
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/test.dir
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/edit_cache.dir
 /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/rebuild_cache.dir

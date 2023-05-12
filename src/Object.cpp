@@ -14,12 +14,12 @@ mutex Object_Map::mMutex_front_back;
 
 bool debug_iou_view = 0;
 Object_2D::Object_2D() {
-    std::cout<<"Object_2D  construct 1   ";
-    std::cout<<">>>   End"<<std::endl;
+    //std::cout<<"Object_2D  construct 1   ";
+    //std::cout<<">>>   End"<<std::endl;
 }
 
 Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
-    std::cout<<"Object_2D  construct 3   ";
+    //std::cout<<"Object_2D  construct 3   ";
     mclass_id = box.m_class;
     mScore = box.m_score;
     mleft = box.x;
@@ -39,7 +39,7 @@ Object_2D::Object_2D(Map* Map, Frame* CurrentFrame, const BoxSE &box) {
 
     //初始化位姿
     this->sum_pos_3d = cv::Mat::zeros(3, 1, CV_32F);
-    std::cout<<">>>   End"<<std::endl;
+    //std::cout<<">>>   End"<<std::endl;
 }
 
 void Object_2D::AddYoloBoxes(const BoxSE &box) {
@@ -182,7 +182,7 @@ void Object_2D::MergeTwo_Obj2D(Object_2D *Old_Object2D)
 
 int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
 {
-    std::cout<<"查看是否关联到旧物体"<<std::endl;
+    //std::cout<<"查看是否关联到旧物体"<<std::endl;
     const cv::Mat image = mpCurrentFrame->mColorImage.clone();
     const cv::Mat Rcw = cv::Mat::zeros(3,3,CV_32F);
     const cv::Mat tcw = cv::Mat::eye(3,1,CV_32F);  //深拷贝
@@ -695,12 +695,12 @@ int Object_2D::creatObject()
     unique_lock<mutex> lock2(mGlobalMutex);
     const cv::Mat ColorImage = mpCurrentFrame->mColorImage.clone();
     int associate = Object2D_DataAssociationWith_Object3D();    // data association with object3d in map. 如果关联失败， 则声称一个新的物体
-    switch (associate) {
-                case MotionIou:   cout << "关联方式：MotionIou. " << endl; return 0;
-                case NoPara:    cout << "关联方式：NoPara. " << endl;  return 0;
-                case ProIou:    cout << "关联方式：ProIou. " << endl;  return 0;
-                case t_test:    cout << "关联方式：t_test. " << endl;  return 0;
-    }
+    //switch (associate) {
+    //            case MotionIou:   cout << "关联方式：MotionIou. " << endl; return 0;
+    //            case NoPara:    cout << "关联方式：NoPara. " << endl;  return 0;
+    //            case ProIou:    cout << "关联方式：ProIou. " << endl;  return 0;
+    //            case t_test:    cout << "关联方式：t_test. " << endl;  return 0;
+    //}
     if(associate)
         return 0;  //关联成功
 
@@ -1521,7 +1521,7 @@ vector<MapPoint* > Object_Map::GetNewObjectMappoints(){
 // MotionIou 1,  NoPara 2,  t_test 3,  ProIou 4
 // return false的原因: class id不匹配; IOU太小；  Frame id没有递增;
 bool Object_Map::UpdateToObject3D(Object_2D* Object_2d, Frame &mCurrentFrame, int Flag){
-    std::cout<<"UpdateToObject3D "<<Flag<<std::endl;
+    //std::cout<<"UpdateToObject3D "<<Flag<<std::endl;
 
     if (Object_2d->mclass_id != mnClass)
         return false;
@@ -2560,7 +2560,7 @@ void Object_Map::compute_perceptionNum_eachgrid() {
                 mvPointNum_mat.at<float>(x,y) = viewdCount;
         }
         else{
-            ROS_ERROR("compute grid xy < 0,%d,%d",x,y);
+            //ROS_ERROR("compute grid xy < 0,%d,%d",x,y);
         }
     }
 
@@ -2573,7 +2573,7 @@ float Object_Map::log2(float x){
     return y;
 }
 void Object_Map::compute_occupied_prob_eachgrid(){
-    std::cout<<"debug 每个grid的point数量与占据概率：";
+    //std::cout<<"debug 每个grid的point数量与占据概率：";
     for(int x=0; x<mIE_rows; x++){
 
         //计算这一行的点的总数
@@ -2656,13 +2656,13 @@ void Object_Map::ComputeIE(){
     compute_occupied_prob_eachgrid();
 
     //计算各grid的信息熵
-    std::cout<<"debug 每个grid的占据概率：";
+    //std::cout<<"debug 每个grid的占据概率：";
     for(int x=0; x<mIE_cols; x++)
         for(int y=0; y<mIE_rows; y++){
-            std::cout<<mvGridProb_mat.at<float>(x,y)<<"， ";
+            //std::cout<<mvGridProb_mat.at<float>(x,y)<<"， ";
             mvInforEntroy_mat.at<float>(x,y) = IE(mvGridProb_mat.at<float>(x,y));
         }
-    std::cout<<""<<std::endl;
+    //std::cout<<""<<std::endl;
 
     //计算总的信息熵mIE
     double entroy = 0;
