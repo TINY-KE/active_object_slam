@@ -189,6 +189,8 @@ void NbvGenerator::Run() {
                 usleep( 0.5 * 1000);
             }
 
+            //计算所属的背景物体的评价值
+
 
         }
 
@@ -212,6 +214,9 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
     std::cerr << "PublishPlanes: 平面的数量为"<< vpMPs.size()  << std::endl;
     for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
     {
+        if(pMP->end_activemapping)
+            continue;
+
         // 计算平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
         cv::Mat groud = (cv::Mat_<float>(3, 1) << 0, 0, 1);  ;
         cv::Mat pMP_normal = pMP->GetWorldPos();

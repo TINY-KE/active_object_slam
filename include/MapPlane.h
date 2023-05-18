@@ -16,7 +16,7 @@
 
 
 namespace ORB_SLAM2 {
-    class KeyFrame;
+/h    class KeyFrame;
     class Frame;
     class Map;
     class MapPlane {
@@ -84,6 +84,11 @@ namespace ORB_SLAM2 {
         // Reference KeyFrame
         KeyFrame* mpRefKF;
 //        void SetColor();
+
+    //acitve slam
+    public:
+        bool end_activemapping = false;
+        double backgroud_object_eval = 0;
     };
 }
 #endif //ORB_SLAM2_MAPPLANE_H

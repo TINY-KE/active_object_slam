@@ -154,7 +154,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/zhjd/active_eao/src/active_eao/cmake-build-debug/devel/lib;/home/zhjd/ws_real_fabo_navigation/devel/lib;/home/zhjd/workspace/ws_huchunxu/devel/lib;/home/zhjd/active_eao/devel/lib;/home/zhjd/workspace/cartographer_build/devel/lib;/home/zhjd/workspace/kinect_dk/devel/lib;/home/zhjd/ws_active/devel/lib;/home/zhjd/ws_turtlebot_custom/devel/lib;/opt/ros/melodic/lib)
+    foreach(path /home/zhjd/active_eao/src/active_eao/cmake-build-debug/devel/lib;/home/zhjd/workspace/FaboEmotionNeedBehavior/devel/lib;/home/zhjd/ws_real_fabo_navigation/devel/lib;/home/zhjd/workspace/ws_huchunxu/devel/lib;/home/zhjd/active_eao/devel/lib;/home/zhjd/workspace/cartographer_build/devel/lib;/home/zhjd/workspace/kinect_dk/devel/lib;/home/zhjd/ws_active/devel/lib;/home/zhjd/ws_turtlebot_custom/devel/lib;/opt/ros/melodic/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)

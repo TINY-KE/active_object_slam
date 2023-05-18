@@ -8,7 +8,8 @@
 
 #include "MapPoint.h"
 #include <mutex>
-
+#include <vector>
+#include <string>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 #include <eigen3/Eigen/Dense>
@@ -26,6 +27,9 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+
+//yolo label
+#include "yolo_label.h"
 
 extern std::string WORK_SPACE_PATH;
 extern std::string yamlfile_object;
@@ -351,6 +355,9 @@ private:
     float mnViewField;
 };
 
+void cmpute_corner(Object_Map* object) ;
+
+void ReadLocalObjects( const std::string& filePath, std::vector<Object_Map*>& vObjects);
 
 }
 

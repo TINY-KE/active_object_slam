@@ -74,12 +74,16 @@ find_package(Sophus REQUIRED)
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
+find_package(gazebo REQUIRED)
 
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES test
 #  CATKIN_DEPENDS roscpp
 #  DEPENDS system_lib
+#     INCLUDE_DIRS include
+#     LIBRARIES connect_gazebo
+#     CATKIN_DEPENDS roscpp std_msgs test_pkg gazebo_msgs
 )   #for ros
 
 include_directories(
@@ -89,6 +93,7 @@ ${PROJECT_SOURCE_DIR}/
 ${PROJECT_SOURCE_DIR}/include
 ${Pangolin_INCLUDE_DIRS}
 ${PCL_INCLUDE_DIRS}
+${GAZEBO_INCLUDE_DIRS}
 )
 include_directories(${Sophus_INCLUDE_DIRS})
 include_directories( "/usr/local/include/sophus" )
@@ -148,6 +153,8 @@ add_library(${PROJECT_NAME}_lib SHARED
    # NBV MAM
    src/camera.cc
 
+   # read_local_objects
+#   src/read_local_objects.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_lib
@@ -179,12 +186,11 @@ target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
 add_executable(rviz_dae ros_src/rviz_dae.cpp)
 target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
 
-add_executable(evo evo/evo.cpp)
-target_link_libraries(evo
-         ${OpenCV_LIBS}
-         ${EIGEN3_LIBS}
-         /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1
-         ${catkin_LIBRARIES}  #for ros
-         ${PCL_LIBRARIES}
-        )
+add_executable(eval eval/eval.cpp)
+target_link_libraries(eval   ${PROJECT_NAME}_lib   )
 
+add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
+target_link_libraries(extract_gazebo_groudth
+   ${PROJECT_NAME}_lib
+   ${GAZEBO_LIBRARIES}
+)

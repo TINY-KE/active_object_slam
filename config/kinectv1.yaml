@@ -110,7 +110,8 @@ Viewer.ViewpointF: 500
 
 Viewer.pangolin: 0
 Viewer.rviz: 1
-Viewer.readlocalobject: 1
+Viewer.savelocalobject: 1
+Viewer.readlocalobject: 0
 Viewer.show_object3d_frame: 0
 
 Viewer.object_Duration: 0.1

@@ -28,6 +28,7 @@
 #include "System.h"
 #include "MapPublisher.h"
 #include <mutex>
+//#include "read_local_objects.h"
 
 namespace ORB_SLAM2
 {
@@ -89,8 +90,8 @@ private:
     int read_local_object;
     int show_object3d_frame;
 
-    void read_local_object_file();
-    void cmpute_corner(Object_Map* object);
+    //void read_local_object_file();
+    //void cmpute_corner(Object_Map* object);
     // demo.
     string mflag;
     //nbv test
