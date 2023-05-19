@@ -27,7 +27,7 @@ namespace ORB_SLAM2{
         //std::cout<<"[debug IOU,y]:" <<y<<std::endl;
         //std::cout<<"[debug IOU,z]:" <<z<<std::endl;
         // 将点在各个坐标轴上的坐标与椭球体在各个坐标轴上的半径进行比较，若点在三个坐标轴上的坐标都小于椭球体在各个坐标轴上的半径，则返回true，否则返回false。
-        if(x <this->length/2.0 && y < this->width/2.0 && z < this->height/2.0)
+        if(x <this->length/2.0 && y < this->width/2.0 )
             return true;
         else
             return false;

@@ -35,6 +35,7 @@ public:
 
 public:
     int mnId;
+    int mnClass = 60;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr mPlane;         //支撑面
     double mean_x,mean_y,mean_z;	//物体中心
     double max_x,max_y,max_z;

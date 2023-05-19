@@ -485,8 +485,8 @@ void System::SaveTrajectoryKITTI(const string &filename)
 void System::SaveObjects(const string &filename , const string &filename_with_point ) {
     cout << endl << "Saving Objects to " << filename << " ..." << endl;
 
-    vector<Object_Map*> vObjects = mpMap->GetObjects();
-
+    vector<Object_Map*> vForegroundObjects = mpMap->GetObjects();
+    vector<BackgroudObject*> vBackgroudObjects = mpMap->GetBackgroudObjects();
 
     ofstream f_nopoint, f_point;
     f_nopoint.open(filename.c_str());
@@ -494,9 +494,9 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
     f_point.open(filename_with_point.c_str());
     f_point << fixed;
 
-    for(size_t i=0; i<vObjects.size(); i++)
+    for(size_t i=0; i < vForegroundObjects.size(); i++)
     {
-        Object_Map* object = vObjects[i];
+        Object_Map* object = vForegroundObjects[i];
 
         if(object->bad_3d)
             continue;
@@ -550,6 +550,30 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
                 << mpWorldPos.at<float>(2) << " "
                 << endl;
         }
+    }
+
+    for(size_t i=0; i < vBackgroudObjects.size(); i++)
+    {
+        BackgroudObject* object = vBackgroudObjects[i];
+
+        g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
+        pose = Converter::cvMattoG2oSE3Quat(object->pose_mat);
+        f_point     << "1 "  //物体
+                    << object->mnId << "   "
+                    << object->mnClass << " "
+                    << "1 "
+                    << "0     "
+                    << pose.translation().x() << " "
+                    << pose.translation().y() << " "
+                    << pose.translation().z()<< "     "
+                    << pose.rotation().x() << " "
+                    << pose.rotation().y() << " "
+                    << pose.rotation().z() << " "
+                    << pose.rotation().w() << "     "
+                    << object->length << " "
+                    << object->width << " "
+                    << object->height << " "
+                    << endl;
     }
 
     f_point.close();

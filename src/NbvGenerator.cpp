@@ -110,9 +110,9 @@ void NbvGenerator::Run() {
     {
         //1.获取地图中的平面和物体。 并在每次global nbv计算前， 计算一遍所有物体的主方向
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
-        vector<Object_Map*> FarwordObjectMaps = mpMap->GetObjects();
+        vector<Object_Map*> ForegroundObjectMaps = mpMap->GetObjects();
         mvGlobalCandidate.clear();
-        for(auto obj: FarwordObjectMaps)
+        for(auto obj: ForegroundObjectMaps)
             obj->ComputeMainDirection();
 
         //2.筛选背景物体。并将他们加入到
@@ -121,11 +121,13 @@ void NbvGenerator::Run() {
         std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
             return obj1->mnId < obj2->mnId;
         });
+        if(mvBackgroud_objects.size() == 0)
+            continue;
 
         //3.计算所属的背景物体的评价值, 并判断是否要  结束active mapping
         mbEnd_active_map = true;
         for(auto bo: mvBackgroud_objects ){
-            bo->computeValue(FarwordObjectMaps);
+            bo->computeValue(ForegroundObjectMaps);
 
             if(!bo->return_end_active_mapping())
                 mbEnd_active_map = false;
@@ -134,7 +136,7 @@ void NbvGenerator::Run() {
         }
 
         if(mbEnd_active_map){
-            ROS_ERROR("End Active Mapping ！！！");
+            ROS_ERROR("End Active Mapping !!!");
             break;
         }
 
@@ -162,7 +164,7 @@ void NbvGenerator::Run() {
             //mvGlobalCandidate[i].pose = globalCandidate.front().pose.clone();
 
             //version2： 只处理面向中心的原位置
-            computeReward(mvGlobalCandidate[i], FarwordObjectMaps);
+            computeReward(mvGlobalCandidate[i], ForegroundObjectMaps);
             ROS_INFO("final test reward:%f", mvGlobalCandidate[i].reward);
         }
 
@@ -260,14 +262,14 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
         cout<< "垂直夹角angle:"<<angle<<std::endl;
         if ((angle < 0.2) && (angle > -0.2)){
-            continue;
             cout<< "不是水平面:"<<angle<<std::endl;
+            continue;
         }
 
 
         //计算当前平面,在各关键帧中对应的平面
         map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
-
+        std::cout << "Map size: " << observations.size() << std::endl;
         //将各关键帧中的平面,融合为一个allCloudPoints
         PointCloud::Ptr allCloudPoints(new PointCloud);
         float x=0, y=0, z=0;
@@ -284,6 +286,7 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
             pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
             *allCloudPoints += *cloud;
         }
+        cout<< "[debug] 将各关键帧中的平面,融合为一个allCloudPoints"<<std::endl;
 
         //对allCloudPoints降维成tmp
         PointCloud::Ptr tmp(new PointCloud());
@@ -293,23 +296,30 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
         //计算点云的最小值和最大值    void getMinMax3D (const pcl::PointCloud<PointT> &cloud, PointT &min_pt, PointT &max_pt)
 
         // 计算allCloudPoint的中心点
-        vector<float> vec_x,vec_y,vec_z;
+        vector<double> vec_x,vec_y,vec_z;
         for (size_t i = 0; i < allCloudPoints->points.size(); i++)
         {
             vec_x.push_back(allCloudPoints->points[i].x);
             vec_y.push_back(allCloudPoints->points[i].y);
             vec_z.push_back(allCloudPoints->points[i].z);
         }
+        cout<< "[debug] 计算allCloudPoint的中心点 1"<<std::endl;
+
+        std::vector<float> vec_z_float(vec_z.size());
+        std::transform(vec_z.begin(), vec_z.end(), vec_z_float.begin(),
+                   [](double value) { return static_cast<float>(value); });
+        cout<< "[debug] 计算allCloudPoint的中心点 2"<<std::endl;
 
         //计算桌面高度
         double mean_z;	//点云均值
 	    double stddev_z;	//点云标准差
-        pcl::getMeanStd(vec_z, mean_z, stddev_z);
+        pcl::getMeanStd(vec_z_float, mean_z, stddev_z);
         //cout<< "mean z1:"<<mean_z<<std::endl;
         // 桌面高度太小，忽略
         if(mean_z>mMaxPlaneHeight || mean_z<mMinPlaneHeight)
             continue;
         //cout<< "mean z2:"<<mean_z<<std::endl;
+        cout<< "[debug] 计算allCloudPoint的中心点 3"<<std::endl;
 
         //计算点云的均值，但是没用上
         //double mean_x,mean_y,mean_z;	//点云均值
@@ -365,6 +375,7 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
         // Rotation matrix.
         bo->computePose();
+        cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
 
         bo->mnId = pMP->mnId;
         mvBackgroud_objects.push_back(bo);
