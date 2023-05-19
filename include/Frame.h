@@ -66,8 +66,8 @@ namespace ORB_SLAM2
 
 class MapPoint;
 class KeyFrame;
-//class Object_Map;
-//class Cuboid3D;
+class Object_Map;
+class Cuboid3D;
 class Object_2D;
 class MapPlane;
 

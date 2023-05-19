@@ -58,7 +58,7 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 160,
+				"line" : 161,
 				"parent" : 0
 			},
 			{
@@ -920,13 +920,14 @@
 				23,
 				24,
 				25,
-				28,
-				31,
+				26,
+				29,
 				32,
 				33,
 				34,
 				35,
-				36
+				36,
+				37
 			]
 		}
 	],
@@ -4465,23 +4466,24 @@
 				23,
 				24,
 				25,
-				28,
-				31,
+				26,
+				29,
 				32,
 				33,
 				34,
 				35,
-				36
+				36,
+				37
 			]
 		},
 		{
 			"name" : "Header Files",
 			"sourceIndexes" : 
 			[
-				26,
 				27,
-				29,
-				30
+				28,
+				30,
+				31
 			]
 		}
 	],
@@ -4605,6 +4607,12 @@
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
 			"path" : "src/Object.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "src/BackgroudObject.cc",
 			"sourceGroupIndex" : 0
 		},
 		{

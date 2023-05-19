@@ -318,7 +318,7 @@ public:
     double mP_prior;
 
     double mIE;
-    //std::vector<std::vector<double> > mvInforEntroy;                   // 没用.  用于存储18*18个栅格的信息熵
+    //std::vector<std::vector<double> > mvInforEntroy;                   //  用于存储18*18个栅格的信息熵
     cv::Mat mvInforEntroy_mat;
     //std::vector<std::vector<double> > mvGridProb;                     //用于存储18*18个栅格的占据概率
     cv::Mat mvGridProb_mat;

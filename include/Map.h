@@ -25,6 +25,7 @@
 #include "KeyFrame.h"
 #include <set>
 #include "Object.h"
+#include "BackgroudObject.h"
 #include <mutex>
 
 #include <pcl/common/transforms.h>
@@ -39,6 +40,7 @@ namespace ORB_SLAM2
 class MapPoint;
 class KeyFrame;
 class Object_Map;
+class BackgroudObject;
 class MapPlane;
 
 typedef pcl::PointXYZRGB PointT;
@@ -92,9 +94,13 @@ protected:
 protected:
     //std::vector<Object_Map*> mvObjectMap;
     std::set<Object_Map*> mvObjectMap;
+    std::set<BackgroudObject*> mvBackgroudObjectMap;
 public:
     void AddObject(Object_Map *pObj);
     std::vector<Object_Map*> GetObjects();
+    void ClearBackgroudObjects();
+    void AddBackgroudObject(BackgroudObject *pObj);
+    std::vector<BackgroudObject*> GetBackgroudObjects();
 
 //plane
 public:

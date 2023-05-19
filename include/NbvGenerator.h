@@ -6,7 +6,7 @@
 #define ACTIVE_EAO_NEW_NBVGENERATOR_H
 
 //ros
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -31,6 +31,7 @@
 //内部
 #include "Map.h"
 #include "Object.h"
+#include "BackgroudObject.h"
 #include "Converter.h"
 #include "Tracking.h"
 
@@ -59,7 +60,6 @@ struct localCandidate{
     double reward;
     int num;
 };
-
 
 class NbvGenerator {
 
@@ -96,6 +96,8 @@ private:
     float fCameraSize;
     float fPointSize;
     bool mbEnd_active_map = false;
+    bool end_active_mapping();
+    bool belong_to(Object_Map* fo, BackgroudObject* bo);
 
     ros::Publisher publisher_centroid;
     ros::Publisher publisher_candidate;
@@ -109,9 +111,11 @@ private:
     vector<Candidate> mNBVs_old; //存储已到达的NBV，从而使下一个NBV尽量已到达的位置。
     double mNBVs_scale = 0;
     vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> mvCloudBoundary;
-    vector<PointCloud::Ptr> mvPlanes_filter;
+    //vector<PointCloud::Ptr> mvPlanes_filter;
+    vector<BackgroudObject*> mvBackgroud_objects;
 
-    void ExtractCandidates(const vector<MapPlane *> &vpMPs);
+    void Filter_BackgroudObjects(const vector<MapPlane *> &vpMPls);
+    void Extract_Candidates();
     vector<Candidate> RotateCandidates(Candidate& initPose);
     double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
     void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
@@ -129,6 +133,7 @@ private:
     //MapPublisher mappublisher;
     void PublishPlanes();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
+    void publishBackgroudObject(BackgroudObject* bos );
     geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
 
 
