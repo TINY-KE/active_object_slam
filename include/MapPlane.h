@@ -16,7 +16,7 @@
 
 
 namespace ORB_SLAM2 {
-/h    class KeyFrame;
+    class KeyFrame;
     class Frame;
     class Map;
     class MapPlane {

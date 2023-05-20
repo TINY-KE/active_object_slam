@@ -7,12 +7,10 @@ Panels:
         - /Global Options1
         - /Status1
         - /IE_cylinder1/Namespaces1
-        - /plane1
         - /DepthCloud1/Auto Size1
         - /TF1/Frames1
         - /TF1/Tree1
         - /object_MainDirection1/Namespaces1
-        - /objectmap_backgroud1
       Splitter Ratio: 0.5289255976676941
     Tree Height: 718
   - Class: rviz/Selection
@@ -33,7 +31,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: plane
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -104,7 +102,7 @@ Visualization Manager:
       Marker Topic: /objectmap
       Name: objectmap
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.05000000074505806
@@ -119,7 +117,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -134,65 +132,66 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /candidate
       Name: candidate
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /Point
       Name: Point
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /CoView
-      Name: Marker
+      Name: CoView
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /KeyFrame
-      Name: Marker
+      Name: KeyFrame
       Namespaces:
-        {}
+        Graph: true
+        KeyFrames: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /candidate_unsort
-      Name: Marker
+      Name: candidate_unsort
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /candidate
       Name: Point
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 0.699999988079071
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /map
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -213,7 +212,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: PoseWithCovariance
@@ -222,7 +221,7 @@ Visualization Manager:
       Shape: Arrow
       Topic: /initialpose
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Auto Size:
         Auto Size Factor: 1
@@ -242,7 +241,7 @@ Visualization Manager:
       Decay Time: 0
       Depth Map Topic: /depth_to_rgb/image_raw
       Depth Map Transport Hint: raw
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -258,7 +257,7 @@ Visualization Manager:
       Topic Filter: true
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -288,7 +287,7 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: false
@@ -300,23 +299,23 @@ Visualization Manager:
       Tree:
         {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 0.30000001192092896
       Class: rviz/Map
       Color Scheme: costmap
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /move_base/global_costmap/costmap
       Unreliable: false
       Use Timestamp: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
       Class: rviz/Pose
       Color: 204; 0; 0
-      Enabled: true
+      Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: Pose
@@ -325,7 +324,7 @@ Visualization Manager:
       Shape: Arrow
       Topic: /move_base_simple/goal
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.10000000149011612
@@ -346,7 +345,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Head Length: 0.30000001192092896
       Head Radius: 0.10000000149011612
       Name: PoseWithCovariance
@@ -355,12 +354,12 @@ Visualization Manager:
       Shape: Arrow
       Topic: /local_nbv
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -378,12 +377,12 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /move_base/DWAPlannerROS/local_plan
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Head Diameter: 0.30000001192092896
       Head Length: 0.20000000298023224
       Length: 0.30000001192092896
@@ -401,7 +400,7 @@ Visualization Manager:
       Shaft Length: 0.10000000149011612
       Topic: /move_base/GlobalPlanner/plan
       Unreliable: false
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -419,43 +418,43 @@ Visualization Manager:
       Value: false
       Visual Enabled: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /object_MainDirection
       Name: object_MainDirection
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /object_SumMainDirection
       Name: object_SumMainDirection
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /dae_model_marker
-      Name: Marker
+      Name: dae_model_marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: false
+    - Class: rviz/Marker
+      Enabled: false
+      Marker Topic: /objectmap_groudtruth
+      Name: objectmap_groudtruth
       Namespaces:
         {}
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /objectmap_groudtruth
-      Name: objectmap_groudtruth
-      Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
       Marker Topic: /objectmap_backgroud
       Name: objectmap_backgroud
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -486,25 +485,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 6.376922607421875
+      Distance: 4.996885299682617
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -3.063352346420288
-        Y: -0.9055581092834473
-        Z: 3.5045068216277286e-6
+        X: -3.883653163909912
+        Y: -0.664945125579834
+        Z: 3.824770828941837e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2947961091995239
+      Pitch: 0.34479519724845886
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 4.7680487632751465
+      Yaw: 5.803063869476318
     Saved: ~
 Window Geometry:
   Displays:
