@@ -111,7 +111,7 @@ private:
     vector<Candidate> mNBVs_old; //存储已到达的NBV，从而使下一个NBV尽量已到达的位置。
     double mNBVs_scale = 0;
     vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> mvCloudBoundary;
-    //vector<PointCloud::Ptr> mvPlanes_filter;
+    vector<PointCloud::Ptr> mvPlanes_filter;
     vector<BackgroudObject*> mvBackgroud_objects;
 
     void Filter_BackgroudObjects(const vector<MapPlane *> &vpMPls);
