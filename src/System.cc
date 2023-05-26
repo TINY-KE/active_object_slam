@@ -552,6 +552,32 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
         }
     }
 
+    //保存背景物体
+    vector<BackgroudObject*> vBackgroudObjects = mpMap->GetBackgroudObjects();
+    for(size_t i=0; i < vBackgroudObjects.size(); i++)
+    {
+        BackgroudObject* object = vBackgroudObjects[i];
+
+        g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
+        pose = Converter::cvMattoG2oSE3Quat(object->pose_mat);
+        f_point     << "1 "  //物体
+                    << object->mnId << "   "
+                    << object->mnClass << " "
+                    << "1 "
+                    << "0     "
+                    << pose.translation().x() << " "
+                    << pose.translation().y() << " "
+                    << pose.translation().z()<< "     "
+                    << pose.rotation().x() << " "
+                    << pose.rotation().y() << " "
+                    << pose.rotation().z() << " "
+                    << pose.rotation().w() << "     "
+                    << object->length << " "
+                    << object->width << " "
+                    << object->height << " "
+                    << endl;
+    }
+
     f_point.close();
     f_nopoint.close();
     cout << endl << "Object saved!" << endl;

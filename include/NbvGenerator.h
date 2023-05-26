@@ -52,6 +52,7 @@ class System;
 struct Candidate{
     cv::Mat pose;
     double reward;
+    BackgroudObject* bo;
 };
 
 struct localCandidate{
@@ -61,35 +62,6 @@ struct localCandidate{
 };
 
 
-class BackgroudObject {
-
-public:
-    BackgroudObject();
-    ~BackgroudObject();
-
-public:
-    int mnId;
-    int mnClass = 60;
-    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr
-    PointCloud::Ptr mPlane;         //支撑面
-    double mean_x,mean_y,mean_z;	//物体中心
-    double max_x,max_y,max_z;
-    double min_x,min_y,min_z;
-    double length,width,height;
-    bool end_activemapping = false;
-    double IEvalue;
-    double FO_num, FO_num_notend ;
-    cv::Mat pose_mat = cv::Mat::eye(4, 4, CV_32F);
-
-public:
-    //bool include(Object_Map* fo);
-    //
-    //void computeValue(std::vector<Object_Map*> FOs);
-    //
-    //void computePose();
-    //
-    //bool return_end_active_mapping();
-};
 
 
 class NbvGenerator {
@@ -143,12 +115,12 @@ private:
     vector<PointCloud::Ptr> mvPlanes_filter;
     vector<BackgroudObject*> mvBackgroud_objects;
 
-    void Filter_BackgroudObjects(const vector<MapPlane *> &vpMPls);
+    void Filter_BackgroudObjects_and_Extract_Candidates(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
     void Extract_Candidates();
     void ExtractCandidates(const vector<MapPlane *> &vpMPs);
     vector<Candidate> RotateCandidates(Candidate& initPose);
     double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
-    void computeReward(Candidate &candidate, vector<Object_Map*> obj3ds);
+    void computeReward(Candidate &candidate); //, vector<Object_Map*> obj3ds
     void ExtractNBV();
     void PublishNBV();
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
@@ -161,7 +133,7 @@ private:
     ros::Publisher pubCloud;
     ros::Publisher publisher_object_backgroud;
     //MapPublisher mappublisher;
-    void PublishPlanes();
+    void PublishBackgroudObjects();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
     geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
 

@@ -7,6 +7,7 @@
 
 
 #include "MapPoint.h"
+#include "MapPlane.h"
 #include <mutex>
 #include <vector>
 #include <string>
@@ -31,6 +32,13 @@
 //yolo label
 #include "yolo_label.h"
 
+//pcl
+#include <pcl/common/transforms.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/ModelCoefficients.h>
+
 extern std::string WORK_SPACE_PATH;
 extern std::string yamlfile_object;
 extern bool MotionIou_flag;
@@ -41,14 +49,19 @@ extern bool iforest_flag;
 extern bool little_mass_flag;
 extern bool ProIou_only30_flag;
 
+
+
 namespace ORB_SLAM2
 {
+typedef pcl::PointXYZRGB PointT;
+typedef pcl::PointCloud<PointT> PointCloud;
+
 class Frame;
 class MapPoint;
 class KeyFrame;
 class Map;
 class Object_Map;
-
+class MapPlane;
 class Object_2D;
 enum eAssociateFlag{
         MotionIou=1,
@@ -359,6 +372,45 @@ void cmpute_corner(Object_Map* object) ;
 
 void ReadLocalObjects( const std::string& filePath, std::vector<Object_Map*>& vObjects);
 
+
+class BackgroudObject {
+
+public:
+    BackgroudObject();
+    ~BackgroudObject();
+
+public:
+    int mnId;
+    int mnClass = 60;
+    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr
+    PointCloud::Ptr mPlane;         //支撑面
+    double mean_x,mean_y,mean_z;	//物体中心
+    double max_x,max_y,max_z;
+    double min_x,min_y,min_z;
+    double length,width,height;
+    bool end_activemapping = false;
+    double IEvalue;
+    double FO_num, FO_num_not_end ;
+    cv::Mat pose_mat = cv::Mat::eye(4, 4, CV_32F);
+    std::vector<Object_Map*> FOs;
+
+public:
+    bool include(Object_Map* fo);
+    bool AllInclude(std::vector<Object_Map*> fos);
+    void IncludeFOs_and_WheatherEndActive(std::vector<Object_Map*> FOs);
+
+    void computePose();
+
+    bool return_end_active_mapping();
+};
+
 }
+
+
+
+
+
+
+
 
 #endif //ACTIVE_EAO_NEW_OBJECT_H

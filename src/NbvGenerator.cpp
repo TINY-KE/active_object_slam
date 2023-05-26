@@ -13,12 +13,10 @@
 namespace ORB_SLAM2
 {
 
-BackgroudObject::BackgroudObject() {
-    mPlane = PointCloud::Ptr(new PointCloud());
-}
-BackgroudObject::~BackgroudObject()  {
-    mPlane.reset();
-}
+
+
+
+
 NbvGenerator::NbvGenerator(){}
 
 NbvGenerator::NbvGenerator(Map* map, Tracking *pTracking, const string &strSettingPath):
@@ -82,36 +80,37 @@ mpMap(map), mpTracker(pTracking)
 void NbvGenerator::Run() {
     while(1)
     {
-
+        //1.获取地图中的平面和物体。 并在每次global nbv计算前， 计算一遍所有物体的主方向
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
-        vector<Object_Map*> ObjectMaps = mpMap->GetObjects();
+        vector<Object_Map*> ForegroundObjectMaps = mpMap->GetObjects();
         mvGlobalCandidate.clear();
-
-        //如果所有物体都结束建图，则可以结束active建图.
-        //todo： 应该改为，前景物体都结束建图，则对应的背景物体结束建图；如果所有背景物体都结束建图，则可以结束active建图.
-        if(  ObjectMaps.size() != 0 )
-        {
-            mbEnd_active_map = true;
-            for(auto obj: ObjectMaps){
-                if(!obj->end_build){
-                    mbEnd_active_map = false;
-                }
-            }
-        }
-        if(mbEnd_active_map){
-            ROS_ERROR("End Active Mapping ！！！");
-            break;
-        }
-
-        //在每次global nbv计算前， 计算一遍所有物体的主方向
-        for(auto obj: ObjectMaps)
+        for(auto obj: ForegroundObjectMaps)
             obj->ComputeMainDirection();
 
-        //1. 筛选平面，并挑选全局候选点
-        Filter_BackgroudObjects(vpMPlanes);
-        //Extract_Candidates();
-        //ExtractCandidates(vpMPlanes);
-        PublishPlanes();  //可视化 筛选后的平面
+
+        //2.
+        //（1）筛选背景物体。并将他们加入到mvBackgroud_objects。
+        //（2）计算背景物体的评价值, 并判断是否要  结束此背景物体的aive mapping
+        //（3）从第一个Bo周围 挑选NBV
+        //（4）可视化背景物体和NBV
+        Filter_BackgroudObjects_and_Extract_Candidates(vpMPlanes, ForegroundObjectMaps);
+        PublishBackgroudObjects();  //可视化 筛选后的平面
+
+        ////3.
+        //mbEnd_active_map = true;
+        //for(auto bo: mvBackgroud_objects ){
+        //
+        //    if(!bo->return_end_active_mapping())
+        //        mbEnd_active_map = false;
+        //
+        //    std::cerr << "【属于此背景物体的前景物体数量】： " << bo->FO_num_not_end << "/" << bo->FO_num << std::endl;
+        //}
+        //
+        //if(mbEnd_active_map){
+        //    ROS_ERROR("End Active Mapping !!!");
+        //    break;
+        //}
+
 
         //2. 旋转（旋转暂时停用）并评估 全局候选点
         cv::Mat BestCandidate;
@@ -132,7 +131,7 @@ void NbvGenerator::Run() {
             //mvGlobalCandidate[i].pose = globalCandidate.front().pose.clone();
 
             //version2： 只处理面向中心的原位置
-            computeReward(mvGlobalCandidate[i], ObjectMaps);
+            computeReward(mvGlobalCandidate[i]); //  , ForegroundObjectMaps
             ROS_INFO("final test reward:%f", mvGlobalCandidate[i].reward);
         }
 
@@ -210,11 +209,11 @@ void NbvGenerator::Run() {
 
 
 // 提取候选平面（mvPlanes_filter）
-void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls) {
+void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps ) {
     //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
     mvPlanes_filter.clear();
     mvBackgroud_objects.clear();
-    //mpMap->ClearBackgroudObjects();
+    mpMap->ClearBackgroudObjects();
 
     if (vpMPls.empty())
         return;
@@ -222,6 +221,8 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
     pcl::VoxelGrid<PointT> voxel;
     voxel.setLeafSize(0.002, 0.002, 0.002);
 
+
+    //一、筛选背景物体结束
     std::cerr << "地图中平面的数量为" << vpMPls.size() << std::endl;
     for (auto pMP : vpMPls)  //对vpMPs中每个平面pMP分别进行处理,
     {
@@ -236,7 +237,6 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
             cout<< "不是水平面:"<<angle<<std::endl;
             continue;
         }
-
 
         //计算当前平面,在各关键帧中对应的平面
         map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
@@ -257,7 +257,7 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
             pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
             *allCloudPoints += *cloud;
         }
-        cout<< "[debug] 将各关键帧中的平面,融合为一个allCloudPoints"<<std::endl;
+        //cout<< "[debug] 将各关键帧中的平面,融合为一个allCloudPoints"<<std::endl;
 
         //对allCloudPoints降维成tmp
         PointCloud::Ptr tmp(new PointCloud());
@@ -268,19 +268,19 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
         // 计算allCloudPoint的中心点
         vector<double> vec_x,vec_y,vec_z;
-        cout<< "[debug] 计算allCloudPoint的中心点 0:"<<allCloudPoints->points.size()<<std::endl;
+        //cout<< "[debug] 计算allCloudPoint的中心点 0:"<<allCloudPoints->points.size()<<std::endl;
         for (size_t i = 0; i < allCloudPoints->points.size(); i++)
         {
             vec_x.push_back(allCloudPoints->points[i].x);
             vec_y.push_back(allCloudPoints->points[i].y);
             vec_z.push_back(allCloudPoints->points[i].z);
         }
-        cout<< "[debug] 计算allCloudPoint的中心点 1"<<std::endl;
+        //cout<< "[debug] 计算allCloudPoint的中心点 1"<<std::endl;
 
         std::vector<float> vec_z_float(vec_z.size());
         std::transform(vec_z.begin(), vec_z.end(), vec_z_float.begin(),
                    [](double value) { return static_cast<float>(value); });
-        cout<< "[debug] 计算allCloudPoint的中心点 2"<<std::endl;
+        //cout<< "[debug] 计算allCloudPoint的中心点 2"<<std::endl;
 
         //计算桌面高度
         double mean_z;	//点云均值
@@ -291,7 +291,7 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
         if(mean_z>mMaxPlaneHeight || mean_z<mMinPlaneHeight)
             continue;
         //cout<< "mean z2:"<<mean_z<<std::endl;
-        cout<< "[debug] 计算allCloudPoint的中心点 3"<<std::endl;
+        //cout<< "[debug] 计算allCloudPoint的中心点 3"<<std::endl;
 
         //计算点云的均值，但是没用上
         //double mean_x,mean_y,mean_z;	//点云均值
@@ -329,7 +329,6 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
         BackgroudObject* bo;
         //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
-
         bo->max_x = x_max;
         bo->max_y = y_max;
         bo->max_z = z_max;
@@ -348,93 +347,100 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
         // Rotation matrix.
         //bo->computePose();
-        cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
 
         bo->mnId = pMP->mnId;
+
+        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
         mvBackgroud_objects.push_back(bo);
-        //mpMap->AddBackgroudObject(bo);
+        mpMap->AddBackgroudObject(bo);
     }
+    //一、筛选背景物体结束
 
 
+    //二、Extract Candidates
     mvGlobalCandidate.clear();
     mvCloudBoundary.clear();
 
-    if (mvBackgroud_objects.empty())
+    if (mvBackgroud_objects.empty()){
+        std::cerr << "当前背景物体的数量为0" << std::endl;
         return;
-    std::cerr << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
+    }
+    std::cout << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
+
 
     //1.先按照背景物体的mnid，排序，从小开始处理
-    //在前面完成了
+    std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
+            return obj1->mnId < obj2->mnId;
+        });
 
-    //2.依次查看vpMPs中每个背景物体，从第一个没完成建图的背景物体周围，提取 候选点
-    for (int i=0; i<mvBackgroud_objects.size(); i++)
-    {
-        auto bo = mvBackgroud_objects[i];
+    //2.背景物体，从第一个没完成建图的背景物体周围，提取 候选点
+    //for (int i=0; i<mvBackgroud_objects.size(); i++){
 
-        //todo: 是否要判断单个plane的标志符
-        //if(bo->return_end_active_mapping()){
-        //    continue;
-        //}
-
-        //计算tmp的边缘点
-        //(1)将tmp转为no_color
-        pcl::PointCloud<pcl::PointXYZ>::Ptr  nocolored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZ>);
-        pcl::copyPointCloud( *mvPlanes_filter[i], *nocolored_pcl_ptr);
-        //(2)经纬线扫描法
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary(new pcl::PointCloud<pcl::PointXYZ>);
-        BoundaryExtraction(nocolored_pcl_ptr, cloud_boundary, 200);
-        //将边缘点存入
-        mvCloudBoundary.push_back(cloud_boundary);
-
-        //计算candidates
-        double safe_radius = mMinPlaneSafeRadius;
-        int divide = mGobalCandidateNum;
-        int step = floor( cloud_boundary->points.size() / divide);
-
-        for(int i=0; i< divide; i++){
-            int index = i*step+ divide/2 ;
-            //计算候选点的xy的坐标
-            double x,y;
-            double d = sqrt(    (cloud_boundary->points[index].x-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x)
-                            +   (cloud_boundary->points[index].y-bo->mean_y)*(cloud_boundary->points[index].y-bo->mean_y)
-                            )
-                       + safe_radius;
-            double k = (cloud_boundary->points[index].y-bo->mean_y) /
-                     (cloud_boundary->points[index].x-bo->mean_x);
-
-            double x_positive = sqrt(d * d / (1 + k * k) ) + bo->mean_x;
-            double x_negative = -sqrt(d * d / (1 + k * k) ) + bo->mean_x;
-            if( (x_positive-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x) > 0 )
-                x = x_positive;
-            else
-                x = x_negative;
-            y = k*(x - bo->mean_x) + bo->mean_y;
-
-            //计算xy指向中心的坐标
-            cv::Mat view = (cv::Mat_<float>(3, 1) << bo->mean_x-x, bo->mean_y-y, 0);
-            double angle = atan( (bo->mean_y-y)/(bo->mean_x-x) );
-            if( (bo->mean_x-x)<0 && (bo->mean_y-y)>0 )
-                angle = angle +  M_PI;
-            if( (bo->mean_x-x)<0 && (bo->mean_y-y)<0 )
-                angle = angle -  M_PI;
-            Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
-            Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
-            cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-            //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
-            cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
-            cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
-            rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
-            t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
-            cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
-
-            Candidate candidate;
-            candidate.pose = Camera_mat.clone();
-            mvGlobalCandidate.push_back(candidate);
-        }
-
-        //只需要处理第一个没完成建图的背景物体周围。因此退出
-        break;
+    auto bo = mvBackgroud_objects[0];
+    if(bo->return_end_active_mapping()){
+        std::cerr << "First背景物体的已经结束建图" << std::endl;
+        return;
     }
+
+    //计算tmp的边缘点
+    //(1)将tmp转为no_color
+    pcl::PointCloud<pcl::PointXYZ>::Ptr  nocolored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::copyPointCloud( *mvPlanes_filter[0], *nocolored_pcl_ptr);
+    //(2)经纬线扫描法
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary(new pcl::PointCloud<pcl::PointXYZ>);
+    BoundaryExtraction(nocolored_pcl_ptr, cloud_boundary, 200);
+    //将边缘点存入
+    mvCloudBoundary.push_back(cloud_boundary);
+
+    //计算candidates
+    double safe_radius = mMinPlaneSafeRadius;
+    int divide = mGobalCandidateNum;
+    int step = floor( cloud_boundary->points.size() / divide);
+
+    for(int i=0; i< divide; i++){
+        int index = i*step+ divide/2 ;
+        //计算候选点的xy的坐标
+        double x,y;
+        double d = sqrt(    (cloud_boundary->points[index].x-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x)
+                        +   (cloud_boundary->points[index].y-bo->mean_y)*(cloud_boundary->points[index].y-bo->mean_y)
+                        )
+                   + safe_radius;
+        double k = (cloud_boundary->points[index].y-bo->mean_y) /
+                 (cloud_boundary->points[index].x-bo->mean_x);
+
+        double x_positive = sqrt(d * d / (1 + k * k) ) + bo->mean_x;
+        double x_negative = -sqrt(d * d / (1 + k * k) ) + bo->mean_x;
+        if( (x_positive-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x) > 0 )
+            x = x_positive;
+        else
+            x = x_negative;
+        y = k*(x - bo->mean_x) + bo->mean_y;
+
+        //计算xy指向中心的坐标
+        cv::Mat view = (cv::Mat_<float>(3, 1) << bo->mean_x-x, bo->mean_y-y, 0);
+        double angle = atan( (bo->mean_y-y)/(bo->mean_x-x) );
+        if( (bo->mean_x-x)<0 && (bo->mean_y-y)>0 )
+            angle = angle +  M_PI;
+        if( (bo->mean_x-x)<0 && (bo->mean_y-y)<0 )
+            angle = angle -  M_PI;
+        Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
+        Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
+        cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+        //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
+        cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
+        cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
+        rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
+        t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
+        cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
+
+        Candidate candidate;
+        candidate.pose = Camera_mat.clone();
+        candidate.bo = bo;
+        mvGlobalCandidate.push_back(candidate);
+    }
+    //二、Extract Candidates End
 
 }
 
@@ -534,7 +540,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
     voxel.setLeafSize(0.002, 0.002, 0.002);
 
     int num=0; //平面的数量
-    std::cerr << "PublishPlanes: 平面的数量为"<< vpMPs.size()  << std::endl;
+    std::cerr << "PublishBackgroudObjects: 平面的数量为"<< vpMPs.size()  << std::endl;
     for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
     {
         if(pMP->end_activemapping)
@@ -697,9 +703,9 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     return  cands;
 }
 
-void  NbvGenerator::PublishPlanes()
+void  NbvGenerator::PublishBackgroudObjects()
 {
-    std::cerr << "PublishPlanes: 背景物体的数量为"<< mvPlanes_filter.size()  << std::endl;
+    std::cerr << "PublishBackgroudObjects: 背景物体的数量为"<< mvPlanes_filter.size()  << std::endl;
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
 
@@ -1249,7 +1255,7 @@ void NbvGenerator::clearOldNBV(){
 
 
 //计算每个候选视点的 评价函数
-void NbvGenerator::computeReward(Candidate &candidate, vector<Object_Map*> obj3ds){
+void NbvGenerator::computeReward(Candidate &candidate){
 
 
     //机器人底盘的世界坐标
@@ -1263,6 +1269,7 @@ void NbvGenerator::computeReward(Candidate &candidate, vector<Object_Map*> obj3d
     double object_reward = 0;
     int object_viewed_num = 0;
     Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
+    auto obj3ds = candidate.bo->FOs;
     for (int i = 0; i < (int)obj3ds.size(); i++) {
         Object_Map *obj3d = obj3ds[i];
         bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);

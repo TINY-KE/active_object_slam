@@ -146,6 +146,22 @@ vector<Object_Map*> Map::GetObjects()
     return vector<Object_Map*>(mvObjectMap.begin(),mvObjectMap.end());
 }
 
+void Map::ClearBackgroudObjects() {
+    mvBackgroudObjectMap.clear();
+}
+
+void Map::AddBackgroudObject(BackgroudObject *pObj)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    mvBackgroudObjectMap.insert(pObj);
+}
+
+vector<BackgroudObject*> Map::GetBackgroudObjects()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return vector<BackgroudObject*>(mvBackgroudObjectMap.begin(),mvBackgroudObjectMap.end());
+}
+
 
 // plane
 
