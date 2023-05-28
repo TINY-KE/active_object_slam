@@ -377,73 +377,183 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
 
     //2.背景物体，从第一个没完成建图的背景物体周围，提取 候选点
     //for (int i=0; i<mvBackgroud_objects.size(); i++){
-
-    auto bo = mvBackgroud_objects[0];
-    if(bo->return_end_active_mapping()){
-        std::cerr << "First背景物体的已经结束建图" << std::endl;
-        return;
+    BackgroudObject* bo_first;
+    for(auto bo : mvBackgroud_objects){
+        if(!bo->return_end_active_mapping()){
+            bo_first = bo;
+            std::cerr << "选中背景物体，开始生成NBV" << std::endl;
+        }
     }
 
-    //计算tmp的边缘点
-    //(1)将tmp转为no_color
-    pcl::PointCloud<pcl::PointXYZ>::Ptr  nocolored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::copyPointCloud( *mvPlanes_filter[0], *nocolored_pcl_ptr);
-    //(2)经纬线扫描法
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary(new pcl::PointCloud<pcl::PointXYZ>);
-    BoundaryExtraction(nocolored_pcl_ptr, cloud_boundary, 200);
-    //将边缘点存入
-    mvCloudBoundary.push_back(cloud_boundary);
 
     //计算candidates
     double safe_radius = mMinPlaneSafeRadius;
-    int divide = mGobalCandidateNum;
-    int step = floor( cloud_boundary->points.size() / divide);
-
+    double divide = mGobalCandidateNum;
+    double step = floor( 2* M_PI / divide);
     for(int i=0; i< divide; i++){
-        int index = i*step+ divide/2 ;
-        //计算候选点的xy的坐标
-        double x,y;
-        double d = sqrt(    (cloud_boundary->points[index].x-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x)
-                        +   (cloud_boundary->points[index].y-bo->mean_y)*(cloud_boundary->points[index].y-bo->mean_y)
-                        )
-                   + safe_radius;
-        double k = (cloud_boundary->points[index].y-bo->mean_y) /
-                 (cloud_boundary->points[index].x-bo->mean_x);
+        // 射线起点和方向
+        cv::Point2f rayOrigin(bo_first->mean_x, bo_first->mean_y);
+        float rayAngle = i*step+ divide/2 /* 射线的角度，以弧度表示 */;
 
-        double x_positive = sqrt(d * d / (1 + k * k) ) + bo->mean_x;
-        double x_negative = -sqrt(d * d / (1 + k * k) ) + bo->mean_x;
-        if( (x_positive-bo->mean_x)*(cloud_boundary->points[index].x-bo->mean_x) > 0 )
-            x = x_positive;
+        // 矩形边框信息
+        cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y - bo_first->width/2);
+        cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y + bo_first->width/2);
+
+        // 计算射线与矩形边框的交点
+        cv::Point2f SafeNBVPoint_best;
+        bool hasIntersection = false;
+
+        // 计算矩形的四条边
+        cv::Point2f rectTopRight(rectBottomRight.x, rectTopLeft.y);
+        cv::Point2f rectBottomLeft(rectTopLeft.x, rectBottomRight.y);
+
+        // 计算射线与每条边的交点
+        cv::Point2f SafeNBVPoint;
+
+        // 射线与右边相交
+        if (computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
+        {
+            SafeNBVPoint_best = SafeNBVPoint;
+            hasIntersection = true;
+        }
+
+        // 射线与上边相交
+        else if (computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
+        {
+            SafeNBVPoint_best = SafeNBVPoint;
+            hasIntersection = true;
+        }
+
+        // 射线与左边相交
+        else if (computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
+        {
+            SafeNBVPoint_best = SafeNBVPoint;
+            hasIntersection = true;
+        }
+
+        // 射线与下边相交
+        else if (computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
+        {
+            SafeNBVPoint_best = SafeNBVPoint;
+            hasIntersection = true;
+        }
+
+        // 打印交点坐标（如果存在交点）
+        if (hasIntersection)
+        {
+            std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
+
+        }
         else
-            x = x_negative;
-        y = k*(x - bo->mean_x) + bo->mean_y;
+        {
+            std::cout << "射线没有与矩形相交" << std::endl;
+        }
 
-        //计算xy指向中心的坐标
-        cv::Mat view = (cv::Mat_<float>(3, 1) << bo->mean_x-x, bo->mean_y-y, 0);
-        double angle = atan( (bo->mean_y-y)/(bo->mean_x-x) );
-        if( (bo->mean_x-x)<0 && (bo->mean_y-y)>0 )
-            angle = angle +  M_PI;
-        if( (bo->mean_x-x)<0 && (bo->mean_y-y)<0 )
-            angle = angle -  M_PI;
+
+
+
+        ////计算候选点的xy的坐标
+        double x = SafeNBVPoint_best.x;
+        double y = SafeNBVPoint_best.y;
+
+        ////计算xy指向中心的坐标
+        //cv::Mat view = (cv::Mat_<float>(3, 1) << bo_first->mean_x-x, bo_first->mean_y-y, 0);
+        //double angle = atan( (bo_first->mean_y-y)/(bo_first->mean_x-x) );
+        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)>0 )
+        //    angle = angle +  M_PI;
+        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)<0 )
+        //    angle = angle -  M_PI;
+        //Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
+        //Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
+        //cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+        ////cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
+        //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
+        //cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
+        //rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
+        //t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
+        //cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
+
+        // 计算向量v，从NBV指向物体中心。计算角度θ，即向量v与x轴正方向之间的夹角
+        cv::Point2f v =  cv::Point2f(x,y) - SafeNBVPoint_best;
+        float angle = std::atan2(v.y, v.x);
+
+        //转换成  变换矩阵
         Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
         Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
         cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-        //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
         cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
         cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
         rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
         t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
         cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
+
+
         Candidate candidate;
         candidate.pose = Camera_mat.clone();
-        candidate.bo = bo;
+        candidate.bo = bo_first;
         mvGlobalCandidate.push_back(candidate);
+8
+
     }
     //二、Extract Candidates End
 
 }
 
+cv::Point2f NbvGenerator::normalize(cv::Point2f ray_n  ) {
+    float norm = std::sqrt(ray_n.x * ray_n.x + ray_n.y * ray_n.y);
+
+    cv::Point2f ray_norm(ray_n.x / norm, ray_n.y / norm);
+
+    return ray_norm;
+}
+
+double  NbvGenerator::IntersectionScale(const cv::Point2f& p1, const cv::Point2f& p1End, const cv::Point2f& p2, const cv::Point2f& p2End){
+    //return p1方向上的平移量 t
+    //double t = cross((p2 - p1), v2) / cross(v1, v2);
+
+    cv::Point2f v1 = p1End - p1;
+    cv::Point2f v2 = p2End - p2;
+
+    double t = normalize(p2 - p1).cross(normalize(v2)) / normalize(v1).cross(normalize(v2));
+
+    return t;
+}
+
+bool NbvGenerator::computeIntersection(const cv::Point2f& rayStart, const cv::Point2f& rayEnd, const cv::Point2f& segmentStart, const cv::Point2f& segmentEnd, cv::Point2f& SafeNBVPoint)
+{
+    //计算方法：https://www.cnblogs.com/zhb2000/p/vector-cross-product-solve-intersection.html#:~:text=%E6%88%91%E4%BB%AC%E7%94%A8%E7%82%B9%20p%201%20%E5%92%8C%E5%90%91%E9%87%8F%20v%20%E2%86%92%201%20%E6%9D%A5%E8%A1%A8%E7%A4%BA%E7%9B%B4%E7%BA%BF,%E2%86%92%202%20%3D%200%20%E2%86%92%20%EF%BC%88%E4%B8%A4%E5%90%91%E9%87%8F%E5%B9%B3%E8%A1%8C%EF%BC%89%E8%BF%99%E4%B8%AA%E5%BC%8F%E5%AD%90%E6%B1%82%E5%87%BA%20t%20%E3%80%82
+
+    //计算射线的方向向量 rayDir 和线段的方向向量
+    cv::Point2f rayDir = rayEnd - rayStart;
+    cv::Point2f segmentDir = segmentEnd - segmentStart;
+    float crossProduct = rayDir.x * segmentDir.y - rayDir.y * segmentDir.x; //crossProduct 表示计算两个向量的叉乘（叉积）。在计算几何中，叉乘是用来确定两个向量之间的垂直关系和方向的一种运算。
+                                                                            //叉乘的结果是一个新的向量，它垂直于原来两个向量所在的平面，并且方向根据右手法则确定。在几何中，叉乘常用于计算法向量、确定平面、判断点的位置关系等应用。
+    //如果 crossProduct 接近于零，则表示射线和线段平行或共线，没有交点
+    if (std::abs(crossProduct) < std::numeric_limits<float>::epsilon())
+    {
+        // 射线与线段平行或共线
+        return false;
+    }
+
+    //ray方向上的延长尺度  P = rayStart + t * rayDir
+    double t_ray = IntersectionScale(rayStart, rayEnd, segmentStart, segmentEnd);
+
+    //segment上的延长尺度  P = segmentStart + u * segmentDir
+    double t_segment = IntersectionScale(segmentStart, segmentEnd, rayStart, rayEnd);
+
+    // segment的尺寸
+    double length_segment = sqrt(   (rayEnd.x-rayStart.x)*(rayEnd.x-rayStart.x)   +  (rayEnd.y-rayStart.y)*(rayEnd.y-rayStart.y)   );
+
+    //判断是否正确
+     if (t_ray >= 0 && t_segment >= 0 && t_segment <= length_segment)
+    {
+        SafeNBVPoint = rayStart + (t_ray + mMinPlaneSafeRadius) * normalize(rayEnd - rayStart);
+        return true;
+    }
+
+    return false;
+}
 
 
 // 提取候选平面（mvPlanes_filter）和候选观测点（mvGlobalCandidate）

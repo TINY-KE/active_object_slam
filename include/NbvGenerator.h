@@ -116,6 +116,9 @@ private:
     vector<BackgroudObject*> mvBackgroud_objects;
 
     void Filter_BackgroudObjects_and_Extract_Candidates(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
+    double IntersectionScale(const cv::Point2f& p1Start, const cv::Point2f& p1End, const cv::Point2f& p2Start, const cv::Point2f& p2End);
+    bool computeIntersection(const cv::Point2f& rayStart, const cv::Point2f& rayEnd, const cv::Point2f& segmentStart, const cv::Point2f& segmentEnd, cv::Point2f& SafeNBVPoint);
+    cv::Point2f normalize(cv::Point2f ray_n  );
     void Extract_Candidates();
     void ExtractCandidates(const vector<MapPlane *> &vpMPs);
     vector<Candidate> RotateCandidates(Candidate& initPose);
