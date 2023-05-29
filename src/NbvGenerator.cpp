@@ -74,7 +74,11 @@ mpMap(map), mpTracker(pTracking)
     mGobalCandidateNum = fSettings["Planle.Gobal_Candidate_Num"];
     mbPubNavGoal = fSettings["PubNavGoal"];
     mTfDuration = fSettings["MAM.TfDuration"];
+    mReward_dis = fSettings["MAM.Reward_dis"];
 
+    Candidate origin_pose;
+    origin_pose.pose = mT_world_cam;
+    mNBVs_old.push_back(origin_pose);
 }
 
 void NbvGenerator::Run() {
@@ -83,6 +87,14 @@ void NbvGenerator::Run() {
         //1.获取地图中的平面和物体。 并在每次global nbv计算前， 计算一遍所有物体的主方向
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         vector<Object_Map*> ForegroundObjectMaps = mpMap->GetObjects();
+        int ii =0;
+        for(auto fo: ForegroundObjectMaps){
+            if(fo->bad_3d)
+                continue;
+            ii++;
+        }
+        std::cout<<"[ForegroundObjectMaps num]:"<<ii<<std::endl;
+
         mvGlobalCandidate.clear();
         for(auto obj: ForegroundObjectMaps)
             obj->ComputeMainDirection();
@@ -132,7 +144,7 @@ void NbvGenerator::Run() {
 
             //version2： 只处理面向中心的原位置
             computeReward(mvGlobalCandidate[i]); //  , ForegroundObjectMaps
-            ROS_INFO("final test reward:%f", mvGlobalCandidate[i].reward);
+            //ROS_INFO("final test reward:%f", mvGlobalCandidate[i].reward);
         }
 
         //3. 将全局NBV发送给导航模块
@@ -142,9 +154,6 @@ void NbvGenerator::Run() {
             std::sort(mvGlobalCandidate.begin(), mvGlobalCandidate.end(),
                       [](Candidate a, Candidate b) -> bool { return a.reward > b.reward; });
             //NBV = *mvGlobalCandidate.begin();
-
-            //可视化平面
-            //PublishPlanes();
 
             //桌面边缘的候选点,rviz可视化
             PublishGlobalNBVRviz(mvGlobalCandidate);
@@ -232,9 +241,9 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        cout<< "垂直夹角angle:"<<angle<<std::endl;
+        //cout<< "垂直夹角angle:"<<angle<<std::endl;
         if ((angle < 0.2) && (angle > -0.2)){
-            cout<< "不是水平面:"<<angle<<std::endl;
+            //cout<< "不是水平面:"<<angle<<std::endl;
             continue;
         }
 
@@ -327,7 +336,7 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
         minPoint << x_min, y_min, z_min, 0.0f;
         maxPoint << x_max, y_max, z_max, 0.0f;
 
-        BackgroudObject* bo;
+        BackgroudObject* bo = new BackgroudObject();
         //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
         bo->max_x = x_max;
         bo->max_y = y_max;
@@ -346,7 +355,7 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
         bo->height = z_max - 0.0;
 
         // Rotation matrix.
-        //bo->computePose();
+        bo->computePose();
         //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
 
         bo->mnId = pMP->mnId;
@@ -370,34 +379,38 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
     std::cout << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
 
 
-    //1.先按照背景物体的mnid，排序，从小开始处理
-    std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
+    //1.如果有两个或以上的背景物体。按照背景物体的mnid，排序，从小开始处理
+    if(mvBackgroud_objects.size() > 1)
+        std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
             return obj1->mnId < obj2->mnId;
         });
 
     //2.背景物体，从第一个没完成建图的背景物体周围，提取 候选点
     //for (int i=0; i<mvBackgroud_objects.size(); i++){
     BackgroudObject* bo_first;
-    for(auto bo : mvBackgroud_objects){
-        if(!bo->return_end_active_mapping()){
-            bo_first = bo;
-            std::cerr << "选中背景物体，开始生成NBV" << std::endl;
-        }
-    }
-
+    //for(auto bo : mvBackgroud_objects){
+    //    if(!bo->return_end_active_mapping()){
+    //        bo_first = bo;
+    //        std::cerr << "选中背景物体，开始生成NBV" << std::endl;
+    //    }
+    //}
+    bo_first = mvBackgroud_objects[0];
 
     //计算candidates
     double safe_radius = mMinPlaneSafeRadius;
-    double divide = mGobalCandidateNum;
-    double step = floor( 2* M_PI / divide);
+    double divide = mGobalCandidateNum; //36
+    double step = 2* M_PI / divide;  //floor( 2* M_PI / divide); //10
     for(int i=0; i< divide; i++){
         // 射线起点和方向
+        //std::cout << "bo_first->mean_x, mean_y: "<<std::endl;
+        //std::cout << bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
         cv::Point2f rayOrigin(bo_first->mean_x, bo_first->mean_y);
-        float rayAngle = i*step+ divide/2 /* 射线的角度，以弧度表示 */;
+        float rayAngle = ( i+0.5)*step /* 射线的角度，以弧度表示 */;
+        //std::cout << "2 bo_first->mean_x, mean_y: "<<bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
 
         // 矩形边框信息
-        cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y - bo_first->width/2);
-        cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y + bo_first->width/2);
+        cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y + bo_first->width/2);
+        cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y - bo_first->width/2);
 
         // 计算射线与矩形边框的交点
         cv::Point2f SafeNBVPoint_best;
@@ -409,45 +422,49 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
 
         // 计算射线与每条边的交点
         cv::Point2f SafeNBVPoint;
-
+        int type = 0;
         // 射线与右边相交
-        if (computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
+        if ( rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
         {
+            type=1;
             SafeNBVPoint_best = SafeNBVPoint;
             hasIntersection = true;
         }
 
         // 射线与上边相交
-        else if (computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
+        else if (rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
         {
+            type=2;
             SafeNBVPoint_best = SafeNBVPoint;
             hasIntersection = true;
         }
 
         // 射线与左边相交
-        else if (computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
+        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
         {
+            type=3;
             SafeNBVPoint_best = SafeNBVPoint;
             hasIntersection = true;
         }
 
         // 射线与下边相交
-        else if (computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
+        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
         {
+            type=4;
             SafeNBVPoint_best = SafeNBVPoint;
             hasIntersection = true;
         }
-
-        // 打印交点坐标（如果存在交点）
-        if (hasIntersection)
-        {
-            std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
-
-        }
-        else
-        {
-            std::cout << "射线没有与矩形相交" << std::endl;
-        }
+        //std::cout<<"[computeIntersection],num:"<<i<<", type:"<<type<<", angle:"<<rayAngle<<", coordinate:"<<SafeNBVPoint.x <<", "<<SafeNBVPoint.y<<std::endl;
+        //// 打印交点坐标（如果存在交点）
+        //if (hasIntersection)
+        //{
+        //    std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
+        //
+        //}
+        //else
+        //{
+        //    std::cout << "射线没有与矩形相交" << std::endl;
+        //}
 
 
 
@@ -474,7 +491,7 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
         //cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
         // 计算向量v，从NBV指向物体中心。计算角度θ，即向量v与x轴正方向之间的夹角
-        cv::Point2f v =  cv::Point2f(x,y) - SafeNBVPoint_best;
+        cv::Point2f v =  cv::Point2f(bo_first->mean_x,bo_first->mean_y) - SafeNBVPoint_best;
         float angle = std::atan2(v.y, v.x);
 
         //转换成  变换矩阵
@@ -493,7 +510,6 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
         candidate.pose = Camera_mat.clone();
         candidate.bo = bo_first;
         mvGlobalCandidate.push_back(candidate);
-8
 
     }
     //二、Extract Candidates End
@@ -543,7 +559,8 @@ bool NbvGenerator::computeIntersection(const cv::Point2f& rayStart, const cv::Po
     double t_segment = IntersectionScale(segmentStart, segmentEnd, rayStart, rayEnd);
 
     // segment的尺寸
-    double length_segment = sqrt(   (rayEnd.x-rayStart.x)*(rayEnd.x-rayStart.x)   +  (rayEnd.y-rayStart.y)*(rayEnd.y-rayStart.y)   );
+    double length_segment = sqrt(   (segmentEnd.x-segmentStart.x)*(segmentEnd.x-segmentStart.x)   +  (segmentEnd.y-segmentStart.y)*(segmentEnd.y-segmentStart.y)   );
+    //double length_segment = sqrt(   (rayEnd.x-rayStart.x)*(rayEnd.x-rayStart.x)   +  (rayEnd.y-rayStart.y)*(rayEnd.y-rayStart.y)   );
 
     //判断是否正确
      if (t_ray >= 0 && t_segment >= 0 && t_segment <= length_segment)
@@ -662,10 +679,10 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
         float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
                       groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
                       groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        cout<< "垂直夹角angle:"<<angle<<std::endl;
+        //cout<< "垂直夹角angle:"<<angle<<std::endl;
         if ((angle < 0.2) && (angle > -0.2)){
             continue;
-            cout<< "不是水平面:"<<angle<<std::endl;
+            //cout<< "不是水平面:"<<angle<<std::endl;
         }
 
 
@@ -953,8 +970,7 @@ void NbvGenerator::publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     Object3D->mCuboid3D.lenth = x_max - x_min;
     Object3D->mCuboid3D.width = y_max - y_min;
     Object3D->mCuboid3D.height = z_max - 0.0;
-    Object3D->Update_Twobj();
-    mpMap->AddObject(Object3D);
+    //Object3D->Update_Twobj();
 
     //(1)物体
     visualization_msgs::Marker marker;
@@ -1078,7 +1094,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
 
 
 
-    for(int i=0; i < mCandidate_num_topub/*candidates.size()*/; i++)
+    for(int i=0; i < candidates.size()  /*mCandidate_num_topub*/; i++)
     {
         //cv::Mat Tcw = Tcws[i];
         vector<float> color ;
@@ -1140,19 +1156,21 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         mCandidate.id= mtest ++;
         mCandidate.lifetime = ros::Duration(5.0);
         mCandidate.header.stamp = ros::Time::now();
-        mCandidate.color.r=float(colors_bgr[i][0]/255.0);
-        mCandidate.color.b=float(colors_bgr[i][1]/255.0);
-        mCandidate.color.g=float(colors_bgr[i][2]/255.0);
-        mCandidate.color.a=1.0f;
         mCandidate.scale.x=fPointSize;
         mCandidate.scale.y=fPointSize;
-        publisher_candidate.publish(mCandidate);
-        //mCandidate.color.r=0.0f;
-        //mCandidate.color.b=0.0f;
-        //mCandidate.color.g=0.0f;
-        //publisher_candidate_unsort.publish(mCandidate);
-        ROS_INFO("Candidate %d, x:%f, y:%f, reward:%f", i, Twc.at<float>(0,3), Twc.at<float>(1,3), candidates[i].reward);
-
+        mCandidate.color.a=1.0f;
+        if(i<mCandidate_num_topub){
+            int color_num = i%7;
+            mCandidate.color.r=float(colors_bgr[color_num][0]/255.0);
+            mCandidate.color.b=float(colors_bgr[color_num][1]/255.0);
+            mCandidate.color.g=float(colors_bgr[color_num][2]/255.0);
+            publisher_candidate.publish(mCandidate);
+        }
+        mCandidate.color.r=0.0f;
+        mCandidate.color.b=0.0f;
+        mCandidate.color.g=0.0f;
+        publisher_candidate_unsort.publish(mCandidate);
+        //ROS_INFO("Candidate %d, x:%f, y:%f, reward:%f", i, Twc.at<float>(0,3), Twc.at<float>(1,3), candidates[i].reward);
     }
 }
 
@@ -1379,9 +1397,14 @@ void NbvGenerator::computeReward(Candidate &candidate){
     double object_reward = 0;
     int object_viewed_num = 0;
     Eigen::Vector3d direction_all = Eigen::Vector3d::Zero();
-    auto obj3ds = candidate.bo->FOs;
+    auto obj3ds = candidate.bo->mvFOs;
+    std::cout<<"Reward compute: ";
+    int num_valid=0;
     for (int i = 0; i < (int)obj3ds.size(); i++) {
         Object_Map *obj3d = obj3ds[i];
+        if(obj3d->bad_3d)
+            continue;
+
         bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
         if(viewed)
         {
@@ -1390,6 +1413,15 @@ void NbvGenerator::computeReward(Candidate &candidate){
 
             // (2)物体的完整性评价 mIE
             IE_reward = obj3d->mIE;
+            if(IE_reward<0 || IE_reward>1){
+                // 输出错误信息到 std::cerr
+                std::cerr << "Error: IE_reward<0 || IE_reward>1 !" << std::endl;
+                // 终止程序
+                //std::exit(EXIT_FAILURE);
+                continue;
+            }
+
+            num_valid++;
 
             // (3) Candidate和物体最佳视角 之间的视线夹角.
             Eigen::Vector3d direction = obj3d->mMainDirection;
@@ -1400,17 +1432,11 @@ void NbvGenerator::computeReward(Candidate &candidate){
                 0.0
             );
             double cosTheta  = robot_view_object.dot(direction) / (robot_view_object.norm() * direction.norm()); //角度cos值
+            std::cout<<",  [IE_reward,cosTheta]:"<<IE_reward <<","<< cosTheta;
             object_reward += /*np_reward **/ IE_reward * cosTheta;
         }
     }
-    //Eigen::Vector3d robot_view_world (
-    //            -2.0 - T_w_basefoot(0,3) ,
-    //            0.0 - T_w_basefoot(1,3) ,
-    //            0.0
-    //        );
-    //double cosTheta_all  = robot_view_world.dot(direction_all) / (robot_view_world.norm() * direction_all.norm()); //角度cos值
-
-
+    std::cout<<std::endl;
 
     // 2. 与nbvs old之间的距离
 
@@ -1430,9 +1456,9 @@ void NbvGenerator::computeReward(Candidate &candidate){
     double angle_Candidate = computeCosAngle_Signed(v1, v2, 1);
     double dis_reward =  fabs(angle_Candidate-angle_oldNBV)  / M_PI;
 
-    //3. 两项相加
-    double reward = object_reward + 0.5*dis_reward;
-    ROS_INFO("Reward compute x:%f, y:%f, reward:%f",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward);
+    //3. 两项相加,
+    double reward = object_reward + mReward_dis * dis_reward;
+    printf("[Result reward compute] x:%f, y:%f, reward:%f, object_reward:%f, dis_reward:%f \n",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward, object_reward, dis_reward);
     //ROS_INFO_STREAM("  robot_view_world:" << robot_view_world.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
     //ROS_INFO_STREAM("  direction_all:" << direction_all.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
     candidate.reward = reward;

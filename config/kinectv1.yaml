@@ -172,7 +172,7 @@ MAM.neckdelay: 100
 MAM.divide: 20
 MAM.NeckRange: 6.28
 MAM.TfDuration: 2.0
-
+MAM.Reward_dis: 0.2
 #--------------------------------------------------------------------------------------------
 # Global NBV
 #--------------------------------------------------------------------------------------------
@@ -184,13 +184,13 @@ IE.P_free: 0.4
 IE.P_prior: 0.5
 IE.ThresholdPointNum: 6
 IE.PublishIEwheel: 0
-IE.ThresholdEndMapping: 0.42   #设置为极小值，即可关闭end_build
+IE.ThresholdEndMapping: 0.5    #0.42   #设置为极小值，即可关闭end_build
 Plane.Height.Max: 2.0
-Plane.Height.Min: 0.5
-Planle.Safe_radius: 0.7
+Plane.Height.Min: 0.3
+Planle.Safe_radius: 0.5
 Planle.Gobal_Candidate_Num: 36
 NBV_Angle_correct_factor: 0 #-0.5
-Candidate_num_topub: 7
+Candidate_num_topub: 1 #36
 ViewField: 0.7
 
 #--------------------------------------------------------------------------------------------

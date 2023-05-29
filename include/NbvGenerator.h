@@ -156,6 +156,7 @@ private:
     //std::mutex mMutexMamAngle;
     //double getMamGreadAngle();
     string mstrSettingPath;
+    float mReward_dis;
 
 //NBV MAM
 private:

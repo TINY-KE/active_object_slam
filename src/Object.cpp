@@ -2970,30 +2970,31 @@ BackgroudObject::~BackgroudObject()  {
 }
 
 bool BackgroudObject::include(Object_Map* fo){
-    //前景物体的中心
-    Eigen::Vector3d  fo_centor;
-    fo_centor = Eigen::Vector3d(fo->mCuboid3D.cuboidCenter.x(), fo->mCuboid3D.cuboidCenter.y(), fo->mCuboid3D.cuboidCenter.z());
+    ////前景物体的中心
+    //Eigen::Vector3d  fo_centor;
+    //fo_centor = Eigen::Vector3d(fo->mCuboid3D.cuboidCenter.x(), fo->mCuboid3D.cuboidCenter.y(), fo->mCuboid3D.cuboidCenter.z());
 
     //背景物体的中心
     cv::Mat T_w_bo = this->pose_mat;
     cv::Mat T_bo_w = T_w_bo.inv();
 
     // 将点从世界坐标系变换到椭球体坐标系下（即通过椭球体的位姿将点变换到与椭球体同一坐标系）
-    Eigen::Vector4d centor_w = real_to_homo_coord<double>(fo_centor);
+    Eigen::Vector4d centor_w = Eigen::Vector4d(fo->mCuboid3D.cuboidCenter.x(), fo->mCuboid3D.cuboidCenter.y(), fo->mCuboid3D.cuboidCenter.z(), 1.0);   //real_to_homo_coord<double>(fo_centor);
     Eigen::Vector4d centor_bo = Converter::cvMattoMatrix4d(T_bo_w) * centor_w;
-    Eigen::Vector3d centor_bo_3 = homo_to_real_coord<double>(centor_bo);
 
-    double x = std::abs(centor_bo_3[0]);
-    double y = std::abs(centor_bo_3[1]);
-    double z = std::abs(centor_bo_3[2]);
+    double x = std::abs(centor_bo[0]);
+    double y = std::abs(centor_bo[1]);
+    double z = std::abs(centor_bo[2]);
     //std::cout<<"[debug IOU,x]:" <<x<<std::endl;
     //std::cout<<"[debug IOU,y]:" <<y<<std::endl;
     //std::cout<<"[debug IOU,z]:" <<z<<std::endl;
     // 将点在各个坐标轴上的坐标与椭球体在各个坐标轴上的半径进行比较，若点在三个坐标轴上的坐标都小于椭球体在各个坐标轴上的半径，则返回true，否则返回false。
-    if(x <this->length/2.5 && y < this->width/2.5 )
+    if(x <this->length/2.0*1.25 && y < this->width/2.0*1.25 )
         return true;
-    else
+    else{
+        std::cout<<"[include]: x:"<<x <<" length:"<<this->length <<", y:"<<y <<" width:"<<this->width << std::endl;
         return false;
+    }
 }
 
 bool BackgroudObject::AllInclude(vector<Object_Map*> fos){
@@ -3018,21 +3019,27 @@ bool BackgroudObject::AllInclude(vector<Object_Map*> fos){
         //std::cout<<"[debug IOU,y]:" <<y<<std::endl;
         //std::cout<<"[debug IOU,z]:" <<z<<std::endl;
         // 将点在各个坐标轴上的坐标与椭球体在各个坐标轴上的半径进行比较，若点在三个坐标轴上的坐标都小于椭球体在各个坐标轴上的半径，则返回true，否则返回false。
-        if(x <this->length/2.5 && y < this->width/2.5 )
-            FOs.push_back(fo);
+        if(x <this->length/2.0 && y < this->width/2.0 )
+            mvFOs.push_back(fo);
     }
 }
 
-void BackgroudObject::IncludeFOs_and_WheatherEndActive(std::vector<Object_Map*> FOs) {
+void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_Map*> &FOs) {
+    mvFOs.clear();
     FO_num = 0;
     FO_num_not_end = 0;
-    for(auto fo: FOs){
+    for(int i=0;i<FOs.size(); i++){
+        Object_Map* fo = FOs[i];
+        if(fo->bad_3d){
+            continue;
+        }
+
         //先默认已经结束建图
         this->end_activemapping = true;
         //如果还有前景物体没有完成，则将 end_.. 改回false
         if( this->include(fo) )
         {
-            FOs.push_back(fo);
+            mvFOs.push_back(fo);
             FO_num ++;
             if( fo->end_build == false){
                 this->end_activemapping = false;
@@ -3040,6 +3047,7 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(std::vector<Object_Map*> 
             }
         }
     }
+    std::cout<<"[IncludeFOs_and_WheatherEndActive]:"<<FO_num <<"/"<<FOs.size()<<std::endl;
 }
 
 bool BackgroudObject::return_end_active_mapping()

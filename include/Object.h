@@ -392,12 +392,12 @@ public:
     double IEvalue;
     double FO_num, FO_num_not_end ;
     cv::Mat pose_mat = cv::Mat::eye(4, 4, CV_32F);
-    std::vector<Object_Map*> FOs;
+    std::vector<Object_Map*> mvFOs;
 
 public:
     bool include(Object_Map* fo);
     bool AllInclude(std::vector<Object_Map*> fos);
-    void IncludeFOs_and_WheatherEndActive(std::vector<Object_Map*> FOs);
+    void IncludeFOs_and_WheatherEndActive(const std::vector<Object_Map*> &FOs);
 
     void computePose();
 
