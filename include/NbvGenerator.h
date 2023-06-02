@@ -116,16 +116,19 @@ private:
     vector<BackgroudObject*> mvBackgroud_objects;
 
     void Filter_BackgroudObjects_and_Extract_Candidates(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
+    void Filter_BackgroudObjects(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
+    void Extract_Candidates( BackgroudObject* bo_first );
+    void Extract_Candidates();
+    void ExtractCandidates(const vector<MapPlane *> &vpMPs);
+
     double IntersectionScale(const cv::Point2f& p1Start, const cv::Point2f& p1End, const cv::Point2f& p2Start, const cv::Point2f& p2End);
     bool computeIntersection(const cv::Point2f& rayStart, const cv::Point2f& rayEnd, const cv::Point2f& segmentStart, const cv::Point2f& segmentEnd, cv::Point2f& SafeNBVPoint);
     cv::Point2f normalize(cv::Point2f ray_n  );
-    void Extract_Candidates();
-    void ExtractCandidates(const vector<MapPlane *> &vpMPs);
+
     vector<Candidate> RotateCandidates(Candidate& initPose);
     double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
     void computeReward(Candidate &candidate); //, vector<Object_Map*> obj3ds
-    void ExtractNBV();
-    void PublishNBV();
+
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
     void PublishGlobalNBVRviz(const vector<Candidate> &candidates);
     void addOldNBV(Candidate &candidate);
@@ -136,8 +139,9 @@ private:
     ros::Publisher pubCloud;
     ros::Publisher publisher_object_backgroud;
     //MapPublisher mappublisher;
-    void PublishBackgroudObjects();
+    void PublishBackgroudObjects_and_SupportingPlane();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
+    void publishBackgroudObject( BackgroudObject* bo );
     geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
 
 
@@ -151,6 +155,7 @@ private:
     cv::Mat mT_world_cam;     //初始相机在世界中的坐标
     double mNBV_Angle_correct;
     int mCandidate_num_topub; //展示的候选观测点的数量
+    int mBackgroudObjectNum;    //背景物体的数量。先验
     double mPitch;  //相机的俯仰角
     //double mgreat_angle = 0;
     //std::mutex mMutexMamAngle;

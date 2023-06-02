@@ -2992,7 +2992,7 @@ bool BackgroudObject::include(Object_Map* fo){
     if(x <this->length/2.0*1.25 && y < this->width/2.0*1.25 )
         return true;
     else{
-        std::cout<<"[include]: x:"<<x <<" length:"<<this->length <<", y:"<<y <<" width:"<<this->width << std::endl;
+        //std::cout<<"[include]: x:"<<x <<" length:"<<this->length <<", y:"<<y <<" width:"<<this->width << std::endl;
         return false;
     }
 }
@@ -3041,13 +3041,13 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
         {
             mvFOs.push_back(fo);
             FO_num ++;
-            if( fo->end_build == false){
+            if(!fo->end_build){
                 this->end_activemapping = false;
                 FO_num_not_end ++;
             }
         }
     }
-    std::cout<<"[IncludeFOs_and_WheatherEndActive]:"<<FO_num <<"/"<<FOs.size()<<std::endl;
+    //std::cout<<"[IncludeFOs_and_WheatherEndActive]:"<<FO_num <<"/"<<FOs.size()<<std::endl;
 }
 
 bool BackgroudObject::return_end_active_mapping()
