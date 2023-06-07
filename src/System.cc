@@ -560,7 +560,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
 
         g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
         pose = Converter::cvMattoG2oSE3Quat(object->pose_mat);
-        f_point     << "1 "  //物体
+        f_nopoint   << "1 "  //物体
                     << object->mnId << "   "
                     << object->mnClass << " "
                     << "1 "
@@ -580,7 +580,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
 
     f_point.close();
     f_nopoint.close();
-    cout << endl << "Object saved!" << endl;
+    cout << endl << "Object saved! 其中背景物体："<<vBackgroudObjects.size() << endl;
 
 }
 

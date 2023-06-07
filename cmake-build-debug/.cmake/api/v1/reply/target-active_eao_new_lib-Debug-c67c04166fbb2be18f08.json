@@ -1005,11 +1005,6 @@
 			},
 			{
 				"backtrace" : 2,
-				"fragment" : "/usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1",
-				"role" : "libraries"
-			},
-			{
-				"backtrace" : 2,
 				"fragment" : "/opt/ros/melodic/lib/libcv_bridge.so",
 				"role" : "libraries"
 			},

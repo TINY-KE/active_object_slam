@@ -165,7 +165,7 @@ target_link_libraries(${PROJECT_NAME}_lib
    ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
    ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
    # /usr/lib/x86_64-linux-gnu/libboost_system.so
-   /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1
+#   /usr/lib/x86_64-linux-gnu/libboost_system.so.1.65.1
    ${catkin_LIBRARIES}  #for ros
    ${PCL_LIBRARIES}
 
@@ -183,14 +183,14 @@ target_link_libraries(${PROJECT_NAME}_lib
 add_executable(active_rgbd ros_src/init_test.cpp)
 target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
 
-add_executable(rviz_dae ros_src/rviz_dae.cpp)
-target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
+#add_executable(rviz_dae ros_src/rviz_dae.cpp)
+#target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
 
-add_executable(eval eval/eval.cpp)
-target_link_libraries(eval   ${PROJECT_NAME}_lib   )
+#add_executable(eval eval/eval.cpp)
+#target_link_libraries(eval   ${PROJECT_NAME}_lib   )
 
-add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
-target_link_libraries(extract_gazebo_groudth
-   ${PROJECT_NAME}_lib
-   ${GAZEBO_LIBRARIES}
-)
+#add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
+#target_link_libraries(extract_gazebo_groudth
+#   ${PROJECT_NAME}_lib
+#   ${GAZEBO_LIBRARIES}
+#)

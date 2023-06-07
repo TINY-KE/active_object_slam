@@ -373,7 +373,15 @@ void cmpute_corner(Object_Map* object) ;
 void ReadLocalObjects( const std::string& filePath, std::vector<Object_Map*>& vObjects);
 
 
+
 class BackgroudObject {
+
+public:
+    enum eState{
+        UnExplored=0,
+        UnEnd=1,
+        End=2
+    };
 
 public:
     BackgroudObject();
@@ -382,13 +390,14 @@ public:
 public:
     int mnId;
     int mnClass = 60;
+    int mState = UnExplored;
     //pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     PointCloud::Ptr mPlane;         //支撑面
     double mean_x,mean_y,mean_z;	//物体中心
     double max_x,max_y,max_z;
     double min_x,min_y,min_z;
     double length,width,height;
-    bool end_activemapping = false;
+    //bool end_activemapping = false;
     double IEvalue;
     double FO_num, FO_num_not_end ;
     cv::Mat pose_mat = cv::Mat::eye(4, 4, CV_32F);

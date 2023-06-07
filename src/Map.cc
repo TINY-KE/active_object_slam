@@ -153,6 +153,14 @@ void Map::ClearBackgroudObjects() {
 void Map::AddBackgroudObject(BackgroudObject *pObj)
 {
     unique_lock<mutex> lock(mMutexMap);
+    for(std::set<BackgroudObject*>::iterator iter=mvBackgroudObjectMap.begin(); iter!=mvBackgroudObjectMap.end();  ){
+       if(pObj->mnId == (*iter)->mnId ){
+           iter = mvBackgroudObjectMap.erase(iter);
+       }
+       else{
+           ++ iter;
+       }
+    }
     mvBackgroudObjectMap.insert(pObj);
 }
 

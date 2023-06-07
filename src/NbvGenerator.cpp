@@ -31,6 +31,7 @@ mpMap(map), mpTracker(pTracking)
     publisher_mam = nh.advertise<std_msgs::Float64>("/neck/neck_controller/command", 10);
     publisher_mam_rviz = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/local_nbv", 1000);
     mActionlib = new actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>("move_base", true);
+    sub_reachgoal = nh.subscribe("/reach_goal" , 1, &NbvGenerator::SubReachGoal, this);
     fPointSize=0.01;
     mCandidate.header.frame_id = MAP_FRAME_ID;
     mCandidate.ns = CANDIDATE_NAMESPACE;
@@ -76,25 +77,22 @@ mpMap(map), mpTracker(pTracking)
     mTfDuration = fSettings["MAM.TfDuration"];
     mReward_dis = fSettings["MAM.Reward_dis"];
     mBackgroudObjectNum = fSettings["IE.BackgroudObjectNum"];
+    mbFakeBackgroudObjects = fSettings["FakeBackgroudObjects"];
 
     Candidate origin_pose;
     origin_pose.pose = mT_world_cam;
     mNBVs_old.push_back(origin_pose);
 }
-
+void NbvGenerator::SubReachGoal(const std_msgs::Bool::ConstPtr & msg){
+    mbReachGoalFlag = msg->data;
+}
 void NbvGenerator::Run() {
     while(1)
     {
+        std::cerr << std::endl << "开始 一轮 NBV generator " << std::endl;
         //1.获取地图中的平面和物体。 并在每次global nbv计算前， 计算一遍所有物体的主方向
         vector<MapPlane *> vpMPlanes = mpMap->GetAllMapPlanes();
         vector<Object_Map*> ForegroundObjectMaps = mpMap->GetObjects();
-        int ii =0;
-        for(auto fo: ForegroundObjectMaps){
-            if(fo->bad_3d)
-                continue;
-            ii++;
-        }
-        std::cout<<"[ForegroundObjectMaps num]:"<<ii<<std::endl;
 
         mvGlobalCandidate.clear();
         for(auto obj: ForegroundObjectMaps)
@@ -110,16 +108,22 @@ void NbvGenerator::Run() {
         //Filter_BackgroudObjects_and_Extract_Candidates(vpMPlanes, ForegroundObjectMaps);
         //PublishBackgroudObjects();  //可视化 筛选后的平面
         //v2:
-        Filter_BackgroudObjects(vpMPlanes, ForegroundObjectMaps);
+        std::cerr << "地图中平面的数量为" << vpMPlanes.size() << std::endl;
+        if(mbFakeBackgroudObjects)
+            Fake_BackgroudObjects(vpMPlanes, ForegroundObjectMaps);
+        else
+            Filter_BackgroudObjects(vpMPlanes, ForegroundObjectMaps);
+
         if (mvBackgroud_objects.empty()){
-            std::cerr << "当前背景物体的数量为0" << std::endl;
+            std::cerr << "其中背景物体的数量为：0" << std::endl;
             continue;
         }
-        else if(mvBackgroud_objects.size() > 1){
-            std::cout << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
-            std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
-                return obj1->mnId < obj2->mnId;
-            });
+        else {
+            std::cout << "其中背景物体的数量为："<< mvBackgroud_objects.size()  << std::endl;
+            if(mvBackgroud_objects.size() > 1)
+                std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
+                    return obj1->mnId < obj2->mnId;
+                });
 
             BackgroudObject* bo_first = new BackgroudObject();
             bool init_bo_first = false;
@@ -139,6 +143,9 @@ void NbvGenerator::Run() {
                 std::cerr << "结束建图，两个桌子都建立完毕了"<< std::endl;
                 break;
 
+            }
+            else{
+                std::cerr << "没有找到用于生成候选点的背景物体" << std::endl;
             }
         }
 
@@ -182,7 +189,8 @@ void NbvGenerator::Run() {
 
             //Global NBV:  将候选点的第一个,发送为movebase的目标点
             if(mbPubNavGoal){
-                cv::Mat Twc = mvGlobalCandidate.front().pose.clone();
+                auto Gnbv = mvGlobalCandidate.front();
+                cv::Mat Twc = Gnbv.pose.clone();
                 cv::Mat T_w_baselink = Twc * mT_basefootprint_cam.inv();
 
                 while(!mActionlib->waitForServer(ros::Duration(5.0))){
@@ -204,27 +212,61 @@ void NbvGenerator::Run() {
 
                 //4. 在导航过程中，生成Local NBV:
                 while(!mActionlib->waitForResult(ros::Duration(0.1))){
-                    publishLocalNBV();
+                    publishLocalNBV(Gnbv);
+                    vector<Candidate> nbvs = {mvGlobalCandidate.front()};
+                    PublishGlobalNBVRviz(nbvs);
                 }
 
                 //5.导航结束后，让机器人扭头到最佳角度。如果到达了nbv，则将它存入nbvs_old
                 if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
                     ROS_INFO("The robot successed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y );
-                    mNBVs_old.push_back(mvGlobalCandidate.front());
+                    mNBVs_old.push_back(Gnbv);
                 }
                 else
                     ROS_INFO("The robot failed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
-                publishLocalNBV();
+                publishLocalNBV(Gnbv);
             }
             else{
-                //if(mMAM_turn == MAM_neckdelay)
-                //    publishLocalNBV();
-                //else if(mMAM_turn == 0)
-                //    mMAM_turn == MAM_neckdelay;
-                //else
-                //    mMAM_turn --;
-                //publishLocalNBV();
-                usleep( 0.5 * 1000);
+                // v1: 等待键盘输入
+                //while (true) {
+                //    int reach_goal = std::cin.peek(); //非阻塞
+                //    //int reach_goal = getchar(); //阻塞
+                //
+                //    //如果没有输入可用，std::cin.peek() 会返回 EOF（End-of-File）的值，通常是 -1。因此，在使用 std::cin.peek() 时，需要将返回值与 EOF 进行比较，以判断是否有输入可用。
+                //    //如果输入流中有可用字符，std::cin.peek() 会返回该字符的 ASCII 值。您可以将其与具体的字符进行比较，或者将其转换为 char 类型进行处理。
+                //    //使用 std::cin.peek() 时，需要注意输入缓冲区的状态。如果输入缓冲区中已经有字符，但尚未读取，那么 std::cin.peek() 会立即返回缓冲区中的下一个字符，而不会等待用户输入。但如果输入缓冲区为空，那么 std::cin.peek() 可能会等待用户输入。
+                //    //if (reach_goal != EOF)
+                //    if(reach_goal == '\n')
+                //    {
+                //        ROS_INFO("接收到回车" );
+                //        break;
+                //    }
+                //    else{
+                //        ROS_INFO("等待回车" );
+                //        vector<Candidate> nbvs = {mvGlobalCandidate.front()};
+                //        PublishGlobalNBVRviz(nbvs);
+                //        usleep( 0.1 * 1000);
+                //    }
+                //
+                //}
+
+                //v2:
+                ros::Rate loop_rate(2);
+                while(true){
+                    if(mbReachGoalFlag){
+                        ROS_INFO("到达NBV" );
+                        mbReachGoalFlag = false;
+                        break;
+                    } else{
+                        ROS_INFO("未到达NBV" );
+                        vector<Candidate> nbvs = {mvGlobalCandidate.front()};
+                        PublishGlobalNBVRviz(nbvs);
+                        //usleep( 0.5 * 1000);
+                        ros::spinOnce();
+                        loop_rate.sleep();
+                    }
+                }
+
             }
 
             //计算所属的背景物体的评价值
@@ -233,7 +275,7 @@ void NbvGenerator::Run() {
         }
 
         //usleep(10*1000);
-
+        std::cerr << "一轮 NBV generator 结束" << std::endl;
     }
 }
 
@@ -386,6 +428,7 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
 
         mvBackgroud_objects.push_back(bo);
         mpMap->AddBackgroudObject(bo);
+
     }
     //一、筛选背景物体结束
 
@@ -543,13 +586,11 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
     //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
     mvPlanes_filter.clear();
     mvBackgroud_objects.clear();
-    mpMap->ClearBackgroudObjects();
+    //mpMap->ClearBackgroudObjects();
 
     if (vpMPls.empty())
         return;
 
-
-    std::cerr << "地图中平面的数量为" << vpMPls.size() << std::endl;
     for (auto pMP : vpMPls)  //对vpMPs中每个平面pMP分别进行处理,
     {
         // 计算平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
@@ -688,6 +729,90 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
 }
 
+void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps ) {
+    //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
+    mvPlanes_filter.clear();
+    mvBackgroud_objects.clear();
+    mpMap->ClearBackgroudObjects();
+
+    double x,y,z,width,length,depth;
+    {
+        BackgroudObject* bo = new BackgroudObject();
+        //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+        x= -1.936606,y=-0.0614115 ,z=0.250644;
+        length=1.804500   ,width=1.600000 ,depth=0.721900;
+
+        bo->max_x = x+length/2.0;
+        bo->max_y = y+width/2.0;
+        bo->max_z = z+depth/2.0;
+
+        bo->min_x = x-length/2.0;
+        bo->min_y = y-width/2.0;
+        bo->min_z = 0.0;
+
+        bo->mean_x = x;
+        bo->mean_y = y;
+        bo->mean_z = z;
+
+        bo->length = length;
+        bo->width = width;
+        bo->height = depth;
+
+        // Rotation matrix.
+        bo->computePose();
+        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+        bo->mnId = 1;
+
+
+        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+        mvBackgroud_objects.push_back(bo);
+        mpMap->AddBackgroudObject(bo);
+    }
+
+    {
+        BackgroudObject* bo = new BackgroudObject();
+        //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+        //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
+        //width=0.721389 ,length=0.549443 ,depth=0.894369;
+        x=-2.039965 ,y=2.194572 ,z=0.455522 ;
+        length=1.096666 ,width=0.729113 ,depth=0.911044;
+        //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
+        //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
+        //Orientation: roll=0 ,pitch=-0 ,yaw=0
+        //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+
+        bo->max_x = x+length/2.0;
+        bo->max_y = y+width/2.0;
+        bo->max_z = z+depth/2.0;
+
+        bo->min_x = x-length/2.0;
+        bo->min_y = y-width/2.0;
+        bo->min_z = 0.0;
+
+        bo->mean_x = x;
+        bo->mean_y = y;
+        bo->mean_z = z;
+
+        bo->length = length;
+        bo->width = width;
+        bo->height = depth;
+
+        // Rotation matrix.
+        bo->computePose();
+        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+        bo->mnId = 2;
+
+
+        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+        mvBackgroud_objects.push_back(bo);
+        mpMap->AddBackgroudObject(bo);
+    }
+
+}
 
 // 提取候选平面
 void  NbvGenerator::Extract_Candidates( BackgroudObject* bo_first ) {
@@ -836,7 +961,7 @@ double  NbvGenerator::IntersectionScale(const cv::Point2f& p1, const cv::Point2f
     return t;
 }
 
-bool NbvGenerator::computeIntersection(const cv::Point2f& rayStart, const cv::Point2f& rayEnd, const cv::Point2f& segmentStart, const cv::Point2f& segmentEnd, cv::Point2f& SafeNBVPoint)
+bool NbvGenerator::computeIntersection(const cv::Point2f& rayStart, const cv::Point2f& rayEnd, const cv::Point2f& segmentStart, const cv::Point2f& segmentEnd, cv::Point2f& SafeNBVPoint )
 {
     //计算方法：https://www.cnblogs.com/zhb2000/p/vector-cross-product-solve-intersection.html#:~:text=%E6%88%91%E4%BB%AC%E7%94%A8%E7%82%B9%20p%201%20%E5%92%8C%E5%90%91%E9%87%8F%20v%20%E2%86%92%201%20%E6%9D%A5%E8%A1%A8%E7%A4%BA%E7%9B%B4%E7%BA%BF,%E2%86%92%202%20%3D%200%20%E2%86%92%20%EF%BC%88%E4%B8%A4%E5%90%91%E9%87%8F%E5%B9%B3%E8%A1%8C%EF%BC%89%E8%BF%99%E4%B8%AA%E5%BC%8F%E5%AD%90%E6%B1%82%E5%87%BA%20t%20%E3%80%82
 
@@ -865,7 +990,7 @@ bool NbvGenerator::computeIntersection(const cv::Point2f& rayStart, const cv::Po
     //判断是否正确
      if (t_ray >= 0 && t_segment >= 0 && t_segment <= length_segment)
     {
-        SafeNBVPoint = rayStart + (t_ray + mMinPlaneSafeRadius) * normalize(rayEnd - rayStart);
+        SafeNBVPoint = rayStart + (t_ray + mMinPlaneSafeRadius*t_ray) * normalize(rayEnd - rayStart);
         return true;
     }
 
@@ -1209,7 +1334,7 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     float height = bo->height;
 
     // Create an object in the map.
-    std::cout<<"可视化背景物体"<<std::endl;
+    //std::cout<<"可视化背景物体"<<std::endl;
     Object_Map *Object3D = new Object_Map;
     //     8------7
     //    /|     /|
@@ -1554,7 +1679,7 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
         mCandidate.points.push_back(msgs_p1);
 
         mCandidate.id= mtest ++;
-        mCandidate.lifetime = ros::Duration(.5);
+        mCandidate.lifetime = ros::Duration(2.0);
         mCandidate.header.stamp = ros::Time::now();
         mCandidate.scale.x=fPointSize;
         mCandidate.scale.y=fPointSize;
@@ -1566,15 +1691,18 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
             mCandidate.color.g=float(colors_bgr[color_num][2]/255.0);
             publisher_candidate.publish(mCandidate);
         }
-        mCandidate.color.r=0.0f;
-        mCandidate.color.b=0.0f;
-        mCandidate.color.g=0.0f;
-        publisher_candidate_unsort.publish(mCandidate);
+        else{
+            mCandidate.color.r=0.0f;
+            mCandidate.color.b=0.0f;
+            mCandidate.color.g=0.0f;
+            publisher_candidate_unsort.publish(mCandidate);
+        }
+
         //ROS_INFO("Candidate %d, x:%f, y:%f, reward:%f", i, Twc.at<float>(0,3), Twc.at<float>(1,3), candidates[i].reward);
     }
 }
 
-void NbvGenerator::publishLocalNBV(){
+void NbvGenerator::publishLocalNBV(const Candidate& nbv){
 
     //1.构建地图，并向mam中添加地图点。 TODO：也应该添加 物体。
     map_data MapData;
@@ -1694,8 +1822,8 @@ void NbvGenerator::publishLocalNBV(){
             //double direct_y = transform.getOrigin().y() - desk_center_y;
             //
             cv::Mat desk_center_w = cv::Mat::zeros(4,1,CV_32F);
-            desk_center_w.at<float>(0,0) = -2.0;
-            desk_center_w.at<float>(1,0) = 0.0;
+            desk_center_w.at<float>(0,0) = nbv.bo->mean_x;
+            desk_center_w.at<float>(1,0) = nbv.bo->mean_y;
             desk_center_w.at<float>(2,0) = 0.0;
             desk_center_w.at<float>(3,0) = 1.0;
             cv::Mat desk_center_robot = T_w_basefootprint.inv() * desk_center_w;
@@ -1781,6 +1909,15 @@ void NbvGenerator::clearOldNBV(){
     mNBVs_scale = 0.0;
 }
 
+bool NbvGenerator::near(Object_Map* fo, const cv::Mat& nbv){
+    double distance =   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))  *   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))
+                    +   (fo->mCuboid3D.cuboidCenter.y() - nbv.at<float>(1,3))  *   (fo->mCuboid3D.cuboidCenter.y() - nbv.at<float>(1,3)) ;
+    distance = sqrt(distance);
+    if(distance<0.5)
+        return true;
+    else
+        return false;
+}
 
 //计算每个候选视点的 评价函数
 void NbvGenerator::computeReward(Candidate &candidate){
@@ -1805,7 +1942,8 @@ void NbvGenerator::computeReward(Candidate &candidate){
         if(obj3d->bad_3d)
             continue;
 
-        bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
+        //bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
+        bool viewed = near(obj3d, candidate.pose);
         if(viewed)
         {
             //（1）关联置信度

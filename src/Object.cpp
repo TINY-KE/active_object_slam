@@ -2989,7 +2989,7 @@ bool BackgroudObject::include(Object_Map* fo){
     //std::cout<<"[debug IOU,y]:" <<y<<std::endl;
     //std::cout<<"[debug IOU,z]:" <<z<<std::endl;
     // 将点在各个坐标轴上的坐标与椭球体在各个坐标轴上的半径进行比较，若点在三个坐标轴上的坐标都小于椭球体在各个坐标轴上的半径，则返回true，否则返回false。
-    if(x <this->length/2.0*1.25 && y < this->width/2.0*1.25 )
+    if(x <this->length/2.0*1.5 && y < this->width/2.0*1.5 )
         return true;
     else{
         //std::cout<<"[include]: x:"<<x <<" length:"<<this->length <<", y:"<<y <<" width:"<<this->width << std::endl;
@@ -3034,15 +3034,14 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
             continue;
         }
 
-        //先默认已经结束建图
-        this->end_activemapping = true;
         //如果还有前景物体没有完成，则将 end_.. 改回false
         if( this->include(fo) )
         {
             mvFOs.push_back(fo);
             FO_num ++;
             if(!fo->end_build){
-                this->end_activemapping = false;
+                mState = UnEnd;
+                //this->end_activemapping = false;
                 FO_num_not_end ++;
             }
         }

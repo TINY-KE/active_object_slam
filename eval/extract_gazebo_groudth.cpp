@@ -143,7 +143,8 @@ int main(int argc, char **argv)
     yamlfile_object = "kinectv1.yaml";
 
     //gazebo world文件露脊鲸
-    string gazebo_file = "/home/zhjd/workspace/ws_huchunxu/src/ros_exploring/my_mobilearm/my_gazebo/world/nine_highdesk.world";
+    //string gazebo_file = "/home/zhjd/workspace/ws_huchunxu/src/ros_exploring/my_mobilearm/my_gazebo/world/nine_highdesk.world";
+    string gazebo_file = "/home/zhjd/workspace/ws_huchunxu/src/ros_exploring/my_mobilearm/my_gazebo/world/twodesk_wall.world";
 
     // Load gazebo
     gazebo::setupServer(argc, argv);
@@ -233,11 +234,14 @@ int main(int argc, char **argv)
 
     for(auto ob: obs) {
 
-        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone"){
+        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone" || ob.name == "wall"){
             std::cout << "invalid"<< std::endl;
             continue;
         }
-
+        //if(  ob.name != "desk_yellow" && ob.name != "desk_yellow_clone"){
+        //    std::cout << "invalid"<< std::endl;
+        //    continue;
+        //}
         id++;
         // Print model information
         std::cout <<  std::endl;
@@ -250,7 +254,7 @@ int main(int argc, char **argv)
         if ("bottle_red_wine" == ob.name  && "beer" == ob.name)  ob.class_id = 39;
         if ("cup_green" == ob.name && "cup_blue" == ob.name)  ob.class_id = 41;
         if ("vase_violet" == ob.name)  ob.class_id = 75;
-        if ("desk_yellow" == ob.name && "desk_yellow_clone" == ob.name)  ob.class_id = 60;
+        if ("desk_yellow" == ob.name && "desk_yellow_clone" == ob.name && "drawer_white" == ob.name)  ob.class_id = 60;
         if ("book_2" == ob.name && "book_16" == ob.name)  ob.class_id = 73;
         if ("laptop_pc_1" == ob.name)  ob.class_id = 63;
         if ("keyboard" == ob.name)  ob.class_id = 66;
