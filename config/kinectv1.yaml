@@ -38,7 +38,7 @@ DepthMapFactor: 1.0
 # 1: robot_camera tf; 2: use imu     imu pose,qw:0.640856,qx:0.298836,qy:0.298836,qz:0.640856
 # imu pose,qw:0.640856,qx:-0.298836,qy:-0.298836,qz:-0.640856
 # qw:0.627211,qx:0.326505,qy:0.326505,qz:0.627211
-ConstraintType: 1
+ConstraintType: 3
 Tworld_camera.qw: -0.364187
 Tworld_camera.qx: 0.606109
 Tworld_camera.qy: 0.606109
@@ -111,7 +111,7 @@ Viewer.ViewpointF: 500
 Viewer.pangolin: 0
 Viewer.rviz: 1
 Viewer.savelocalobject: 1
-Viewer.readlocalobject: 0
+
 Viewer.show_object3d_frame: 0
 
 Viewer.object_Duration: 0.1
@@ -172,7 +172,7 @@ MAM.neckdelay: 100
 MAM.divide: 20
 MAM.NeckRange: 6.28
 MAM.TfDuration: 2.0
-MAM.Reward_dis: 0.5
+
 #--------------------------------------------------------------------------------------------
 # Global NBV
 #--------------------------------------------------------------------------------------------
@@ -195,8 +195,12 @@ Candidate_num_topub: 1 #36
 ViewField: 0.7
 
 # 为1，用于开启机器人导航时
-PubNavGoal: 0
-FakeBackgroudObjects: 1
+PubGlobalGoal: 0
+PubLocalGoal: 1    # 2 my_nbv ; 1 cover;  0 frontier
+FakeBackgroudObjects: 1  #fake背景物体的数量
+MAM.Reward_dis: 0.0   #计算reward时的dis。
+Viewer.readlocalobject: 0
+
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

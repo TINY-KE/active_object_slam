@@ -147,11 +147,14 @@ int main(int argc, char **argv)
     SLAM.Shutdown();
 
     // (4)Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+    SLAM.SaveKeyFrameTrajectoryTUM("/home/zhjd/active_eao/src/active_eao/eval/temp/KeyFrameTrajectory.txt");
     int SaveLocalObjects = fSettings["Viewer.savelocalobject"];
-    if(SaveLocalObjects)
-        SLAM.SaveObjects(   "/home/zhjd/active_eao/src/active_eao/eval/Objects.txt",
-                            "/home/zhjd/active_eao/src/active_eao/eval/Objects_with_points.txt");
+    if(SaveLocalObjects){
+        SLAM.SaveObjects(   "/home/zhjd/active_eao/src/active_eao/eval/temp/Objects.txt",
+                            "/home/zhjd/active_eao/src/active_eao/eval/temp/Objects_with_points.txt");
+        SLAM.SaveGlobalNBVPose("/home/zhjd/active_eao/src/active_eao/eval/temp/GlobalNBV.txt");
+    }
+
     ros::shutdown();
 
     return 0;
@@ -160,8 +163,8 @@ int main(int argc, char **argv)
 void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD,const darknet_ros_msgs::BoundingBoxesConstPtr& msgBbox)
 {
     double current_time = msgRGB->header.stamp.toSec();
-    std::cout << std::endl << std::endl;
-    std::cout << "[Get a Frame with bbox] Timestamp:" << current_time << std::endl;
+    //std::cout << std::endl << std::endl;
+    //std::cout << "[Get a Frame with bbox] Timestamp:" << current_time << std::endl;
 
     // Copy the ros image message to cv::Mat.
     cv_bridge::CvImageConstPtr cv_ptrRGB;

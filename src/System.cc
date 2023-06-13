@@ -390,6 +390,43 @@ void System::SaveTrajectoryTUM(const string &filename)
 }
 
 
+//void System::SaveKeyFrameTrajectoryTUM(const string &filename)
+//{
+//    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+//
+//    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+//    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+//
+//    // Transform all keyframes so that the first keyframe is at the origin.
+//    // After a loop closure the first keyframe might not be at the origin.
+//    //cv::Mat Two = vpKFs[0]->GetPoseInverse();
+//
+//    ofstream f;
+//    f.open(filename.c_str());
+//    f << fixed;
+//
+//    for(size_t i=0; i<vpKFs.size(); i++)
+//    {
+//        KeyFrame* pKF = vpKFs[i];
+//
+//       // pKF->SetPose(pKF->GetPose()*Two);
+//
+//        if(pKF->isBad())
+//            continue;
+//
+//        cv::Mat R = pKF->mGroundtruthPose_mat.rowRange(0,3).colRange(0,3).clone();
+//        vector<float> q = Converter::toQuaternion(R);
+//        cv::Mat t = pKF->mGroundtruthPose_mat.rowRange(0,3).colRange(3,4).clone();
+//        f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+//          << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+//
+//    }
+//
+//    f.close();
+//    cout << endl << "Groudtrth trajectory saved!" << endl;
+//}
+
+
 void System::SaveKeyFrameTrajectoryTUM(const string &filename)
 {
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
@@ -414,16 +451,16 @@ void System::SaveKeyFrameTrajectoryTUM(const string &filename)
         if(pKF->isBad())
             continue;
 
-        cv::Mat R = pKF->GetRotation().t();
+        cv::Mat R = pKF->mGroundtruthPose_mat.rowRange(0,3).colRange(0,3).clone();
         vector<float> q = Converter::toQuaternion(R);
-        cv::Mat t = pKF->GetCameraCenter();
+        cv::Mat t = pKF->mGroundtruthPose_mat.rowRange(0,3).colRange(3,4).clone();
         f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
           << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
 
     }
 
     f.close();
-    cout << endl << "trajectory saved!" << endl;
+    cout << endl << "Groudtrth trajectory saved!" << endl;
 }
 
 void System::SaveTrajectoryKITTI(const string &filename)
@@ -486,7 +523,9 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
     cout << endl << "Saving Objects to " << filename << " ..." << endl;
 
     vector<Object_Map*> vObjects = mpMap->GetObjects();
-
+    std::sort(vObjects.begin(), vObjects.end(), [](const Object_Map* obj1, const Object_Map* obj2) {
+            return obj1->mnId < obj2->mnId;
+        });
 
     ofstream f_nopoint, f_point;
     f_nopoint.open(filename.c_str());
@@ -561,7 +600,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
         g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
         pose = Converter::cvMattoG2oSE3Quat(object->pose_mat);
         f_nopoint   << "1 "  //物体
-                    << object->mnId << "   "
+                    << (object->mnId+1000) << "   "
                     << object->mnClass << " "
                     << "1 "
                     << "0     "
@@ -584,6 +623,32 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
 
 }
 
+void System::SaveGlobalNBVPose(const string &filename)
+{
+    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+
+    vector<cv::Mat> NBVs(mpMap->mvNBVs_pose);
+
+    ofstream f;
+    f.open(filename.c_str());
+    f << fixed;
+    cout << endl << "NBV size: " << NBVs.size() << " ..." << endl;
+
+    for(size_t i=0; i<NBVs.size(); i++)
+    {
+        cv::Mat nbv = NBVs[i].clone();
+
+        cv::Mat R = nbv.rowRange(0,3).colRange(0,3).clone();    //;.t();
+        vector<float> q = Converter::toQuaternion(R);
+        cv::Mat t = nbv.rowRange(0,3).colRange(3,4).clone();
+        f << setprecision(6) << i << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+          << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+    }
+
+    f.close();
+    cout << endl << "Global NBV trajectory saved!" << endl;
+}
 
 int System::GetTrackingState()
 {

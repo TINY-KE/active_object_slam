@@ -410,7 +410,7 @@ public:
 
     void computePose();
 
-    bool return_end_active_mapping();
+    bool return_ASLAM_state();
 };
 
 }

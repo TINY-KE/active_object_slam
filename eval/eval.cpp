@@ -182,7 +182,13 @@ double MonteCarloIoU(ORB_SLAM2::Object_Map* ob1, ORB_SLAM2::Object_Map* ob2, int
     return IoU;
 }
 
-double compute_dis(ORB_SLAM2::Object_Map* ob_gt, ORB_SLAM2::Object_Map* ob_my){    }
+double compute_dis(ORB_SLAM2::Object_Map* ob_gt, ORB_SLAM2::Object_Map* ob_my){
+   double dis_x =  ob_gt->mCuboid3D.pose_mat.at<float>(0,3)-ob_my->mCuboid3D.pose_mat.at<float>(0,3);
+   double dis_y =  ob_gt->mCuboid3D.pose_mat.at<float>(1,3)-ob_my->mCuboid3D.pose_mat.at<float>(1,3);
+   double dis_z =  ob_gt->mCuboid3D.pose_mat.at<float>(2,3)-ob_my->mCuboid3D.pose_mat.at<float>(2,3);
+   double dis = sqrt( dis_x*dis_x + dis_y*dis_y + dis_z*dis_z   );
+   return dis;
+}
 
 double compute_IOU(ORB_SLAM2::Object_Map* ob_gt, ORB_SLAM2::Object_Map* ob_my){
     return MonteCarloIoU( ob_gt, ob_my);
@@ -228,48 +234,70 @@ int main(int argc, char **argv) {
 
 
     //计算IOU和theta。从my objects中挑选，最合适的一个，作为比较的对象
-    vector<vector<ORB_SLAM2::Object_Map* > > obs_gt_match;
-    vector<double > IOUs;
-    vector<double > thetas;
-    obs_gt_match.resize(obs_gt.size());
+    vector<vector<ORB_SLAM2::Object_Map* > > obs_iou_match, obs_dis_match;
+    vector<double > IOUs, DISs, thetas;  //用于存储各个“真值物体”指标，计算得到的最佳值。
+    obs_iou_match.resize(obs_gt.size());
+    obs_dis_match.resize(obs_gt.size());
     IOUs.resize(obs_gt.size());
+    DISs.resize(obs_gt.size());
     thetas.resize(obs_gt.size());
 
 
     for(int i=0; i<obs_gt.size(); i++){
         auto ob_gt = obs_gt[i];
 
-        //计算最小IOU，并将最小IOU的几个物体作为最匹配的物体
+        //计算最大IOU，并将最大IOU的几个物体作为最匹配的物体
         double IOU_max = 0;
+
+        //计算最小中心差距，并将最小中心差距的几个物体作为最匹配的物体
+        double dis_min = 1000;
+
         for(auto ob_my : obs_my){
+            //计算最大IOU
             double IOU = compute_IOU(ob_gt, ob_my);
 
             if(IOU>IOU_max){
                 IOU_max = IOU;
-                obs_gt_match[i].clear();
-                obs_gt_match[i].push_back(ob_my);
+                obs_iou_match[i].clear();
+                obs_iou_match[i].push_back(ob_my);
                 IOUs[i]=IOU_max;
             }
             else if(IOU==IOU_max)
-                obs_gt_match[i].push_back(ob_my);
+                obs_iou_match[i].push_back(ob_my);
+
+            //计算最小中心差距
+            double dis = compute_dis(ob_gt, ob_my);
+
+            if(dis<dis_min){
+                dis_min = dis;
+                obs_dis_match[i].clear();
+                obs_dis_match[i].push_back(ob_my);
+                DISs[i]=dis_min;
+            }
+            else if(dis==dis_min)
+                obs_dis_match[i].push_back(ob_my);
         }
-        std::cout<<"[计算IOU]:" <<yolo_id[obs_gt_match[i][0]->mnClass] <<"的IOU为["<<IOU_max<<"]"<<std::endl;
+        std::cout << "[计算IOU]:" << yolo_id[obs_iou_match[i][0]->mnClass] << "的IOU为[" << IOU_max << "]" << std::endl;
+        std::cout << "[计算DIS]:" << yolo_id[obs_iou_match[i][0]->mnClass] << "的DIS为[" << dis_min << "]" << std::endl;
 
         //计算最小夹角
         double theta_min = 100;
-        for(int j=0; j<obs_gt_match[i].size(); j++) {
-            double theta = compute_theta(obs_gt[i], obs_gt_match[i][j]);
+        for(int j=0; j < obs_iou_match[i].size(); j++) {
+            double theta = compute_theta(obs_gt[i], obs_iou_match[i][j]);
             if(theta<theta_min){
                 theta_min = theta;
                 thetas[i] = theta;
             }
         }
 
+
     }
 
     std::cout<<"[物体数量的准确性]:" <<num_percent<<std::endl;
 
     std::cout<<"[物体IOU平均值]:" <<accumulate(IOUs.begin(), IOUs.end(), 0.0)/ (double)IOUs.size()<<std::endl;
+
+    std::cout<<"[物体DIS平均值]:" <<accumulate(DISs.begin(), DISs.end(), 0.0)/ (double)DISs.size()<<std::endl;
 
     std::cout<<"[物体偏角平均值]:" <<accumulate(thetas.begin(), thetas.end(), 0.0)/ (double)thetas.size()<<std::endl;
 

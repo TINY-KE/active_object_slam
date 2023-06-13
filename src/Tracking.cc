@@ -251,7 +251,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
     //(2)初始帧的位姿
     cv::FileStorage fSettings(mStrSettingPath, cv::FileStorage::READ);
     int ConstraintType = fSettings["ConstraintType"];
-    if ( ConstraintType != 1 && ConstraintType != 2){
+    if ( ConstraintType != 1 && ConstraintType != 2 && ConstraintType != 3){
         std::cerr << ">>>>>> [WARRNING] USE NO PARAM CONSTRAINT TYPE!" << std::endl;
         ConstraintType = 1;
     }
@@ -270,8 +270,33 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
         cv::Mat cv_mat_32f;
         cv::eigen2cv(GroundtruthPose_eigen, cv_mat_32f);
         cv_mat_32f.convertTo(mCurrentFrame.mGroundtruthPose_mat, CV_32F);
+
     } else if(ConstraintType == 2){
         // TODO: IMU
+    } else if (ConstraintType == 3){// ros tf
+        tf::TransformListener listener;
+        tf::StampedTransform transform;
+        cv::Mat T_w_camera = cv::Mat::eye(4,4,CV_32F);
+        try
+        {
+            listener.waitForTransform("/map", "/camera_depth_optical_frame", ros::Time(0), ros::Duration(1.0));
+            listener.lookupTransform("/map", "/camera_depth_optical_frame", ros::Time(0), transform);
+            T_w_camera = Converter::Quation2CvMat(
+                            transform.getRotation().x(),
+                            transform.getRotation().y(),
+                            transform.getRotation().z(),
+                            transform.getRotation().w(),
+                            transform.getOrigin().x(),
+                            transform.getOrigin().y(),
+                            0.0  //transform.getOrigin().x(),
+                    );
+        }
+        catch (tf::TransformException &ex)
+        {
+            ROS_ERROR("%s -->> lost tf from /map to /base_footprint",ex.what());
+        }
+
+        mCurrentFrame.mGroundtruthPose_mat = T_w_camera;
     }
 
     //(3) 开始执行track

@@ -1,0 +1,51 @@
+Performing C SOURCE FILE Test CMAKE_HAVE_LIBC_PTHREAD failed with the following output:
+Change Dir: /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/ninja/linux/ninja cmTC_53062 && [1/2] Building C object CMakeFiles/cmTC_53062.dir/src.c.o
+[2/2] Linking C executable cmTC_53062
+FAILED: cmTC_53062 
+: && /usr/bin/cc -Wall  -O3 -rdynamic CMakeFiles/cmTC_53062.dir/src.c.o -o cmTC_53062   && :
+CMakeFiles/cmTC_53062.dir/src.c.o: In function `main':
+src.c:(.text.startup+0x23): undefined reference to `pthread_create'
+src.c:(.text.startup+0x2c): undefined reference to `pthread_detach'
+src.c:(.text.startup+0x35): undefined reference to `pthread_cancel'
+src.c:(.text.startup+0x40): undefined reference to `pthread_join'
+src.c:(.text.startup+0x4b): undefined reference to `pthread_atfork'
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+
+Source file was:
+#include <pthread.h>
+
+static void* test_func(void* data)
+{
+  return data;
+}
+
+int main(void)
+{
+  pthread_t thread;
+  pthread_create(&thread, NULL, test_func, NULL);
+  pthread_detach(thread);
+  pthread_cancel(thread);
+  pthread_join(thread, NULL);
+  pthread_atfork(NULL, NULL, NULL);
+  pthread_exit(NULL);
+
+  return 0;
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/zhjd/active_eao/src/active_eao/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):/home/zhjd/software/clion/CLion-2022.2.3/clion-2022.2.3/bin/ninja/linux/ninja cmTC_95137 && [1/2] Building C object CMakeFiles/cmTC_95137.dir/CheckFunctionExists.c.o
+[2/2] Linking C executable cmTC_95137
+FAILED: cmTC_95137 
+: && /usr/bin/cc -Wall  -O3  -DCHECK_FUNCTION_EXISTS=pthread_create -rdynamic CMakeFiles/cmTC_95137.dir/CheckFunctionExists.c.o -o cmTC_95137  -lpthreads && :
+/usr/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+
+

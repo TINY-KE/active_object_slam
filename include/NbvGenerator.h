@@ -92,7 +92,8 @@ private:
     ros::NodeHandle nh;
     visualization_msgs::Marker mCandidate;
     visualization_msgs::Marker mPlanesCentroid;
-    int  mbPubNavGoal;
+    int  mbPubGlobalGoal, mbPubLocalGoal;
+    int mFakeLocalNum=0;
     int mbFakeBackgroudObjects;
 
     const char* CANDIDATE_NAMESPACE = "Candidate";
@@ -122,7 +123,7 @@ private:
 
     void Filter_BackgroudObjects_and_Extract_Candidates(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
     void Filter_BackgroudObjects(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps);
-    void Fake_BackgroudObjects(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps );
+    void Fake_BackgroudObjects(const vector<MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps, const int fake_num );
     void Extract_Candidates( BackgroudObject* bo_first );
     void Extract_Candidates();
     void ExtractCandidates(const vector<MapPlane *> &vpMPs);
@@ -133,7 +134,7 @@ private:
 
     vector<Candidate> RotateCandidates(Candidate& initPose);
     double computeCosAngle_Signed(Eigen::Vector3d &v1,  Eigen::Vector3d &v2 , bool isSigned);
-    bool near(Object_Map* fo, const cv::Mat& nbv);
+    bool near(Object_Map* fo, const cv::Mat& nbv, double &distance);
     void computeReward(Candidate &candidate); //, vector<Object_Map*> obj3ds
 
     void BoundaryExtraction(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_boundary, int resolution);
@@ -158,7 +159,7 @@ private:
     float down_nbv_height;       //nbv的高度
     float mMaxPlaneHeight, mMinPlaneHeight, mMinPlaneSafeRadius, mGobalCandidateNum;
     cv::Mat mT_basefootprint_cam;       //相机在机器人底盘上的坐标
-    cv::Mat mT_world_initbaselink;     //初始机器人底盘在世界中的坐标
+    //cv::Mat mT_world_initbaselink;     //初始机器人底盘在世界中的坐标
     cv::Mat mT_world_cam;     //初始相机在世界中的坐标
     double mNBV_Angle_correct;
     int mCandidate_num_topub; //展示的候选观测点的数量

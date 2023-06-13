@@ -847,7 +847,7 @@ int Object_2D::creatObject()
     const vector<Object_Map*> ObjectMaps  = mpMap->GetObjects();
     Object3D->mnId = ObjectMaps.size();
     Object3D->mnClass = mclass_id;
-    std::cout<<"【debug】开始创建新物体,>>>>>>>>,id:"<< ObjectMaps.size()<<",>>>>>>>>,";
+    //std::cout<<"【debug】开始创建新物体,>>>>>>>>,id:"<< ObjectMaps.size()<<",>>>>>>>>,";
     Object3D->mnConfidence_foractive = 1;
     Object3D->mnAddedID_nouse = mpCurrentFrame->mnId;
     Object3D->mnLastAddID = mpCurrentFrame->mnId;
@@ -886,7 +886,7 @@ int Object_2D::creatObject()
     else{
         //mpMap->mvObjectMap.push_back(ObjectMapSingle);
         mpMap->AddObject(Object3D);
-        std::cout<<"存入map"<<std::endl;
+        //std::cout<<"存入map"<<std::endl;
         return 1;  //创建物体成功
     }
 }
@@ -3047,11 +3047,25 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
         }
     }
     //std::cout<<"[IncludeFOs_and_WheatherEndActive]:"<<FO_num <<"/"<<FOs.size()<<std::endl;
+
+    //如果背景物体内部一个物体也没有了，则认为是未探索状态。仍需要生成GNBV。
+    if(FO_num==0){
+        mState = UnExplored;
+    }
+    //如果背景物体内部存在多个物体了
+    else{
+        //如果所有物体都建立完了，则认为是 End
+        if(FO_num_not_end==0)
+            mState = End;
+        //如果还有物体没有建立完了，则认为是 UnEnd
+        else
+            mState = UnEnd;
+    }
 }
 
-bool BackgroudObject::return_end_active_mapping()
+bool BackgroudObject::return_ASLAM_state()
 {
-    return  end_activemapping;
+    return  mState;
 }
 
 void BackgroudObject::computePose() {

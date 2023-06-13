@@ -186,11 +186,25 @@ target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
 #add_executable(rviz_dae ros_src/rviz_dae.cpp)
 #target_link_libraries(rviz_dae   ${PROJECT_NAME}_lib )
 
-#add_executable(eval eval/eval.cpp)
-#target_link_libraries(eval   ${PROJECT_NAME}_lib   )
+add_executable(eval eval/eval.cpp)
+target_link_libraries(eval   ${PROJECT_NAME}_lib   )
 
-#add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
-#target_link_libraries(extract_gazebo_groudth
-#   ${PROJECT_NAME}_lib
-#   ${GAZEBO_LIBRARIES}
-#)
+add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
+target_link_libraries(extract_gazebo_groudth
+   ${PROJECT_NAME}_lib
+   ${GAZEBO_LIBRARIES}
+)
+
+add_executable(rviz_gazebo_object eval/rviz_gazebo_object.cpp)
+target_link_libraries(rviz_gazebo_object
+   ${catkin_LIBRARIES}
+   ${GAZEBO_LIBRARIES}
+   ${EIGEN3_LIBS}
+)
+
+add_executable(rviz_nbv eval/rviz_nbv.cpp src/Converter.cc)
+target_link_libraries(rviz_nbv
+   ${OpenCV_LIBS}
+   ${EIGEN3_LIBS}
+   ${catkin_LIBRARIES}  #for ros
+)

@@ -47,6 +47,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     , mnPlaneNum(F.mnPlaneNum), mvpMapPlanes(F.mvpMapPlanes), mbNewPlane(F.mbNewPlane), mvBoundaryPoints(F.mvBoundaryPoints), mnRealPlaneNum(F.mnRealPlaneNum)
     //物体
     , obj_2ds(F.mvObject_2ds)
+
 {
 
     mnId=nNextId++;
@@ -59,7 +60,9 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
             mGrid[i][j] = F.mGrid[i][j];
     }
 
-    SetPose(F.mTcw);    
+    SetPose(F.mTcw);
+    //真值
+    mGroundtruthPose_mat = F.mGroundtruthPose_mat.clone();
 }
 
 void KeyFrame::ComputeBoW()

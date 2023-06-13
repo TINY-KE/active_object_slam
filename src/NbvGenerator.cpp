@@ -63,7 +63,7 @@ mpMap(map), mpTracker(pTracking)
     tx = fSettings["Tworld_camera.tx"], ty = fSettings["Tworld_camera.ty"], tz = fSettings["Tworld_camera.tz"];
     mT_world_cam = Converter::Quation2CvMat(qx, qy, qz, qw, tx, ty, tz );
 
-    mT_world_initbaselink  = mT_world_cam * mT_basefootprint_cam.inv();
+    //mT_world_initbaselink  = mT_world_cam * mT_basefootprint_cam.inv();
 
     double factor = fSettings["NBV_Angle_correct_factor"];
     mNBV_Angle_correct = factor * M_PI;
@@ -73,7 +73,8 @@ mpMap(map), mpTracker(pTracking)
     mMinPlaneHeight = fSettings["Plane.Height.Min"];
     mMinPlaneSafeRadius = fSettings["Planle.Safe_radius"];
     mGobalCandidateNum = fSettings["Planle.Gobal_Candidate_Num"];
-    mbPubNavGoal = fSettings["PubNavGoal"];
+    mbPubGlobalGoal = fSettings["PubGlobalGoal"];
+    mbPubLocalGoal = fSettings["PubLocalGoal"];
     mTfDuration = fSettings["MAM.TfDuration"];
     mReward_dis = fSettings["MAM.Reward_dis"];
     mBackgroudObjectNum = fSettings["IE.BackgroudObjectNum"];
@@ -82,6 +83,8 @@ mpMap(map), mpTracker(pTracking)
     Candidate origin_pose;
     origin_pose.pose = mT_world_cam;
     mNBVs_old.push_back(origin_pose);
+    cv::Mat clonedMat = mT_world_cam.clone();
+    mpMap->mvNBVs_pose.push_back(clonedMat);
 }
 void NbvGenerator::SubReachGoal(const std_msgs::Bool::ConstPtr & msg){
     mbReachGoalFlag = msg->data;
@@ -110,7 +113,7 @@ void NbvGenerator::Run() {
         //v2:
         std::cerr << "地图中平面的数量为" << vpMPlanes.size() << std::endl;
         if(mbFakeBackgroudObjects)
-            Fake_BackgroudObjects(vpMPlanes, ForegroundObjectMaps);
+            Fake_BackgroudObjects(vpMPlanes, ForegroundObjectMaps, mbFakeBackgroudObjects);
         else
             Filter_BackgroudObjects(vpMPlanes, ForegroundObjectMaps);
 
@@ -128,10 +131,11 @@ void NbvGenerator::Run() {
             BackgroudObject* bo_first = new BackgroudObject();
             bool init_bo_first = false;
             for(int i=0; i<mvBackgroud_objects.size(); i++){
-                if(!mvBackgroud_objects[i]->return_end_active_mapping()){
+                if(mvBackgroud_objects[i]->return_ASLAM_state() != mvBackgroud_objects[i]->End){
                     bo_first = mvBackgroud_objects[i];
                     init_bo_first = true;
                     std::cerr << "选中背景物体【"<<i<<"】,开始生成NBV。x:"<<bo_first->mean_x<<", y:"<<bo_first->mean_y << std::endl;
+                    break;
                 }
             }
 
@@ -188,7 +192,7 @@ void NbvGenerator::Run() {
             PublishGlobalNBVRviz(mvGlobalCandidate);
 
             //Global NBV:  将候选点的第一个,发送为movebase的目标点
-            if(mbPubNavGoal){
+            if(mbPubGlobalGoal){
                 auto Gnbv = mvGlobalCandidate.front();
                 cv::Mat Twc = Gnbv.pose.clone();
                 cv::Mat T_w_baselink = Twc * mT_basefootprint_cam.inv();
@@ -221,11 +225,14 @@ void NbvGenerator::Run() {
                 if(mActionlib->getState() == actionlib::SimpleClientGoalState::SUCCEEDED){
                     ROS_INFO("The robot successed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y );
                     mNBVs_old.push_back(Gnbv);
+                    cv::Mat clonedMat = Gnbv.pose.clone();
+                    mpMap->mvNBVs_pose.push_back(clonedMat);
                 }
                 else
                     ROS_INFO("The robot failed to reach the Global goal x:%f, y:%f",ActionGoal.target_pose.pose.position.x ,ActionGoal.target_pose.pose.position.y);
                 publishLocalNBV(Gnbv);
             }
+
             else{
                 // v1: 等待键盘输入
                 //while (true) {
@@ -253,15 +260,52 @@ void NbvGenerator::Run() {
                 //v2:
                 ros::Rate loop_rate(2);
                 while(true){
-                    if(mbReachGoalFlag){
-                        ROS_INFO("到达NBV" );
-                        mbReachGoalFlag = false;
-                        break;
-                    } else{
-                        ROS_INFO("未到达NBV" );
+                    //用于my NBV方法。系统自动选择相机直视的背景物体。
+                    if(mbPubLocalGoal==1){
+                        if(mbReachGoalFlag){
+                            ROS_INFO("到达NBV" );
+                            mbReachGoalFlag = false;
+                            auto Gnbv = mvGlobalCandidate.front();
+                            mNBVs_old.push_back(Gnbv);
+                            publishLocalNBV(Gnbv);
+                            cv::Mat clonedMat = Gnbv.pose.clone();
+                            mpMap->mvNBVs_pose.push_back(clonedMat);
+                            break;
+                        } else{
+                            ROS_INFO("未到达NBV" );
+                            vector<Candidate> nbvs = {mvGlobalCandidate.front()};
+                            PublishGlobalNBVRviz(nbvs);
+                            publishLocalNBV(mvGlobalCandidate.front());
+                            //usleep( 0.5 * 1000);
+                            ros::spinOnce();
+                            loop_rate.sleep();
+                        }
+                    }
+                    //用于cover方法。相机直视 人指定的物体。
+                    else if(mbPubLocalGoal==2){
+                        if(mbReachGoalFlag){
+                            ROS_INFO("到达NBV" );
+                            mbReachGoalFlag = false;
+                            Candidate Gnbv;
+                            Gnbv.bo = mvBackgroud_objects[mFakeLocalNum];
+                            publishLocalNBV(Gnbv);
+                            ++ mFakeLocalNum;
+                            break;
+                        } else{
+                            ROS_INFO("未到达NBV" );
+                            Candidate Gnbv;
+                            Gnbv.bo = mvBackgroud_objects[mFakeLocalNum];
+                            publishLocalNBV(Gnbv);
+                            ros::spinOnce();
+                            loop_rate.sleep();
+                        }
+                    }
+                    // 用于 frontier exploration。相机不转。
+                    //也可以用于GNBV的刷新与查看
+                    else{
+                        ROS_INFO("frontier exploration,不发布NBV" );
                         vector<Candidate> nbvs = {mvGlobalCandidate.front()};
                         PublishGlobalNBVRviz(nbvs);
-                        //usleep( 0.5 * 1000);
                         ros::spinOnce();
                         loop_rate.sleep();
                     }
@@ -454,7 +498,7 @@ void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<
     //for (int i=0; i<mvBackgroud_objects.size(); i++){
     BackgroudObject* bo_first = new BackgroudObject();
     for(int i=0; i<mvBackgroud_objects.size(); i++){
-        if(!mvBackgroud_objects[i]->return_end_active_mapping()){
+        if(mvBackgroud_objects[i]->return_ASLAM_state() != mvBackgroud_objects[i]->End ){
             bo_first = mvBackgroud_objects[i];
             std::cerr << "选中背景物体【"<<i<<"】,开始生成NBV。x:"<<bo_first->mean_x<<", y:"<<bo_first->mean_y << std::endl;
         }
@@ -729,13 +773,14 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
 }
 
-void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps ) {
+void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps , const int fake_num  ) {
     //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
     mvPlanes_filter.clear();
     mvBackgroud_objects.clear();
     mpMap->ClearBackgroudObjects();
 
     double x,y,z,width,length,depth;
+    if(fake_num>0)
     {
         BackgroudObject* bo = new BackgroudObject();
         //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
@@ -771,6 +816,7 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
         mpMap->AddBackgroudObject(bo);
     }
 
+    if(fake_num>1)
     {
         BackgroudObject* bo = new BackgroudObject();
         //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
@@ -1013,10 +1059,6 @@ void  NbvGenerator::Extract_Candidates(){
     //2.依次查看vpMPs中每个背景物体，从第一个没完成建图的背景物体周围，提取 候选点
     for (auto bo : mvBackgroud_objects)
     {
-        //todo: 是否要判断单个plane的标志符
-        //if(bo->return_end_active_mapping()){
-        //    continue;
-        //}
 
         //计算tmp的边缘点
         //(1)将tmp转为no_color
@@ -1370,12 +1412,16 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
     //marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
-    if(bo->return_end_active_mapping()){
+    if(bo->return_ASLAM_state() == bo->UnExplored){
       marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
     }
-    else{
+    else if(bo->return_ASLAM_state() == bo->UnEnd){
       marker.color.r = 1.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
     }
+    else{
+      marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    }
+
 
     marker.scale.x = 0.01;
     //     8------7
@@ -1816,16 +1862,20 @@ void NbvGenerator::publishLocalNBV(const Candidate& nbv){
             //cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
         }
         else{
+            // 直接看背景物体的中心
             //double desk_center_x = -2.0;
             //double desk_center_y = 0.0;
             //double direct_x = transform.getOrigin().x() - desk_center_x;
             //double direct_y = transform.getOrigin().y() - desk_center_y;
-            //
+
+            //世界坐标系下，物体的中心
             cv::Mat desk_center_w = cv::Mat::zeros(4,1,CV_32F);
             desk_center_w.at<float>(0,0) = nbv.bo->mean_x;
             desk_center_w.at<float>(1,0) = nbv.bo->mean_y;
+            std::cout<<"Local NBV的x"<<nbv.bo->mean_x<<"， y"<<nbv.bo->mean_y<<std::endl;
             desk_center_w.at<float>(2,0) = 0.0;
             desk_center_w.at<float>(3,0) = 1.0;
+            //机器人坐标系下，物体的中心
             cv::Mat desk_center_robot = T_w_basefootprint.inv() * desk_center_w;
             double angle = atan2( desk_center_robot.at<float>(1,0),  desk_center_robot.at<float>(0,0) );  //与x轴的夹角
             mGreat_angle = angle;
@@ -1909,12 +1959,23 @@ void NbvGenerator::clearOldNBV(){
     mNBVs_scale = 0.0;
 }
 
-bool NbvGenerator::near(Object_Map* fo, const cv::Mat& nbv){
-    double distance =   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))  *   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))
+bool NbvGenerator::near(Object_Map* fo, const cv::Mat& nbv, double &distance){
+    distance =   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))  *   (fo->mCuboid3D.cuboidCenter.x() - nbv.at<float>(0,3))
                     +   (fo->mCuboid3D.cuboidCenter.y() - nbv.at<float>(1,3))  *   (fo->mCuboid3D.cuboidCenter.y() - nbv.at<float>(1,3)) ;
     distance = sqrt(distance);
-    if(distance<0.5)
+    if(distance<=0){
+        // 输出错误信息到 std::cerr
+        std::cerr << "Error: distance计算值<0. 错误 !" << std::endl;
+        // 终止程序
+        std::exit(EXIT_FAILURE);
+    }
+    if(distance<.5) {
+        distance = 0.5;
         return true;
+    }
+    else if(distance<1.0){
+        return true;
+    }
     else
         return false;
 }
@@ -1941,10 +2002,13 @@ void NbvGenerator::computeReward(Candidate &candidate){
         Object_Map *obj3d = obj3ds[i];
         if(obj3d->bad_3d)
             continue;
+        if(obj3d->end_build)
+            continue;
 
         //bool viewed = obj3d->WheatherInRectFrameOf(candidate.pose, mfx, mfy, mcx, mcy, mImageWidth, mImageHeight);
-        bool viewed = near(obj3d, candidate.pose);
-        if(viewed)
+        double distance = 0.0;
+        bool viewed = near(obj3d, candidate.pose, distance);
+        if(viewed )
         {
             //（1）关联置信度
             np_reward = 0;
@@ -1971,13 +2035,12 @@ void NbvGenerator::computeReward(Candidate &candidate){
             );
             double cosTheta  = robot_view_object.dot(direction) / (robot_view_object.norm() * direction.norm()); //角度cos值
             //std::cout<<",  [IE_reward,cosTheta]:"<<IE_reward <<","<< cosTheta;
-            object_reward += /*np_reward **/ IE_reward * cosTheta;
+            object_reward += /*np_reward **/ IE_reward * cosTheta / distance;
         }
     }
     //std::cout<<std::endl;
 
     // 2. 与nbvs old之间的距离
-
     Eigen::Vector3d v1(1,0,0);
     Eigen::Vector3d v_deskcentor(-2.0, 0.0 ,0.0);
     double angle_oldNBV = 0;

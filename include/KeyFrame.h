@@ -256,6 +256,10 @@ public:
     void AddMapPlane(MapPlane *pMP, const int &idx);
     std::vector<MapPlane *> GetMapPlaneMatches();
 
+//[active slam]
+public:
+    cv::Mat mGroundtruthPose_mat;           // camera groundtruth.
+
 };
 
 } //namespace ORB_SLAM

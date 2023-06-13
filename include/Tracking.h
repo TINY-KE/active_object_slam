@@ -52,6 +52,7 @@
 
 //nbv
 #include "NbvGenerator.h"
+#include <tf/transform_listener.h>
 
 namespace ORB_SLAM2
 {

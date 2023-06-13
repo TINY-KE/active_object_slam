@@ -91,10 +91,13 @@ protected:
     std::mutex mMutexMap;
 
 //[active slam]
+public:
+    std::vector<cv::Mat> mvNBVs_pose; //存储已到达的NBV，从而使下一个NBV尽量已到达的位置。
 protected:
     //std::vector<Object_Map*> mvObjectMap;
     std::set<Object_Map*> mvObjectMap;
     std::set<BackgroudObject*> mvBackgroudObjectMap;
+
 public:
     void AddObject(Object_Map *pObj);
     std::vector<Object_Map*> GetObjects();

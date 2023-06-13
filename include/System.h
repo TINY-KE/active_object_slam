@@ -122,7 +122,8 @@ public:
 
     //保存物体地图
     void SaveObjects(const string &filename, const string &filename_with_point);
-
+    //保存GNBV轨迹
+    void SaveGlobalNBVPose(const string &filename);
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
