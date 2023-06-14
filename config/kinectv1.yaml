@@ -199,7 +199,7 @@ PubGlobalGoal: 0
 PubLocalGoal: 1    # 2 my_nbv ; 1 cover;  0 frontier
 FakeBackgroudObjects: 1  #fake背景物体的数量
 MAM.Reward_dis: 0.0   #计算reward时的dis。
-Viewer.readlocalobject: 0
+Viewer.readlocalobject: 1
 
 #--------------------------------------------------------------------------------------------
 # yolo

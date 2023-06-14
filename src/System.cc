@@ -557,6 +557,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
                     << object->mCuboid3D.lenth << " "
                     << object->mCuboid3D.width << " "
                     << object->mCuboid3D.height << " "
+                    << "#" <<yolo_id[object->mnClass]
                     << endl;
         f_nopoint     << "1 "  //物体
                       << object->mnId << "   "
@@ -614,6 +615,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
                     << object->length << " "
                     << object->width << " "
                     << object->height << " "
+                    << "#dining table餐桌"
                     << endl;
     }
 
