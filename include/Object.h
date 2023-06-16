@@ -402,6 +402,8 @@ public:
     double FO_num, FO_num_not_end ;
     cv::Mat pose_mat = cv::Mat::eye(4, 4, CV_32F);
     std::vector<Object_Map*> mvFOs;
+    int mnObserveMaxNum = 10;
+    int mnObserveNum = 0;
 
 public:
     bool include(Object_Map* fo);
@@ -410,7 +412,7 @@ public:
 
     void computePose();
 
-    bool return_ASLAM_state();
+    bool return_end_ASLAM();
 };
 
 }

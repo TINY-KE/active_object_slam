@@ -2766,7 +2766,7 @@ void Object_Map::compute_occupied_prob_eachgrid(){
              }
         }
     }
-    std::cout<<"   "<<std::endl;
+    //std::cout<<"   "<<std::endl;
 }
 
 
@@ -3025,6 +3025,7 @@ bool BackgroudObject::AllInclude(vector<Object_Map*> fos){
 }
 
 void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_Map*> &FOs) {
+    //1. 统计属于此BO的FO
     mvFOs.clear();
     FO_num = 0;
     FO_num_not_end = 0;
@@ -3040,7 +3041,7 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
             mvFOs.push_back(fo);
             FO_num ++;
             if(!fo->end_build){
-                mState = UnEnd;
+                //mState = UnEnd;
                 //this->end_activemapping = false;
                 FO_num_not_end ++;
             }
@@ -3048,24 +3049,39 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
     }
     //std::cout<<"[IncludeFOs_and_WheatherEndActive]:"<<FO_num <<"/"<<FOs.size()<<std::endl;
 
-    //如果背景物体内部一个物体也没有了，则认为是未探索状态。仍需要生成GNBV。
-    if(FO_num==0){
-        mState = UnExplored;
+    //2.判断BO的状态
+    //判断最大观测次数，防止陷入局部最优值
+    if(mnObserveNum < mnObserveMaxNum){
+        //如果背景物体内部一个物体也没有了，则认为是未探索状态。仍需要生成GNBV。
+        if(FO_num==0){
+            mState = UnExplored;
+        }
+        //如果背景物体内部存在多个物体了
+        else{
+            //如果所有物体都建立完了，则认为是 End
+            if(FO_num_not_end==0)
+                mState = End;
+            //如果还有物体没有建立完了，则认为是 UnEnd
+            else
+                mState = UnEnd;
+        }
     }
-    //如果背景物体内部存在多个物体了
+    //如果BO达到了最大观测次数，则不再进行观测。并将输入此BO的FO，都停止更新。
     else{
-        //如果所有物体都建立完了，则认为是 End
-        if(FO_num_not_end==0)
-            mState = End;
-        //如果还有物体没有建立完了，则认为是 UnEnd
-        else
-            mState = UnEnd;
+
+        mState = End;
+        for(int i=0; i<mvFOs.size(); i++){
+            mvFOs[i]->end_build = true;
+        }
     }
 }
 
-bool BackgroudObject::return_ASLAM_state()
+bool BackgroudObject::return_end_ASLAM()
 {
-    return  mState;
+    if(mState==End)
+        return true;
+    else
+        return false;
 }
 
 void BackgroudObject::computePose() {

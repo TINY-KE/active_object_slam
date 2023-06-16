@@ -77,8 +77,10 @@ mpMap(map), mpTracker(pTracking)
     mbPubLocalGoal = fSettings["PubLocalGoal"];
     mTfDuration = fSettings["MAM.TfDuration"];
     mReward_dis = fSettings["MAM.Reward_dis"];
+    mReward_angle_cost = fSettings["MAM.Reward_angle_cost"];
     mBackgroudObjectNum = fSettings["IE.BackgroudObjectNum"];
     mbFakeBackgroudObjects = fSettings["FakeBackgroudObjects"];
+    mnObserveMaxNumBackgroudObject = fSettings["ObserveMaxNumBackgroudObject"];
 
     Candidate origin_pose;
     origin_pose.pose = mT_world_cam;
@@ -131,16 +133,16 @@ void NbvGenerator::Run() {
             BackgroudObject* bo_first = new BackgroudObject();
             bool init_bo_first = false;
             for(int i=0; i<mvBackgroud_objects.size(); i++){
-                if(mvBackgroud_objects[i]->return_ASLAM_state() != mvBackgroud_objects[i]->End){
+                if(!mvBackgroud_objects[i]->return_end_ASLAM()){
                     bo_first = mvBackgroud_objects[i];
                     init_bo_first = true;
-                    std::cerr << "选中背景物体【"<<i<<"】,开始生成NBV。x:"<<bo_first->mean_x<<", y:"<<bo_first->mean_y << std::endl;
+                    std::cerr << "选中背景物体【"<<i<<"】,开始生成NBV。x:"<<bo_first->mean_x<<", y:"<<bo_first->mean_y <<", ObserveNum:"<<bo_first->mnObserveNum<<", State:"<<bo_first->mState<< std::endl;
                     break;
                 }
             }
 
             if(init_bo_first){
-                std::cerr << "等待Extract_Candidates" << std::endl;
+                //std::cerr << "等待Extract_Candidates" << std::endl;
                 Extract_Candidates(bo_first);
             }
             else if( mvBackgroud_objects.size() == mBackgroudObjectNum){
@@ -149,7 +151,8 @@ void NbvGenerator::Run() {
 
             }
             else{
-                std::cerr << "没有找到用于生成候选点的背景物体" << std::endl;
+                std::cerr << "没有找到用于生成候选点的背景物体" << ", mvBackgroud_objects.size():" << mvBackgroud_objects.size()
+                << ", mBackgroudObjectNum:" << mBackgroudObjectNum << std::endl;
             }
         }
 
@@ -265,12 +268,16 @@ void NbvGenerator::Run() {
                         if(mbReachGoalFlag){
                             ROS_INFO("到达NBV" );
                             mbReachGoalFlag = false;
-                            auto Gnbv = mvGlobalCandidate.front();
-                            mNBVs_old.push_back(Gnbv);
-                            publishLocalNBV(Gnbv);
-                            cv::Mat clonedMat = Gnbv.pose.clone();
+                            mNBVs_old.push_back(mvGlobalCandidate.front());
+                            publishLocalNBV(mvGlobalCandidate.front());
+                            cv::Mat clonedMat = mvGlobalCandidate.front().pose.clone();
                             mpMap->mvNBVs_pose.push_back(clonedMat);
+                            //记录当前BO生成NBV的数量，
+                            std::cerr << "更新背景物体的观测次数，x:"<<mvGlobalCandidate.front().bo->mean_x<<", y:"<<mvGlobalCandidate.front().bo->mean_y <<", ObserveNum:"<<mvGlobalCandidate.front().bo->mnObserveNum<< std::endl;
+                            mvGlobalCandidate.front().bo->mnObserveNum = mvGlobalCandidate.front().bo->mnObserveNum + 1;
+                            std::cerr << "新ObserveNum:"<<mvGlobalCandidate.front().bo->mnObserveNum<< std::endl;
                             break;
+
                         } else{
                             ROS_INFO("未到达NBV" );
                             vector<Candidate> nbvs = {mvGlobalCandidate.front()};
@@ -287,9 +294,10 @@ void NbvGenerator::Run() {
                             ROS_INFO("到达NBV" );
                             mbReachGoalFlag = false;
                             Candidate Gnbv;
+                            //说明当前BO已经观测关闭，因此Lnbv指向下一个BO。
+                            ++ mFakeLocalNum;
                             Gnbv.bo = mvBackgroud_objects[mFakeLocalNum];
                             publishLocalNBV(Gnbv);
-                            ++ mFakeLocalNum;
                             break;
                         } else{
                             ROS_INFO("未到达NBV" );
@@ -302,7 +310,7 @@ void NbvGenerator::Run() {
                     }
                     // 用于 frontier exploration。相机不转。
                     //也可以用于GNBV的刷新与查看
-                    else{
+                    else if(mbPubLocalGoal==0){
                         ROS_INFO("frontier exploration,不发布NBV" );
                         vector<Candidate> nbvs = {mvGlobalCandidate.front()};
                         PublishGlobalNBVRviz(nbvs);
@@ -323,307 +331,6 @@ void NbvGenerator::Run() {
     }
 }
 
-
-
-// 提取候选平面（mvPlanes_filter）
-void  NbvGenerator::Filter_BackgroudObjects_and_Extract_Candidates(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps ) {
-    //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
-    mvPlanes_filter.clear();
-    mvBackgroud_objects.clear();
-    mpMap->ClearBackgroudObjects();
-
-    if (vpMPls.empty())
-        return;
-    //降维过滤器
-    pcl::VoxelGrid<PointT> voxel;
-    voxel.setLeafSize(0.002, 0.002, 0.002);
-
-
-    //一、筛选背景物体结束
-    std::cerr << "地图中平面的数量为" << vpMPls.size() << std::endl;
-    for (auto pMP : vpMPls)  //对vpMPs中每个平面pMP分别进行处理,
-    {
-        // 计算平面与地面的夹角(cos值), 如果夹角很小,则认为水平面. 可以显示
-        cv::Mat groud = (cv::Mat_<float>(3, 1) << 0, 0, 1);  ;
-        cv::Mat pMP_normal = pMP->GetWorldPos();
-        float angle = groud.at<float>(0, 0) * pMP_normal.at<float>(0, 0) +
-                      groud.at<float>(1, 0) * pMP_normal.at<float>(1, 0) +
-                      groud.at<float>(2, 0) * pMP_normal.at<float>(2, 0);
-        //cout<< "垂直夹角angle:"<<angle<<std::endl;
-        if ((angle < 0.2) && (angle > -0.2)){
-            //cout<< "不是水平面:"<<angle<<std::endl;
-            continue;
-        }
-
-        //计算当前平面,在各关键帧中对应的平面
-        map<KeyFrame *, int> observations = pMP->GetObservations();  //std::map<KeyFrame*, int> mObservations;
-        //std::cout << "Map size: " << observations.size() << std::endl;
-        //将各关键帧中的平面,融合为一个allCloudPoints
-        PointCloud::Ptr allCloudPoints(new PointCloud);
-        float x=0, y=0, z=0;
-        for (auto mit = observations.begin(), mend = observations.end(); mit != mend; mit++)
-        {
-            KeyFrame *frame = mit->first;
-            int id = mit->second;
-            if (id >= frame->mnRealPlaneNum)
-            {
-                continue;
-            }
-            Eigen::Isometry3d T = ORB_SLAM2::Converter::toSE3Quat(frame->GetPose());
-            PointCloud::Ptr cloud(new PointCloud);
-            pcl::transformPointCloud(frame->mvPlanePoints[id], *cloud, T.inverse().matrix());
-            *allCloudPoints += *cloud;
-        }
-        //cout<< "[debug] 将各关键帧中的平面,融合为一个allCloudPoints"<<std::endl;
-
-        //对allCloudPoints降维成tmp
-        PointCloud::Ptr tmp(new PointCloud());
-        voxel.setInputCloud(allCloudPoints);
-        voxel.filter(*tmp);
-
-        //计算点云的最小值和最大值    void getMinMax3D (const pcl::PointCloud<PointT> &cloud, PointT &min_pt, PointT &max_pt)
-
-        // 计算allCloudPoint的中心点
-        vector<double> vec_x,vec_y,vec_z;
-        //cout<< "[debug] 计算allCloudPoint的中心点 0:"<<allCloudPoints->points.size()<<std::endl;
-        for (size_t i = 0; i < allCloudPoints->points.size(); i++)
-        {
-            vec_x.push_back(allCloudPoints->points[i].x);
-            vec_y.push_back(allCloudPoints->points[i].y);
-            vec_z.push_back(allCloudPoints->points[i].z);
-        }
-        //cout<< "[debug] 计算allCloudPoint的中心点 1"<<std::endl;
-
-        std::vector<float> vec_z_float(vec_z.size());
-        std::transform(vec_z.begin(), vec_z.end(), vec_z_float.begin(),
-                   [](double value) { return static_cast<float>(value); });
-        //cout<< "[debug] 计算allCloudPoint的中心点 2"<<std::endl;
-
-        //计算桌面高度
-        double mean_z;	//点云均值
-	    double stddev_z;	//点云标准差
-        pcl::getMeanStd(vec_z_float, mean_z, stddev_z);
-        //cout<< "mean z1:"<<mean_z<<std::endl;
-        // 桌面高度太小，忽略
-        if(mean_z>mMaxPlaneHeight || mean_z<mMinPlaneHeight)
-            continue;
-        //cout<< "mean z2:"<<mean_z<<std::endl;
-        //cout<< "[debug] 计算allCloudPoint的中心点 3"<<std::endl;
-
-        //计算点云的均值，但是没用上
-        //double mean_x,mean_y,mean_z;	//点云均值
-	    //double stddev_x,stddev_y,stddev_z;	//点云标准差
-        //pcl::getMeanStd(vec_x, mean_x, stddev_x);
-        //pcl::getMeanStd(vec_y, mean_y, stddev_y);
-
-
-        // 计算背景物体
-        mvPlanes_filter.push_back(tmp);
-
-        //  计算点云的最小值和最大值
-        Eigen::Vector4f minPoint;
-        Eigen::Vector4f maxPoint;
-        pcl::PointXYZ minPt, maxPt;
-
-        float x_min = std::numeric_limits<float>::max();
-        float y_min = std::numeric_limits<float>::max();
-        float z_min = std::numeric_limits<float>::max();
-        float x_max = -std::numeric_limits<float>::max();
-        float y_max = -std::numeric_limits<float>::max();
-        float z_max = -std::numeric_limits<float>::max();
-
-        for (const auto& pt : allCloudPoints->points) {
-            if (pt.x < x_min) x_min = pt.x;
-            if (pt.y < y_min) y_min = pt.y;
-            if (pt.z < z_min) z_min = pt.z;
-            if (pt.x > x_max) x_max = pt.x;
-            if (pt.y > y_max) y_max = pt.y;
-            if (pt.z > z_max) z_max = pt.z;
-        }
-
-        minPoint << x_min, y_min, z_min, 0.0f;
-        maxPoint << x_max, y_max, z_max, 0.0f;
-
-        BackgroudObject* bo = new BackgroudObject();
-        //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
-        bo->max_x = x_max;
-        bo->max_y = y_max;
-        bo->max_z = z_max;
-
-        bo->min_x = x_min;
-        bo->min_y = y_min;
-        bo->min_z = 0.0;
-
-        bo->mean_x = (x_max + x_min) / 2;
-        bo->mean_y = (y_max + y_min) / 2;
-        bo->mean_z = (z_max + 0.0) / 2;
-
-        bo->length = x_max - x_min;
-        bo->width = y_max - y_min;
-        bo->height = z_max - 0.0;
-
-        // Rotation matrix.
-        bo->computePose();
-        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
-
-        bo->mnId = pMP->mnId;
-
-        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
-
-        mvBackgroud_objects.push_back(bo);
-        mpMap->AddBackgroudObject(bo);
-
-    }
-    //一、筛选背景物体结束
-
-
-    //二、Extract Candidates
-    mvGlobalCandidate.clear();
-    mvCloudBoundary.clear();
-
-    if (mvBackgroud_objects.empty()){
-        std::cerr << "当前背景物体的数量为0" << std::endl;
-        return;
-    }
-    std::cout << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
-
-
-    //1.如果有两个或以上的背景物体。按照背景物体的mnid，排序，从小开始处理
-    if(mvBackgroud_objects.size() > 1)
-        std::sort(mvBackgroud_objects.begin(), mvBackgroud_objects.end(), [](const BackgroudObject* obj1, const BackgroudObject* obj2) {
-            return obj1->mnId < obj2->mnId;
-        });
-
-    //2.背景物 体，从第一个没完成建图的背景物体周围，提取 候选点
-    //for (int i=0; i<mvBackgroud_objects.size(); i++){
-    BackgroudObject* bo_first = new BackgroudObject();
-    for(int i=0; i<mvBackgroud_objects.size(); i++){
-        if(mvBackgroud_objects[i]->return_ASLAM_state() != mvBackgroud_objects[i]->End ){
-            bo_first = mvBackgroud_objects[i];
-            std::cerr << "选中背景物体【"<<i<<"】,开始生成NBV。x:"<<bo_first->mean_x<<", y:"<<bo_first->mean_y << std::endl;
-        }
-    }
-    //bo_first = mvBackgroud_objects[0];
-
-    //计算candidates
-    double safe_radius = mMinPlaneSafeRadius;
-    double divide = mGobalCandidateNum; //36
-    double step = 2* M_PI / divide;  //floor( 2* M_PI / divide); //10
-    for(int i=0; i< divide; i++){
-        // 射线起点和方向
-        //std::cout << "bo_first->mean_x, mean_y: "<<std::endl;
-        //std::cout << bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
-        cv::Point2f rayOrigin(bo_first->mean_x, bo_first->mean_y);
-        float rayAngle = ( i+0.5)*step /* 射线的角度，以弧度表示 */;
-        //std::cout << "2 bo_first->mean_x, mean_y: "<<bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
-
-        // 矩形边框信息
-        cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y + bo_first->width/2);
-        cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y - bo_first->width/2);
-
-        // 计算射线与矩形边框的交点
-        cv::Point2f SafeNBVPoint_best;
-        bool hasIntersection = false;
-
-        // 计算矩形的四条边
-        cv::Point2f rectTopRight(rectBottomRight.x, rectTopLeft.y);
-        cv::Point2f rectBottomLeft(rectTopLeft.x, rectBottomRight.y);
-
-        // 计算射线与每条边的交点
-        cv::Point2f SafeNBVPoint;
-        int type = 0;
-        // 射线与右边相交
-        if ( rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
-        {
-            type=1;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与上边相交
-        else if (rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
-        {
-            type=2;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与左边相交
-        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
-        {
-            type=3;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与下边相交
-        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
-        {
-            type=4;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-        //std::cout<<"[computeIntersection],num:"<<i<<", type:"<<type<<", angle:"<<rayAngle<<", coordinate:"<<SafeNBVPoint.x <<", "<<SafeNBVPoint.y<<std::endl;
-        //// 打印交点坐标（如果存在交点）
-        //if (hasIntersection)
-        //{
-        //    std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
-        //
-        //}
-        //else
-        //{
-        //    std::cout << "射线没有与矩形相交" << std::endl;
-        //}
-
-
-
-
-        ////计算候选点的xy的坐标
-        double x = SafeNBVPoint_best.x;
-        double y = SafeNBVPoint_best.y;
-
-        ////计算xy指向中心的坐标
-        //cv::Mat view = (cv::Mat_<float>(3, 1) << bo_first->mean_x-x, bo_first->mean_y-y, 0);
-        //double angle = atan( (bo_first->mean_y-y)/(bo_first->mean_x-x) );
-        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)>0 )
-        //    angle = angle +  M_PI;
-        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)<0 )
-        //    angle = angle -  M_PI;
-        //Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
-        //Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
-        //cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-        ////cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
-        //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
-        //cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
-        //rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
-        //t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
-        //cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
-
-        // 计算向量v，从NBV指向物体中心。计算角度θ，即向量v与x轴正方向之间的夹角
-        cv::Point2f v =  cv::Point2f(bo_first->mean_x,bo_first->mean_y) - SafeNBVPoint_best;
-        float angle = std::atan2(v.y, v.x);
-
-        //转换成  变换矩阵
-        Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
-        Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
-        cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-        cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
-        cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
-        rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
-        t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
-        cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
-
-
-
-        Candidate candidate;
-        candidate.pose = Camera_mat.clone();
-        candidate.bo = bo_first;
-        mvGlobalCandidate.push_back(candidate);
-
-    }
-    //二、Extract Candidates End
-
-}
 
 // 提取候选平面（mvPlanes_filter）
 void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps ) {
@@ -774,90 +481,102 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 }
 
 void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &vpMPls,  const vector<Object_Map*> &ForegroundObjectMaps , const int fake_num  ) {
-    //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
-    mvPlanes_filter.clear();
-    mvBackgroud_objects.clear();
-    mpMap->ClearBackgroudObjects();
 
-    double x,y,z,width,length,depth;
-    if(fake_num>0)
-    {
-        BackgroudObject* bo = new BackgroudObject();
-        //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
-        x= -1.936606,y=-0.0614115 ,z=0.250644;
-        length=1.804500   ,width=1.600000 ,depth=0.721900;
+    if(mvBackgroud_objects.empty()){
+        //清空 NBV提取器和地图中的 背景物体。通过本程序重新生成。
+        mvPlanes_filter.clear();
+        mvBackgroud_objects.clear();
+        mpMap->ClearBackgroudObjects();
+        double x,y,z,width,length,depth;
+        if(fake_num>0)
+        {
+            BackgroudObject* bo = new BackgroudObject();
+            //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+            x= -1.936606,y=-0.0614115 ,z=0.250644;
+            length=1.804500   ,width=1.600000 ,depth=0.721900;
 
-        bo->max_x = x+length/2.0;
-        bo->max_y = y+width/2.0;
-        bo->max_z = z+depth/2.0;
+            bo->max_x = x+length/2.0;
+            bo->max_y = y+width/2.0;
+            bo->max_z = z+depth/2.0;
 
-        bo->min_x = x-length/2.0;
-        bo->min_y = y-width/2.0;
-        bo->min_z = 0.0;
+            bo->min_x = x-length/2.0;
+            bo->min_y = y-width/2.0;
+            bo->min_z = 0.0;
 
-        bo->mean_x = x;
-        bo->mean_y = y;
-        bo->mean_z = z;
+            bo->mean_x = x;
+            bo->mean_y = y;
+            bo->mean_z = z;
 
-        bo->length = length;
-        bo->width = width;
-        bo->height = depth;
+            bo->length = length;
+            bo->width = width;
+            bo->height = depth;
 
-        // Rotation matrix.
-        bo->computePose();
-        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+            // Rotation matrix.
+            bo->computePose();
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
 
-        bo->mnId = 1;
+            bo->mnId = 1;
 
+            bo->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
 
-        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+            bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
 
-        mvBackgroud_objects.push_back(bo);
-        mpMap->AddBackgroudObject(bo);
+            mvBackgroud_objects.push_back(bo);
+            mpMap->AddBackgroudObject(bo);
+        }
+        if(fake_num>1)
+        {
+            BackgroudObject* bo = new BackgroudObject();
+            //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+            //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
+            //width=0.721389 ,length=0.549443 ,depth=0.894369;
+            x=-2.039965 ,y=2.194572 ,z=0.455522 ;
+            length=1.096666 ,width=0.729113 ,depth=0.911044;
+            //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
+            //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
+            //Orientation: roll=0 ,pitch=-0 ,yaw=0
+            //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+
+            bo->max_x = x+length/2.0;
+            bo->max_y = y+width/2.0;
+            bo->max_z = z+depth/2.0;
+
+            bo->min_x = x-length/2.0;
+            bo->min_y = y-width/2.0;
+            bo->min_z = 0.0;
+
+            bo->mean_x = x;
+            bo->mean_y = y;
+            bo->mean_z = z;
+
+            bo->length = length;
+            bo->width = width;
+            bo->height = depth;
+
+            // Rotation matrix.
+            bo->computePose();
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+            bo->mnId = 2;
+
+            bo->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
+
+            bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+            mvBackgroud_objects.push_back(bo);
+            mpMap->AddBackgroudObject(bo);
+        }
     }
-
-    if(fake_num>1)
-    {
-        BackgroudObject* bo = new BackgroudObject();
-        //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
-        //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
-        //width=0.721389 ,length=0.549443 ,depth=0.894369;
-        x=-2.039965 ,y=2.194572 ,z=0.455522 ;
-        length=1.096666 ,width=0.729113 ,depth=0.911044;
-        //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
-        //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
-        //Orientation: roll=0 ,pitch=-0 ,yaw=0
-        //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
-
-        bo->max_x = x+length/2.0;
-        bo->max_y = y+width/2.0;
-        bo->max_z = z+depth/2.0;
-
-        bo->min_x = x-length/2.0;
-        bo->min_y = y-width/2.0;
-        bo->min_z = 0.0;
-
-        bo->mean_x = x;
-        bo->mean_y = y;
-        bo->mean_z = z;
-
-        bo->length = length;
-        bo->width = width;
-        bo->height = depth;
-
-        // Rotation matrix.
-        bo->computePose();
-        //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
-
-        bo->mnId = 2;
-
-
-        bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
-
-        mvBackgroud_objects.push_back(bo);
-        mpMap->AddBackgroudObject(bo);
+    else{
+        if(fake_num>0)
+        {
+            mvBackgroud_objects[0]->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+        }
+        if(fake_num>1)
+        {
+            mvBackgroud_objects[1]->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+        }
     }
-
 }
 
 // 提取候选平面
@@ -868,101 +587,191 @@ void  NbvGenerator::Extract_Candidates( BackgroudObject* bo_first ) {
     mvCloudBoundary.clear();
 
     //计算candidates
-    double safe_radius = mMinPlaneSafeRadius;
+    //version1:
+    //double safe_radius = mMinPlaneSafeRadius;
+    //double divide = mGobalCandidateNum; //36
+    //double step = 2* M_PI / divide;  //floor( 2* M_PI / divide); //10
+    //for(int i=0; i< divide; i++){
+    //    // 射线起点和方向
+    //    //std::cout << "bo_first->mean_x, mean_y: "<<std::endl;
+    //    //std::cout << bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
+    //    cv::Point2f rayOrigin(bo_first->mean_x, bo_first->mean_y);
+    //    float rayAngle = ( i+0.5)*step /* 射线的角度，以弧度表示 */;
+    //    //std::cout << "2 bo_first->mean_x, mean_y: "<<bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
+    //
+    //    // 矩形边框信息
+    //    cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y + bo_first->width/2);
+    //    cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y - bo_first->width/2);
+    //
+    //    // 计算射线与矩形边框的交点
+    //    cv::Point2f SafeNBVPoint_best;
+    //    bool hasIntersection = false;
+    //
+    //    // 计算矩形的四条边
+    //    cv::Point2f rectTopRight(rectBottomRight.x, rectTopLeft.y);
+    //    cv::Point2f rectBottomLeft(rectTopLeft.x, rectBottomRight.y);
+    //
+    //    // 计算射线与每条边的交点
+    //    cv::Point2f SafeNBVPoint;
+    //    int type = 0;
+    //    // 射线与右边相交
+    //    if ( rayAngle>=0 && rayAngle<=M_PI/2.0 && computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
+    //    {
+    //        type=1;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //    if ( rayAngle>=M_PI*3.0/2.0 && rayAngle<=2.0*M_PI && computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
+    //    {
+    //        type=1;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //
+    //    // 射线与上边相交
+    //    else if (rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
+    //    {
+    //        type=2;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //    else if (rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
+    //    {
+    //        type=2;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //
+    //    // 射线与左边相交
+    //    else if (rayAngle>=M_PI/2.0 && rayAngle<=M_PI*3.0/2.0 && computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
+    //    {
+    //        type=3;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //
+    //    // 射线与下边相交
+    //    else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
+    //    {
+    //        type=4;
+    //        SafeNBVPoint_best = SafeNBVPoint;
+    //        hasIntersection = true;
+    //    }
+    //    //std::cout<<"[computeIntersection],num:"<<i<<", type:"<<type<<", angle:"<<rayAngle<<", coordinate:"<<SafeNBVPoint.x <<", "<<SafeNBVPoint.y<<std::endl;
+    //    //// 打印交点坐标（如果存在交点）
+    //    //if (hasIntersection)
+    //    //{
+    //    //    std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
+    //    //
+    //    //}
+    //    //else
+    //    //{
+    //    //    std::cout << "射线没有与矩形相交" << std::endl;
+    //    //}
+    //
+    //
+    //
+    //
+    //    ////计算候选点的xy的坐标
+    //    double x = SafeNBVPoint_best.x;
+    //    double y = SafeNBVPoint_best.y;
+    //
+    //    ////计算xy指向中心的坐标
+    //    //cv::Mat view = (cv::Mat_<float>(3, 1) << bo_first->mean_x-x, bo_first->mean_y-y, 0);
+    //    //double angle = atan( (bo_first->mean_y-y)/(bo_first->mean_x-x) );
+    //    //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)>0 )
+    //    //    angle = angle +  M_PI;
+    //    //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)<0 )
+    //    //    angle = angle -  M_PI;
+    //    //Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
+    //    //Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
+    //    //cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+    //    ////cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
+    //    //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
+    //    //cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
+    //    //rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
+    //    //t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
+    //    //cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
+    //
+    //    // 计算向量v，从NBV指向物体中心。计算角度θ，即向量v与x轴正方向之间的夹角
+    //    cv::Point2f v =  cv::Point2f(bo_first->mean_x,bo_first->mean_y) - SafeNBVPoint_best;
+    //    float angle = std::atan2(v.y, v.x);
+    //
+    //    //转换成  变换矩阵
+    //    Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
+    //    Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
+    //    cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+    //    cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
+    //    cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
+    //    rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
+    //    t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
+    //    cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
+    //
+    //
+    //
+    //    Candidate candidate;
+    //    candidate.pose = Camera_mat.clone();
+    //    candidate.bo = bo_first;
+    //    mvGlobalCandidate.push_back(candidate);
+    //
+    //}
+
+
+    // version2:
     double divide = mGobalCandidateNum; //36
-    double step = 2* M_PI / divide;  //floor( 2* M_PI / divide); //10
-    for(int i=0; i< divide; i++){
-        // 射线起点和方向
-        //std::cout << "bo_first->mean_x, mean_y: "<<std::endl;
-        //std::cout << bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
-        cv::Point2f rayOrigin(bo_first->mean_x, bo_first->mean_y);
-        float rayAngle = ( i+0.5)*step /* 射线的角度，以弧度表示 */;
-        //std::cout << "2 bo_first->mean_x, mean_y: "<<bo_first->mean_x<<",  " << bo_first->mean_y  << std::endl;
+    int length_num_half = ceil(divide * (bo_first->length / (bo_first->length + bo_first->width))  /2.0 /2.0);
+    int width_num_half = ceil(divide * (bo_first->width / (bo_first->length + bo_first->width))  /2.0 /2.0);
 
-        // 矩形边框信息
-        cv::Point2f rectTopLeft(bo_first->mean_x - bo_first->length/2, bo_first->mean_y + bo_first->width/2);
-        cv::Point2f rectBottomRight(bo_first->mean_x + bo_first->length/2, bo_first->mean_y - bo_first->width/2);
+    // 矩形边框的四个中心
+    cv::Point2f BOCentor(bo_first->mean_x, bo_first->mean_y);
+    cv::Point2f LeftCentor(bo_first->mean_x - bo_first->length/2, bo_first->mean_y);
+    cv::Point2f RightCentor(bo_first->mean_x + bo_first->length/2, bo_first->mean_y);
+    cv::Point2f TopCentor(bo_first->mean_x , bo_first->mean_y + bo_first->width/2);
+    cv::Point2f BottomCentor(bo_first->mean_x , bo_first->mean_y - bo_first->width/2);
 
-        // 计算射线与矩形边框的交点
-        cv::Point2f SafeNBVPoint_best;
-        bool hasIntersection = false;
-
-        // 计算矩形的四条边
-        cv::Point2f rectTopRight(rectBottomRight.x, rectTopLeft.y);
-        cv::Point2f rectBottomLeft(rectTopLeft.x, rectBottomRight.y);
-
-        // 计算射线与每条边的交点
-        cv::Point2f SafeNBVPoint;
-        int type = 0;
-        // 射线与右边相交
-        if ( rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rectBottomRight.x, rayOrigin.y+std::tan(rayAngle)*bo_first->length/2.0 ), rectBottomRight, rectTopRight, SafeNBVPoint))
-        {
-            type=1;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与上边相交
-        else if (rayAngle>=0 && rayAngle<=M_PI && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x - std::tan(rayAngle-M_PI/2.0)*bo_first->width/2.0, rectTopRight.y), rectTopRight, rectTopLeft, SafeNBVPoint))
-        {
-            type=2;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与左边相交
-        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f( rectTopLeft.x, rayOrigin.y - std::tan(rayAngle-M_PI)*bo_first->length/2.0), rectTopLeft, rectBottomLeft, SafeNBVPoint))
-        {
-            type=3;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-
-        // 射线与下边相交
-        else if (rayAngle>=M_PI && rayAngle<=M_PI*2 && computeIntersection(rayOrigin, cv::Point2f(rayOrigin.x + std::tan(rayAngle-3.0*M_PI/2.0)*bo_first->width/2.0, rectBottomLeft.y), rectBottomLeft, rectBottomRight, SafeNBVPoint))
-        {
-            type=4;
-            SafeNBVPoint_best = SafeNBVPoint;
-            hasIntersection = true;
-        }
-        //std::cout<<"[computeIntersection],num:"<<i<<", type:"<<type<<", angle:"<<rayAngle<<", coordinate:"<<SafeNBVPoint.x <<", "<<SafeNBVPoint.y<<std::endl;
-        //// 打印交点坐标（如果存在交点）
-        //if (hasIntersection)
-        //{
-        //    std::cout << "交点坐标：" << SafeNBVPoint_best.x << ", " << SafeNBVPoint_best.y << std::endl;
-        //
-        //}
-        //else
-        //{
-        //    std::cout << "射线没有与矩形相交" << std::endl;
-        //}
+    //存储所有交点
+    std::vector<cv::Point2f> AllIntersections;
+    //上下两边
+    for(int i=0; i<length_num_half; i++){
+        double length_segment = bo_first->length/2.0   / (length_num_half+0.5);
+        cv::Point2f intersection_1( TopCentor.x + length_segment*i , TopCentor.y);
+        cv::Point2f intersection_2( TopCentor.x - length_segment*i , TopCentor.y);
+        cv::Point2f intersection_3( BottomCentor.x + length_segment*i , BottomCentor.y);
+        cv::Point2f intersection_4( BottomCentor.x - length_segment*i , BottomCentor.y);
+        AllIntersections.push_back(intersection_1);
+        AllIntersections.push_back(intersection_2);
+        AllIntersections.push_back(intersection_3);
+        AllIntersections.push_back(intersection_4);
+    }
+    //左右两边
+    for(int i=0; i<width_num_half; i++){
+        double width_segment = bo_first->width/2.0   / (width_num_half+0.5);
+        cv::Point2f intersection_1( LeftCentor.x, LeftCentor.y + width_segment*i );
+        cv::Point2f intersection_2( LeftCentor.x , LeftCentor.y - width_segment*i);
+        cv::Point2f intersection_3( RightCentor.x , RightCentor.y + width_segment*i);
+        cv::Point2f intersection_4( RightCentor.x, RightCentor.y - width_segment*i );
+        AllIntersections.push_back(intersection_1);
+        AllIntersections.push_back(intersection_2);
+        AllIntersections.push_back(intersection_3);
+        AllIntersections.push_back(intersection_4);
+    }
 
 
+    for(int i=0; i< AllIntersections.size(); i++){
 
+        // 计算安全交点
+        cv::Point2f ray = AllIntersections[i] - BOCentor;
+        cv::Point2f ray_norm = normalize(ray);
+        float ray_length = std::sqrt(ray.x * ray.x + ray.y * ray.y);
+        cv::Point2f SafeNBVPoint = (ray_length+mMinPlaneSafeRadius)*ray_norm + BOCentor;
 
         ////计算候选点的xy的坐标
-        double x = SafeNBVPoint_best.x;
-        double y = SafeNBVPoint_best.y;
+        double x = SafeNBVPoint.x;
+        double y = SafeNBVPoint.y;
 
-        ////计算xy指向中心的坐标
-        //cv::Mat view = (cv::Mat_<float>(3, 1) << bo_first->mean_x-x, bo_first->mean_y-y, 0);
-        //double angle = atan( (bo_first->mean_y-y)/(bo_first->mean_x-x) );
-        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)>0 )
-        //    angle = angle +  M_PI;
-        //if( (bo_first->mean_x-x)<0 && (bo_first->mean_y-y)<0 )
-        //    angle = angle -  M_PI;
-        //Eigen::AngleAxisd rotation_vector (angle + mNBV_Angle_correct, Eigen::Vector3d(0,0,1));
-        //Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();
-        //cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-        ////cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, -1.0 * down_nbv_height);
-        //cv::Mat t_mat = (cv::Mat_<float>(3, 1) << x, y, 0);
-        //cv::Mat T_world_to_baselink = cv::Mat::eye(4, 4, CV_32F);
-        //rotate_mat.copyTo(T_world_to_baselink.rowRange(0, 3).colRange(0, 3));
-        //t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
-        //cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
         // 计算向量v，从NBV指向物体中心。计算角度θ，即向量v与x轴正方向之间的夹角
-        cv::Point2f v =  cv::Point2f(bo_first->mean_x,bo_first->mean_y) - SafeNBVPoint_best;
+        cv::Point2f v =  cv::Point2f(bo_first->mean_x,bo_first->mean_y) - SafeNBVPoint;
         float angle = std::atan2(v.y, v.x);
 
         //转换成  变换矩阵
@@ -975,15 +784,11 @@ void  NbvGenerator::Extract_Candidates( BackgroudObject* bo_first ) {
         t_mat.copyTo(T_world_to_baselink.rowRange(0, 3).col(3));
         cv::Mat Camera_mat = T_world_to_baselink * mT_basefootprint_cam;
 
-
-
         Candidate candidate;
         candidate.pose = Camera_mat.clone();
         candidate.bo = bo_first;
         mvGlobalCandidate.push_back(candidate);
-
     }
-
 }
 
 
@@ -1299,7 +1104,7 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
 
 void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
 {
-    std::cerr << "PublishBackgroudObjects_and_SupportingPlane: 背景物体的数量为"<< mvPlanes_filter.size()  << std::endl;
+    std::cout << "PublishBackgroudObjects_and_SupportingPlane: 平面点云的数量为"<< mvPlanes_filter.size()  << std::endl;
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
 
@@ -1412,10 +1217,10 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
     //marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
-    if(bo->return_ASLAM_state() == bo->UnExplored){
+    if(bo->return_end_ASLAM() == bo->UnExplored){
       marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
     }
-    else if(bo->return_ASLAM_state() == bo->UnEnd){
+    else if(bo->return_end_ASLAM() == bo->UnEnd){
       marker.color.r = 1.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
     }
     else{
@@ -1750,44 +1555,44 @@ void NbvGenerator::PublishGlobalNBVRviz(const vector<Candidate> &candidates)
 
 void NbvGenerator::publishLocalNBV(const Candidate& nbv){
 
-    //1.构建地图，并向mam中添加地图点。 TODO：也应该添加 物体。
-    map_data MapData;
-    double theta_interval;
-    vector<MapPoint*> vpPts = mpMap->GetAllMapPoints();
-    for(size_t i=0; i<vpPts.size(); i++){
-        if(vpPts[i]->isBad())
-            continue;
-
-        float minDist = vpPts[i]->GetMinDistanceInvariance();  //根据金字塔计算出的最近可见距离
-        float maxDist = vpPts[i]->GetMaxDistanceInvariance();  //根据金字塔计算出的最远可见距离
-        float foundRatio = vpPts[i]->GetFoundRatio(); //地图点的查找率,如果过低,会被标记为bad point
-
-        //float Dist = sqrt((Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))*(Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))+
-        //(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(1))*(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(2))+
-        //(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2))*(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2)));
-
-        //if((Dist > maxDist)||(Dist < minDist))
-        //    continue;
-
-        MapData.MapPointsCoordinate.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0), vpPts[i]->GetWorldPos().at<float>(1), vpPts[i]->GetWorldPos().at<float>(2)});
-
-        //观测角度(共视方向)的冗余量,论文中的alpha_max
-        if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){  //如果标准差小于..., 则设置冗余量为10弧度
-            theta_interval = 10.0/57.3;
-        }else{
-            theta_interval = vpPts[i]->theta_std * 2.5;
-        }
-
-        MapData.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));    //观测角度(共视方向)的最大值
-        MapData.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));    //观测角度(共视方向)的最小值
-        MapData.maxDist.push_back(double(maxDist));         //最远可见距离
-        MapData.minDist.push_back(double(minDist));         //最近可见距离
-        MapData.foundRatio.push_back(double(foundRatio));   //地图点的查找率
-    }
-
-    //2.构建mam camera对象
-    camera camera_model(MapData, 20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
-    camera_model.setCamera(mfx, mfy, mcx, mcy,  mImageWidth,  mImageHeight, mMax_dis, mMin_dis );
+    ////1.构建地图，并向mam中添加地图点。 TODO：也应该添加 物体。
+    //map_data MapData;
+    //double theta_interval;
+    //vector<MapPoint*> vpPts = mpMap->GetAllMapPoints();
+    //for(size_t i=0; i<vpPts.size(); i++){
+    //    if(vpPts[i]->isBad())
+    //        continue;
+    //
+    //    float minDist = vpPts[i]->GetMinDistanceInvariance();  //根据金字塔计算出的最近可见距离
+    //    float maxDist = vpPts[i]->GetMaxDistanceInvariance();  //根据金字塔计算出的最远可见距离
+    //    float foundRatio = vpPts[i]->GetFoundRatio(); //地图点的查找率,如果过低,会被标记为bad point
+    //
+    //    //float Dist = sqrt((Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))*(Tsc_curr.at<float>(0,3) - vpPts[i]->GetWorldPos().at<float>(0))+
+    //    //(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(1))*(Tsc_curr.at<float>(1,3) - vpPts[i]->GetWorldPos().at<float>(2))+
+    //    //(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2))*(Tsc_curr.at<float>(2,3) - vpPts[i]->GetWorldPos().at<float>(2)));
+    //
+    //    //if((Dist > maxDist)||(Dist < minDist))
+    //    //    continue;
+    //
+    //    MapData.MapPointsCoordinate.push_back(std::vector<double>{vpPts[i]->GetWorldPos().at<float>(0), vpPts[i]->GetWorldPos().at<float>(1), vpPts[i]->GetWorldPos().at<float>(2)});
+    //
+    //    //观测角度(共视方向)的冗余量,论文中的alpha_max
+    //    if(vpPts[i]->theta_std * 2.5 < 10.0/57.3){  //如果标准差小于..., 则设置冗余量为10弧度
+    //        theta_interval = 10.0/57.3;
+    //    }else{
+    //        theta_interval = vpPts[i]->theta_std * 2.5;
+    //    }
+    //
+    //    MapData.UB.push_back(double(vpPts[i]->theta_mean + theta_interval));    //观测角度(共视方向)的最大值
+    //    MapData.LB.push_back(double(vpPts[i]->theta_mean - theta_interval));    //观测角度(共视方向)的最小值
+    //    MapData.maxDist.push_back(double(maxDist));         //最远可见距离
+    //    MapData.minDist.push_back(double(minDist));         //最近可见距离
+    //    MapData.foundRatio.push_back(double(foundRatio));   //地图点的查找率
+    //}
+    //
+    ////2.构建mam camera对象
+    //camera camera_model(MapData, 20);    // zhang 这里的阈值20对于我的实验环境是不是 有点高??
+    //camera_model.setCamera(mfx, mfy, mcx, mcy,  mImageWidth,  mImageHeight, mMax_dis, mMin_dis );
 
     //3.获取机器人在map下的坐标T_w_basefootprint
     tf::TransformListener listener;
@@ -1816,50 +1621,50 @@ void NbvGenerator::publishLocalNBV(const Candidate& nbv){
     if(!T_w_basefootprint.empty()){
 
         if(MAM_isused){
-            //visible_info VI;
-            int visible_pts = 0;
-            double great_angle = -5.0;
-
-            //利用速度模型, 生成下一时刻的机器人位姿
-
-            //在机器人位姿的基础上，计算最佳扭头的角度
-            cv::Mat body_new;
-
-            for(int i=0; i<=mDivide; i++){
-                double angle = mLocalNeckRange/mDivide * i - mLocalNeckRange/2.0 ;
-                //旋转
-                Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
-                Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
-                //Eigen::Isometry3d trans_matrix;
-                //trans_matrix.rotate(rotation_vector);
-                //trans_matrix.pretranslate(Vector3d(0,0,0));
-                cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
-
-                //平移
-                cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
-
-                //总变换矩阵
-                cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
-                rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
-                t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
-
-                body_new = T_w_basefootprint * trans_mat;   //旋转之后的机器人位姿
-                cv::Mat T_w_cam = body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
-                int num = camera_model.countVisible(T_w_cam);   //利用相机模型， 计算最佳的扭头角度
-                cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
-                if(num > visible_pts){
-                    great_angle = angle;
-                    visible_pts = num;
-                }
-                localCandidate lc;
-                lc.angle = angle;
-                lc.num = num;
-
-                //double localreward = num + ;
-            }
-            //unique_lock<mutex> lock(mMutexMamAngle);
-            mGreat_angle = great_angle;//   /M_PI*180 ;
-            //cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
+            ////visible_info VI;
+            //int visible_pts = 0;
+            //double great_angle = -5.0;
+            //
+            ////利用速度模型, 生成下一时刻的机器人位姿
+            //
+            ////在机器人位姿的基础上，计算最佳扭头的角度
+            //cv::Mat body_new;
+            //
+            //for(int i=0; i<=mDivide; i++){
+            //    double angle = mLocalNeckRange/mDivide * i - mLocalNeckRange/2.0 ;
+            //    //旋转
+            //    Eigen::AngleAxisd rotation_vector (angle, Eigen::Vector3d(0,0,1));
+            //    Eigen::Matrix3d rotation_matrix = rotation_vector.toRotationMatrix();  //分别加45度
+            //    //Eigen::Isometry3d trans_matrix;
+            //    //trans_matrix.rotate(rotation_vector);
+            //    //trans_matrix.pretranslate(Vector3d(0,0,0));
+            //    cv::Mat rotate_mat = Converter::toCvMat(rotation_matrix);
+            //
+            //    //平移
+            //    cv::Mat t_mat = (cv::Mat_<float>(3, 1) << 0, 0, 0);
+            //
+            //    //总变换矩阵
+            //    cv::Mat trans_mat = cv::Mat::eye(4, 4, CV_32F);
+            //    rotate_mat.copyTo(trans_mat.rowRange(0, 3).colRange(0, 3));
+            //    t_mat.copyTo(trans_mat.rowRange(0, 3).col(3));
+            //
+            //    body_new = T_w_basefootprint * trans_mat;   //旋转之后的机器人位姿
+            //    cv::Mat T_w_cam = body_new * mT_basefootprint_cam;   //旋转之后的相机位姿
+            //    int num = camera_model.countVisible(T_w_cam);   //利用相机模型， 计算最佳的扭头角度
+            //    cout<<"--agl:" << angle/M_PI*180<<",num:"<<num;
+            //    if(num > visible_pts){
+            //        great_angle = angle;
+            //        visible_pts = num;
+            //    }
+            //    localCandidate lc;
+            //    lc.angle = angle;
+            //    lc.num = num;
+            //
+            //    //double localreward = num + ;
+            //}
+            ////unique_lock<mutex> lock(mMutexMamAngle);
+            //mGreat_angle = great_angle;//   /M_PI*180 ;
+            ////cout << "----number of points predicted=" << visible_pts <<", angle:"<<mGreat_angle/M_PI*180 << endl;
         }
         else{
             // 直接看背景物体的中心
@@ -1872,14 +1677,14 @@ void NbvGenerator::publishLocalNBV(const Candidate& nbv){
             cv::Mat desk_center_w = cv::Mat::zeros(4,1,CV_32F);
             desk_center_w.at<float>(0,0) = nbv.bo->mean_x;
             desk_center_w.at<float>(1,0) = nbv.bo->mean_y;
-            std::cout<<"Local NBV的x"<<nbv.bo->mean_x<<"， y"<<nbv.bo->mean_y<<std::endl;
+            //std::cout<<"Local NBV的x"<<nbv.bo->mean_x<<"， y"<<nbv.bo->mean_y<<std::endl;
             desk_center_w.at<float>(2,0) = 0.0;
             desk_center_w.at<float>(3,0) = 1.0;
             //机器人坐标系下，物体的中心
             cv::Mat desk_center_robot = T_w_basefootprint.inv() * desk_center_w;
             double angle = atan2( desk_center_robot.at<float>(1,0),  desk_center_robot.at<float>(0,0) );  //与x轴的夹角
             mGreat_angle = angle;
-            cout << "---- angle:" <<mGreat_angle/M_PI*180 << endl;
+            //cout << "---- angle:" <<mGreat_angle/M_PI*180 << endl;
 
         }
 
@@ -1969,8 +1774,8 @@ bool NbvGenerator::near(Object_Map* fo, const cv::Mat& nbv, double &distance){
         // 终止程序
         std::exit(EXIT_FAILURE);
     }
-    if(distance<.5) {
-        distance = 0.5;
+    if(distance<1.5) {
+        distance = 1.5;
         return true;
     }
     else if(distance<1.0){
@@ -2035,14 +1840,14 @@ void NbvGenerator::computeReward(Candidate &candidate){
             );
             double cosTheta  = robot_view_object.dot(direction) / (robot_view_object.norm() * direction.norm()); //角度cos值
             //std::cout<<",  [IE_reward,cosTheta]:"<<IE_reward <<","<< cosTheta;
-            object_reward += /*np_reward **/ IE_reward * cosTheta / distance;
+            object_reward += /*np_reward **/ IE_reward * cosTheta /*/ distance*/;
         }
     }
     //std::cout<<std::endl;
 
-    // 2. 与nbvs old之间的距离
+    // 2. 与nbvs old之间的角度  间隔开
     Eigen::Vector3d v1(1,0,0);
-    Eigen::Vector3d v_deskcentor(-2.0, 0.0 ,0.0);
+    Eigen::Vector3d v_deskcentor(candidate.bo->mean_x, candidate.bo->mean_y ,0.0);
     double angle_oldNBV = 0;
     for( auto nbv: mNBVs_old){
         Eigen::Vector3d v2( v_deskcentor(0)-nbv.pose.at<float>(0,3),
@@ -2050,16 +1855,33 @@ void NbvGenerator::computeReward(Candidate &candidate){
                             0.0);
         angle_oldNBV += computeCosAngle_Signed(v1, v2, 1);
     }
+    //NBVold与v1的平均夹角
     angle_oldNBV /= mNBVs_old.size();
     Eigen::Vector3d v2 (    v_deskcentor(0)-candidate.pose.at<float>(0,3),
                             v_deskcentor(1)-candidate.pose.at<float>(1,3),
                                     0.0  );
+    //candidate_centor 与 v1的夹角
     double angle_Candidate = computeCosAngle_Signed(v1, v2, 1);
-    double dis_reward =  fabs(angle_Candidate-angle_oldNBV)  / M_PI;
+    double angle_reward =  fabs(angle_Candidate-angle_oldNBV)  / 360;
+
+    //3. 与nbvs old保持一定的视角差，防止陷入局部最优。
+    double angle_difference_cost = 0;
+    Eigen::Vector3d v_candidate_desk (      v_deskcentor(0)-candidate.pose.at<float>(0,3),
+                                            v_deskcentor(1)-candidate.pose.at<float>(1,3),
+                                            0.0  );
+    for( auto nbv: mNBVs_old){
+        Eigen::Vector3d v_oldNbv_desk( v_deskcentor(0)-nbv.pose.at<float>(0,3),
+                            v_deskcentor(1)-nbv.pose.at<float>(1,3),
+                            0.0);
+        double angle_difference = computeCosAngle_Signed(v_oldNbv_desk, v_candidate_desk, 0);
+        if(angle_difference<20)
+            angle_difference_cost += 1;
+    }
 
     //3. 两项相加,
-    double reward = object_reward + mReward_dis * dis_reward;
-    printf("[Result reward compute] x:%f, y:%f, reward:%f, object_reward:%f, dis_reward:%f \n",  candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward, object_reward, dis_reward);
+    double reward = object_reward - angle_difference_cost*mReward_angle_cost + angle_reward*mReward_dis;
+    printf("[Result reward compute] x:%f, y:%f, reward:%f, object_reward:%f, angle_difference_cost:%f, angle_reward:%f \n",
+           candidate.pose.at<float>(0,3), candidate.pose.at<float>(1,3), reward, object_reward, angle_difference_cost, angle_reward*mReward_dis);
     //ROS_INFO_STREAM("  robot_view_world:" << robot_view_world.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
     //ROS_INFO_STREAM("  direction_all:" << direction_all.format(Eigen::IOFormat(4, 0, ", ", " << ", "", "", " << ")) << std::endl);
     candidate.reward = reward;

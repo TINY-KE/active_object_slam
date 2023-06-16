@@ -216,7 +216,7 @@ void read_view(const std::string filePath, std::vector<cv::Mat>& views){
     }
     else
     {
-        std::cout << "read NBVs.txt" << std::endl;
+        std::cout << "read VIEWs.txt" << std::endl;
     }
 
     std::vector<double> row;

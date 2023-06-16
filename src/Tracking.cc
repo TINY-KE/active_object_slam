@@ -288,7 +288,7 @@ cv::Mat Tracking::GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const d
                             transform.getRotation().w(),
                             transform.getOrigin().x(),
                             transform.getOrigin().y(),
-                            0.0  //transform.getOrigin().x(),
+                            transform.getOrigin().z()
                     );
         }
         catch (tf::TransformException &ex)
@@ -1087,7 +1087,7 @@ void Tracking::CreatObject_intrackmotion(){
             nGoodObjId++;;
 
             // Create an object in the map.
-            std::cout<<"【debug】INIT前景物体"<<std::endl;
+            //std::cout<<"【debug】INIT前景物体"<<std::endl;
             Object_Map *Object3D = new Object_Map;
             Object3D->mvObject_2ds.push_back(obj2d);   // 2D objects in each frame associated with this 3D map object.
             Object3D->mnId = nGoodObjId;             // 3d objects in the map.
@@ -1101,7 +1101,7 @@ void Tracking::CreatObject_intrackmotion(){
             Object3D->mSumPointsPos = 0; //cv::Mat::zeros(3,1,CV_32F);
             Object3D->mAveCenter3D = obj2d->mPos_world;  ; //cv::Mat::zeros(3,1,CV_32F);
 
-            std::cout<<"【debug】INIT前景物体 存入特征点"<<std::endl;
+            //std::cout<<"【debug】INIT前景物体 存入特征点"<<std::endl;
             // add properties of the point and save it to the object.
 
             for (size_t i = 0; i < obj2d->mvMapPonits.size(); i++)
@@ -1123,15 +1123,15 @@ void Tracking::CreatObject_intrackmotion(){
 
             // save this 2d object to current frame (associates with a 3d object in the map).
             mCurrentFrame.mvObject_2ds.push_back(obj2d);
-            std::cout<<"【debug】INIT前景物体 存入obj2d"<<std::endl;
+            //std::cout<<"【debug】INIT前景物体 存入obj2d"<<std::endl;
 
             // updata map object.
             Object3D->ComputeMeanAndDeviation_3D();
-            std::cout<<"【debug】INIT前景物体 计算均值"<<std::endl;
+            //std::cout<<"【debug】INIT前景物体 计算均值"<<std::endl;
             //mpMap->mvObjectMap.push_back(ObjectMapSingle);
             mpMap->AddObject(Object3D);
-            std::cout<<"【debug】INIT前景物体 存入map"<<std::endl;
-            std::cout<<"【debug】INIT前景物体 物体id:"<<Object3D->mnLastAddID<<", 帧id:"<<mCurrentFrame.mnId<<std::endl;
+            //std::cout<<"【debug】INIT前景物体 存入map"<<std::endl;
+            //std::cout<<"【debug】INIT前景物体 物体id:"<<Object3D->mnLastAddID<<", 帧id:"<<mCurrentFrame.mnId<<std::endl;
             //物体初始化完成
             mbObjectIni = true;
             mnObjectIniFrameID = mCurrentFrame.mnId;
@@ -1207,7 +1207,7 @@ void Tracking::CreatObject_intrackmotion(){
                 {
                     // 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于5, 则设置为bad_3d
                     if (df < 5){
-                        std::cout<<"object->bad 观测帧<5, 物体id:"<<obj3d->mnLastAddID<<", 帧id:"<<(mCurrentFrame.mnId - 30)<<std::endl;
+                        //std::cout<<"object->bad 观测帧<5, 物体id:"<<obj3d->mnLastAddID<<", 帧id:"<<(mCurrentFrame.mnId - 30)<<std::endl;
                         obj3d->bad_3d = true;
                     }
                     // 如果此物体过去30帧都没有被看到, 而且被观测到的帧数少于10, 且与地图中的其他物体过于重合 ,则设置为bad_3d
@@ -1222,7 +1222,7 @@ void Tracking::CreatObject_intrackmotion(){
                             if (overlap)
                             {
                                 obj_3ds_new[i]->bad_3d = true;
-                                std::cout<<"object->bad 观测帧<10,且overlap" <<std::endl;
+                                //std::cout<<"object->bad 观测帧<10,且overlap" <<std::endl;
                                 break;
                             }
                         }
@@ -1273,22 +1273,22 @@ void Tracking::CreatObject_intrackmotion(){
 
 
             // step 11.5 project quadrics to the image (only for visualization).
-            cv::Mat axe = cv::Mat::zeros(3, 1, CV_32F);
-            axe.at<float>(0) = obj3d->mCuboid3D.lenth / 2;
-            axe.at<float>(1) = obj3d->mCuboid3D.width / 2;
-            axe.at<float>(2) = obj3d->mCuboid3D.height / 2;
-            // object pose (world).
-            cv::Mat Twq = (obj3d->mCuboid3D.pose_mat);
-            // Projection Matrix K[R|t].
-            cv::Mat P(3, 4, CV_32F);
-            Rcw.copyTo(P.rowRange(0, 3).colRange(0, 3));
-            tcw.copyTo(P.rowRange(0, 3).col(3));
-            P = mCurrentFrame.mK * P;
-            DrawQuadricProject( this->mCurrentFrame.mQuadricImage,
-                                        P,
-                                        axe,
-                                        Twq,
-                                        obj3d->mnClass).copyTo(this->mCurrentFrame.mQuadricImage);
+            //cv::Mat axe = cv::Mat::zeros(3, 1, CV_32F);
+            //axe.at<float>(0) = obj3d->mCuboid3D.lenth / 2;
+            //axe.at<float>(1) = obj3d->mCuboid3D.width / 2;
+            //axe.at<float>(2) = obj3d->mCuboid3D.height / 2;
+            //// object pose (world).
+            //cv::Mat Twq = (obj3d->mCuboid3D.pose_mat);
+            //// Projection Matrix K[R|t].
+            //cv::Mat P(3, 4, CV_32F);
+            //Rcw.copyTo(P.rowRange(0, 3).colRange(0, 3));
+            //tcw.copyTo(P.rowRange(0, 3).col(3));
+            //P = mCurrentFrame.mK * P;
+            //DrawQuadricProject( this->mCurrentFrame.mQuadricImage,
+            //                            P,
+            //                            axe,
+            //                            Twq,
+            //                            obj3d->mnClass).copyTo(this->mCurrentFrame.mQuadricImage);
         }
 
     }

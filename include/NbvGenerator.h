@@ -95,6 +95,7 @@ private:
     int  mbPubGlobalGoal, mbPubLocalGoal;
     int mFakeLocalNum=0;
     int mbFakeBackgroudObjects;
+    int mnObserveMaxNumBackgroudObject = 10;
 
     const char* CANDIDATE_NAMESPACE = "Candidate";
     const char* MAP_FRAME_ID = "map"; //  odom   imu_link   /ORB_SLAM/World    map
@@ -169,7 +170,7 @@ private:
     //std::mutex mMutexMamAngle;
     //double getMamGreadAngle();
     string mstrSettingPath;
-    float mReward_dis;
+    float mReward_dis, mReward_angle_cost;
 
 //NBV MAM
 private:
