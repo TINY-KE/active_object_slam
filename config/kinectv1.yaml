@@ -185,7 +185,7 @@ IE.P_prior: 0.5
 IE.ThresholdPointNum: 6
 IE.PublishIEwheel: 0
 IE.ThresholdEndMapping: 0.45   #0.42   #设置为极小值，即可关闭end_build
-IE.BackgroudObjectNum: 2    #背景物体的先验数量
+#IE.BackgroudObjectNum: 2    #背景物体的先验数量
 Plane.Height.Max: 2.0
 Plane.Height.Min: 0.3
 #Planle.Safe_radius: 0.3
@@ -194,18 +194,20 @@ NBV_Angle_correct_factor: 0 #-0.5
 Candidate_num_topub: 1 #36
 ViewField: 0.7
 
-
-Viewer.readlocalobject: 1
+#核心控制选项
+Viewer.readlocalobject: 0
 
 PubGlobalGoal: 0  # 为1，用于实体机器人，需调用movebase；为0时，用于gazebo环境，手动键盘控制。
 PubLocalGoal: 1  # 1 my_nbv ; 2 cover;  0 frontier
-FakeBackgroudObjects: 2  #fake背景物体的数量
 
-ObserveMaxNumBackgroudObject: 8
+ObserveMaxNumBackgroudObject: 100
 MAM.Reward_angle_cost: 0.0  #计算reward时的dis。
-MAM.Reward_dis: 1.0  #计算reward时的dis。当前没用到
+MAM.Reward_dis: 0.0  #计算reward时的dis。当前没用到
 ConstraintType: 3  #3 rostf; 2 imu; 1 yaml
 Planle.Safe_radius: 0.5
+
+FakeBackgroudObjects: 1  #fake背景物体的数量
+IE.BackgroudObjectNum: 1    #背景物体的先验数量
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

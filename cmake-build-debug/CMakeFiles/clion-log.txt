@@ -739,6 +739,57 @@ CMake Warning at CMakeLists.txt:189 (add_executable):
 
 
 CMake Warning at CMakeLists.txt:192 (add_executable):
+  Cannot generate a safe runtime search path for target rviz_GT_and_model
+  because files in some directories may conflict with libraries in implicit
+  directories:
+
+    runtime library [libpcl_kdtree.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_search.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_features.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_sample_consensus.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_filters.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_ml.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_segmentation.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_surface.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libboost_program_options.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libpcl_common.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_octree.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libpcl_io.so.1.8] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /home/zhjd/thirdparty/pcl-1.8.0/pcl-pcl-1.8.0/build/lib
+    runtime library [libboost_iostreams.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_serialization.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_filesystem.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_regex.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_system.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_thread.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_chrono.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_date_time.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+    runtime library [libboost_atomic.so.1.65.1] in /usr/lib/x86_64-linux-gnu may be hidden by files in:
+      /usr/local/lib
+
+  Some of these libraries may not be found correctly.
+
+
+CMake Warning at CMakeLists.txt:195 (add_executable):
   Cannot generate a safe runtime search path for target
   extract_gazebo_groudth because files in some directories may conflict with
   libraries in implicit directories:
@@ -789,7 +840,7 @@ CMake Warning at CMakeLists.txt:192 (add_executable):
   Some of these libraries may not be found correctly.
 
 
-CMake Warning at CMakeLists.txt:198 (add_executable):
+CMake Warning at CMakeLists.txt:201 (add_executable):
   Cannot generate a safe runtime search path for target rviz_gazebo_object
   because files in some directories may conflict with libraries in implicit
   directories:

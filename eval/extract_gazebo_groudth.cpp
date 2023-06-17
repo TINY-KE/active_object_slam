@@ -142,8 +142,13 @@ int main(int argc, char **argv)
     WORK_SPACE_PATH = current_folder_path + "/" + "../";
     yamlfile_object = "kinectv1.yaml";
 
-    //gazebo world文件露脊鲸
-    string gazebo_file = "/home/zhjd/fabo_gazebo/src/fabo_moveit_gazebo/ASLAM_gazebo_world/world/nine_highdesk.world";
+    if(argc!=2){
+        std::cerr<<"没有world文件"<<std::endl;
+    }
+
+    //gazebo world文件
+    string gazebo_file = argv[1];
+    //string gazebo_file = "/home/zhjd/fabo_gazebo/src/fabo_moveit_gazebo/ASLAM_gazebo_world/world/nine_highdesk.world";
     //string gazebo_file = "/home/zhjd/workspace/ws_huchunxu/src/ros_exploring/my_mobilearm/my_gazebo/world/twodesk_wall.world";
 
     // Load gazebo
@@ -186,21 +191,12 @@ int main(int argc, char **argv)
                 {
                     j++;
                     ignition::math::Box box = collision->BoundingBox();
-                    if( model->GetName() == "book_2"){
-                        length = box.YLength();
-                        width = box.XLength();
-                        height = box.ZLength();
-
-                    }
-                    else{
-                        length = box.XLength();
-                        width = box.YLength();
-                        height = box.ZLength();
-                        // lenth ：corner_2[0] - corner_1[0]
-                        // width ：corner_2[1] - corner_3[1]
-                        // height：corner_2[2] - corner_6[2]
-                    }
-
+                    length = box.XLength();
+                    width = box.YLength();
+                    height = box.ZLength();
+                    // lenth ：corner_2[0] - corner_1[0]
+                    // width ：corner_2[1] - corner_3[1]
+                    // height：corner_2[2] - corner_6[2]
 
 
                     // Print model information
@@ -211,6 +207,20 @@ int main(int argc, char **argv)
                     // std::cout << "Size: width=" << width << " ,heighth=" << height << " ,depth=" << depth << std::endl;
                 }
 
+            }
+            //修正部分gazeobmodel
+            if( model->GetName() == "book_2"){
+                float temp = length;
+                length = width;
+                width = temp;
+            }
+            if( model->GetName() == "laptop_mac_3"){
+                x = x + length/2.0;
+                y = y - width/2.0;
+            }
+            if( model->GetName() == "vase_large_3"){
+                //x = x + length/2.0;
+                y = y + width/2.0;
             }
 
             object ob(model->GetName(), x, y, z+height/2.0 , roll, pitch, yaw, width, length, height);
@@ -234,7 +244,7 @@ int main(int argc, char **argv)
 
     for(auto ob: obs) {
 
-        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone" || ob.name == "wall"){
+        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone" || ob.name == "desk_white" || ob.name == "desk_white_clone" || ob.name == "wall"){
             std::cout << "invalid"<< std::endl;
             continue;
         }
@@ -251,14 +261,14 @@ int main(int argc, char **argv)
         std::cout << "Size: width=" << ob.width << " ,length=" << ob.length << " ,depth=" << ob.depth << std::endl;
 
         ob.class_id = 0;
-        if ("bottle_red_wine" == ob.name  && "beer" == ob.name)  ob.class_id = 39;
-        if ("cup_green" == ob.name && "cup_blue" == ob.name)  ob.class_id = 41;
-        if ("vase_violet" == ob.name)  ob.class_id = 75;
-        if ("desk_yellow" == ob.name && "desk_yellow_clone" == ob.name && "drawer_white" == ob.name)  ob.class_id = 60;
-        if ("book_2" == ob.name && "book_16" == ob.name)  ob.class_id = 73;
-        if ("laptop_pc_1" == ob.name)  ob.class_id = 63;
+        if ("bottle_red_wine" == ob.name  || "bottle_white_wine" == ob.name  ||"beer" == ob.name || "beer_0" == ob.name)  ob.class_id = 39;
+        if ("cup_green" == ob.name || "cup_green_clone" == ob.name || "cup_blue" == ob.name || "trash_bin" == ob.name || "can_pepsi" == ob.name || "can_fanta" == ob.name)  ob.class_id = 41;
+        if ("vase_violet" == ob.name || "vase_large_3" == ob.name)  ob.class_id = 75;
+        if ("desk_yellow" == ob.name || "desk_yellow_clone" == ob.name || "drawer_white" == ob.name)  ob.class_id = 60;
+        if ("book_2" == ob.name || "book_16" == ob.name || "book_15" == ob.name || "book_16_clone" == ob.name)  ob.class_id = 73;
+        if ("laptop_pc_1" == ob.name || "laptop_mac_3" == ob.name)  ob.class_id = 63;
         if ("keyboard" == ob.name)  ob.class_id = 66;
-
+        if ("mouse" == ob.name)  ob.class_id = 64;
 
         g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
         pose = Converter::cvMattoG2oSE3Quat(ob.pose_mat.clone());

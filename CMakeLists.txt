@@ -189,6 +189,9 @@ target_link_libraries(active_rgbd   ${PROJECT_NAME}_lib )
 add_executable(eval eval/eval.cpp)
 target_link_libraries(eval   ${PROJECT_NAME}_lib   )
 
+add_executable(rviz_GT_and_model eval/rviz_GT_and_model.cpp)
+target_link_libraries(rviz_GT_and_model   ${PROJECT_NAME}_lib   )
+
 add_executable(extract_gazebo_groudth eval/extract_gazebo_groudth.cpp)
 target_link_libraries(extract_gazebo_groudth
    ${PROJECT_NAME}_lib

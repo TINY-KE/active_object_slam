@@ -524,7 +524,7 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
 
     vector<Object_Map*> vObjects = mpMap->GetObjects();
     std::sort(vObjects.begin(), vObjects.end(), [](const Object_Map* obj1, const Object_Map* obj2) {
-            return obj1->mnId < obj2->mnId;
+            return obj1->mnClass < obj2->mnClass;
         });
 
     ofstream f_nopoint, f_point;
@@ -542,6 +542,26 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
 
         g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
         pose = Converter::cvMattoG2oSE3Quat(object->mCuboid3D.pose_mat);
+        //只存储物体
+        f_nopoint     << "1 "  //物体
+                      << object->mnId << "   "
+                      << object->mnClass << " "
+                      << object->mnConfidence_foractive << " "
+                      << object->mvpMapObjectMappoints.size() << "     "
+                      << pose.translation().x() << " "
+                      << pose.translation().y() << " "
+                      << pose.translation().z()<< "     "
+                      << pose.rotation().x() << " "
+                      << pose.rotation().y() << " "
+                      << pose.rotation().z() << " "
+                      << pose.rotation().w() << "     "
+                      << object->mCuboid3D.lenth << " "
+                      << object->mCuboid3D.width << " "
+                      << object->mCuboid3D.height << " "
+                      << "#" <<yolo_id[object->mnClass]
+                      << endl;
+
+        //存储物体中的 点
         f_point     << "1 "  //物体
                     << object->mnId << "   "
                     << object->mnClass << " "
@@ -559,22 +579,6 @@ void System::SaveObjects(const string &filename , const string &filename_with_po
                     << object->mCuboid3D.height << " "
                     << "#" <<yolo_id[object->mnClass]
                     << endl;
-        f_nopoint     << "1 "  //物体
-                      << object->mnId << "   "
-                      << object->mnClass << " "
-                      << object->mnConfidence_foractive << " "
-                      << object->mvpMapObjectMappoints.size() << "     "
-                      << pose.translation().x() << " "
-                      << pose.translation().y() << " "
-                      << pose.translation().z()<< "     "
-                      << pose.rotation().x() << " "
-                      << pose.rotation().y() << " "
-                      << pose.rotation().z() << " "
-                      << pose.rotation().w() << "     "
-                      << object->mCuboid3D.lenth << " "
-                      << object->mCuboid3D.width << " "
-                      << object->mCuboid3D.height << " "
-                      << endl;
         for( int i =0; i<object->mvpMapObjectMappoints.size() ; i++){
             cv::Mat mpWorldPos = object->mvpMapObjectMappoints[i]->GetWorldPos();
             int PointNotBad;
