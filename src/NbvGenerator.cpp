@@ -488,7 +488,7 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
         mvBackgroud_objects.clear();
         mpMap->ClearBackgroudObjects();
         double x,y,z,width,length,depth;
-        if(fake_num>0)
+        if(fake_num==1)
         {
             BackgroudObject* bo = new BackgroudObject();
             //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
@@ -524,18 +524,13 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
             mvBackgroud_objects.push_back(bo);
             mpMap->AddBackgroudObject(bo);
         }
-        if(fake_num>1)
+        if(fake_num==2)
         {
+            //桌子1
             BackgroudObject* bo = new BackgroudObject();
             //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
-            //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
-            //width=0.721389 ,length=0.549443 ,depth=0.894369;
-            x=-2.039965 ,y=2.194572 ,z=0.455522 ;
-            length=1.096666 ,width=0.729113 ,depth=0.911044;
-            //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
-            //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
-            //Orientation: roll=0 ,pitch=-0 ,yaw=0
-            //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+            x= -1.936606,y=-0.0614115 ,z=0.250644;
+            length=1.804500   ,width=1.600000 ,depth=0.721900;
 
             bo->max_x = x+length/2.0;
             bo->max_y = y+width/2.0;
@@ -557,7 +552,7 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
             bo->computePose();
             //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
 
-            bo->mnId = 2;
+            bo->mnId = 1;
 
             bo->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
 
@@ -565,16 +560,176 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
 
             mvBackgroud_objects.push_back(bo);
             mpMap->AddBackgroudObject(bo);
+
+
+            //桌子2
+            BackgroudObject* bo2 = new BackgroudObject();
+            //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+            //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
+            //width=0.721389 ,length=0.549443 ,depth=0.894369;
+            x=-2.039965 ,y=2.194572 ,z=0.455522 ;
+            length=1.096666 ,width=0.729113 ,depth=0.911044;
+            //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
+            //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
+            //Orientation: roll=0 ,pitch=-0 ,yaw=0
+            //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+
+            bo2->max_x = x+length/2.0;
+            bo2->max_y = y+width/2.0;
+            bo2->max_z = z+depth/2.0;
+
+            bo2->min_x = x-length/2.0;
+            bo2->min_y = y-width/2.0;
+            bo2->min_z = 0.0;
+
+            bo2->mean_x = x;
+            bo2->mean_y = y;
+            bo2->mean_z = z;
+
+            bo2->length = length;
+            bo2->width = width;
+            bo2->height = depth;
+
+            // Rotation matrix.
+            bo2->computePose();
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+            bo2->mnId = 2;
+
+            bo2->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
+
+            bo2->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+            mvBackgroud_objects.push_back(bo2);
+            mpMap->AddBackgroudObject(bo2);
+        }
+
+        if(fake_num==3){
+            //-1.617100 0.178400 0.381000     0.000000 0.000000 0.000000 1.000000     0.558800 1.828799 0.762000 #dining table餐桌  %desk_drawer
+            //-3.752570 -0.653044 0.392500     0.000000 0.000000 0.000000 1.000000     0.913000 0.913000 0.785000 #dining table餐桌  %cafe_table
+            //-3.744747 1.197421 0.433114     0.000000 0.000000 0.395462 0.918482     0.640972 0.635368 0.866227 #mouse鼠标  %chair_2
+            //桌子1
+            BackgroudObject* bo = new BackgroudObject();
+            x=-1.617100,y= 0.178400  ,z=0.381000;
+            length=0.558800   ,width=1.828799 ,depth=0.762000;
+
+            bo->max_x = x+length/2.0;
+            bo->max_y = y+width/2.0;
+            bo->max_z = z+depth/2.0;
+
+            bo->min_x = x-length/2.0;
+            bo->min_y = y-width/2.0;
+            bo->min_z = 0.0;
+
+            bo->mean_x = x;
+            bo->mean_y = y;
+            bo->mean_z = z;
+
+            bo->length = length;
+            bo->width = width;
+            bo->height = depth;
+
+            // Rotation matrix.
+            bo->computePose();
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+            bo->mnId = 1;
+
+            bo->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
+
+            bo->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+            mvBackgroud_objects.push_back(bo);
+            mpMap->AddBackgroudObject(bo);
+
+
+            //桌子2：
+            BackgroudObject* bo2 = new BackgroudObject();
+            //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+            //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
+            //width=0.721389 ,length=0.549443 ,depth=0.894369;
+            x=-3.752570 ,y=-0.653044 ,z=0.392500 ;
+            length=0.913000 ,width=0.913000 ,depth=0.785000;
+            //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
+            //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
+            //Orientation: roll=0 ,pitch=-0 ,yaw=0
+            //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+
+            bo2->max_x = x+length/2.0;
+            bo2->max_y = y+width/2.0;
+            bo2->max_z = z+depth/2.0;
+
+            bo2->min_x = x-length/2.0;
+            bo2->min_y = y-width/2.0;
+            bo2->min_z = 0.0;
+
+            bo2->mean_x = x;
+            bo2->mean_y = y;
+            bo2->mean_z = z;
+
+            bo2->length = length;
+            bo2->width = width;
+            bo2->height = depth;
+
+            // Rotation matrix.
+            bo2->computePose();
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+            bo2->mnId = 2;
+
+            bo2->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
+
+            bo2->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+            mvBackgroud_objects.push_back(bo2);
+            mpMap->AddBackgroudObject(bo2);
+
+            //桌子3： //-3.744747 1.197421 0.433114     0.000000 0.000000 0.395462 0.918482     0.640972 0.635368 0.866227 #mouse鼠标  %chair_2
+            BackgroudObject* bo3 = new BackgroudObject();
+            //pcl::copyPointCloud( *allCloudPoints, *(bo->mPlane) );   //todo:  问题在哪？
+            //x=-2.28485+0.549443/2.0 ,y=1.90387+0.721389/2.0 ,z=0.447185;
+            //width=0.721389 ,length=0.549443 ,depth=0.894369;
+            x=-3.744747 ,y=1.197421 ,z=0.433114 ;
+            length=0.640972 ,width=0.635368 ,depth=0.866227;
+            //-2.039965 2.194572 0.455522     0.000000 0.000000 0.000000 1.000000     1.096666 0.729113 0.911044
+            //Position: x=-2.28485 ,y=1.90387 ,z=0.447185
+            //Orientation: roll=0 ,pitch=-0 ,yaw=0
+            //Size: width=0.721389 ,length=0.549443 ,depth=0.894369
+
+            bo3->max_x = x+length/2.0;
+            bo3->max_y = y+width/2.0;
+            bo3->max_z = z+depth/2.0;
+
+            bo3->min_x = x-length/2.0;
+            bo3->min_y = y-width/2.0;
+            bo3->min_z = 0.0;
+
+            bo3->mean_x = x;
+            bo3->mean_y = y;
+            bo3->mean_z = z;
+
+            bo3->length = length;
+            bo3->width = width;
+            bo3->height = depth;
+
+            // Rotation matrix.
+            bo3->computePose(-1*M_PI_4);
+            //cout<< "[debug] 计算allCloudPoint的中心点 4"<<std::endl;
+
+            bo3->mnId = 3;
+
+            bo3->mnObserveMaxNum = this->mnObserveMaxNumBackgroudObject;
+
+            bo3->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+
+            mvBackgroud_objects.push_back(bo3);
+            mpMap->AddBackgroudObject(bo3);
+
         }
     }
     else{
-        if(fake_num>0)
-        {
-            mvBackgroud_objects[0]->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
-        }
-        if(fake_num>1)
-        {
-            mvBackgroud_objects[1]->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
+        for(auto BO:mvBackgroud_objects){
+            BO->IncludeFOs_and_WheatherEndActive(ForegroundObjectMaps);
         }
     }
 }
@@ -1118,7 +1273,6 @@ void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
         colored_pcl_ptr->points.clear();
         int index=0;
         //for(auto tmp : mvPlanes_filter)
-        {
 
         auto tmp = bo->mPlane;
         index++;
@@ -1136,7 +1290,7 @@ void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
 
           colored_pcl_ptr->points.push_back(p);
         }
-        }
+
 
         //plane的边界
         //index=2;
@@ -1170,15 +1324,21 @@ void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
 
 void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     // 定义最小值和最大值
-    float x_min = bo->min_x;
-    float y_min = bo->min_y;
-    float z_min = bo->min_z;
-    float x_max = bo->max_x;
-    float y_max = bo->max_y;
-    float z_max = bo->max_z;
-    float length = bo->length;
-    float width = bo->width;
-    float height = bo->height;
+    //float x_min = bo->min_x;
+    //float y_min = bo->min_y;
+    //float z_min = bo->min_z;
+    //float x_max = bo->max_x;
+    //float y_max = bo->max_y;
+    //float z_max = bo->max_z;
+    //float length = bo->length;
+    //float width = bo->width;
+    //float height = bo->height;
+    float x_min = (-0.5)*bo->length;
+    float x_max = (0.5)*bo->length;
+    float y_min = (-0.5)*bo->width;
+    float y_max = (0.5)*bo->width;
+    float z_min = (-0.5)*bo->height;
+    float z_max = (0.5)*bo->height;
 
     // Create an object in the map.
     //std::cout<<"可视化背景物体"<<std::endl;
@@ -1194,19 +1354,16 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     // width ：corner_2[1] - corner_3[1]
     // height：corner_2[2] - corner_6[2]
     Object3D->backgroud_object = true;
-    Object3D->mCuboid3D.corner_1 = Eigen::Vector3d(x_min, y_min, 0);
-    Object3D->mCuboid3D.corner_2 = Eigen::Vector3d(x_max, y_min, 0);
-    Object3D->mCuboid3D.corner_3 = Eigen::Vector3d(x_max, y_max, 0);
-    Object3D->mCuboid3D.corner_4 = Eigen::Vector3d(x_min, y_max, 0);
-    Object3D->mCuboid3D.corner_5 = Eigen::Vector3d(x_min, y_min, z_max);
-    Object3D->mCuboid3D.corner_6 = Eigen::Vector3d(x_max, y_min, z_max);
-    Object3D->mCuboid3D.corner_7 = Eigen::Vector3d(x_max, y_max, z_max);
-    Object3D->mCuboid3D.corner_8 = Eigen::Vector3d(x_min, y_max, z_max);
-    Object3D->mCuboid3D.cuboidCenter = Eigen::Vector3d((x_max + x_min) / 2, (y_max + y_min) / 2, (z_max + 0.0) / 2);
-    Object3D->mCuboid3D.lenth = length;
-    Object3D->mCuboid3D.width = width;
-    Object3D->mCuboid3D.height = height;
-    //Object3D->Update_Twobj();
+    //Eigen::Matrix4d pose = Converter::cvMattoMatrix4d(bo->pose_mat);
+    g2o::SE3Quat pose =  Converter::toSE3Quat( bo->pose_mat );
+    Object3D->mCuboid3D.corner_1 = pose * Eigen::Vector3d(x_min, y_min, 0);
+    Object3D->mCuboid3D.corner_2 = pose * Eigen::Vector3d(x_max, y_min, 0);
+    Object3D->mCuboid3D.corner_3 = pose * Eigen::Vector3d(x_max, y_max, 0);
+    Object3D->mCuboid3D.corner_4 = pose * Eigen::Vector3d(x_min, y_max, 0);
+    Object3D->mCuboid3D.corner_5 = pose * Eigen::Vector3d(x_min, y_min, z_max);
+    Object3D->mCuboid3D.corner_6 = pose * Eigen::Vector3d(x_max, y_min, z_max);
+    Object3D->mCuboid3D.corner_7 = pose * Eigen::Vector3d(x_max, y_max, z_max);
+    Object3D->mCuboid3D.corner_8 = pose * Eigen::Vector3d(x_min, y_max, z_max);
 
     //(1)物体
     visualization_msgs::Marker marker;
@@ -1217,16 +1374,18 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
     //marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
-    if(bo->return_end_ASLAM() == bo->UnExplored){
-      marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
-    }
-    else if(bo->return_end_ASLAM() == bo->UnEnd){
-      marker.color.r = 1.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
-    }
-    else{
-      marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 0.0; marker.color.a = 1.0;
-    }
-
+    //if(bo->return_end_ASLAM() == bo->UnExplored){
+    //  marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    //}
+    //else if(bo->return_end_ASLAM() == bo->UnEnd){
+    //  marker.color.r = 1.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    //}
+    //else{
+    //  marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    //}
+    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+    vector<float> color = colors_bgr[ (bo->mnClass +4) % 6];  //+1还是粉色/红色    +2绿色  +3蓝色  +4橙色   +5黄色
+    marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
 
     marker.scale.x = 0.01;
     //     8------7
@@ -1845,37 +2004,71 @@ void NbvGenerator::computeReward(Candidate &candidate){
     }
     //std::cout<<std::endl;
 
-    // 2. 与nbvs old之间的角度  间隔开
-    Eigen::Vector3d v1(1,0,0);
     Eigen::Vector3d v_deskcentor(candidate.bo->mean_x, candidate.bo->mean_y ,0.0);
-    double angle_oldNBV = 0;
-    for( auto nbv: mNBVs_old){
-        Eigen::Vector3d v2( v_deskcentor(0)-nbv.pose.at<float>(0,3),
-                            v_deskcentor(1)-nbv.pose.at<float>(1,3),
-                            0.0);
-        angle_oldNBV += computeCosAngle_Signed(v1, v2, 1);
-    }
-    //NBVold与v1的平均夹角
-    angle_oldNBV /= mNBVs_old.size();
-    Eigen::Vector3d v2 (    v_deskcentor(0)-candidate.pose.at<float>(0,3),
-                            v_deskcentor(1)-candidate.pose.at<float>(1,3),
-                                    0.0  );
-    //candidate_centor 与 v1的夹角
-    double angle_Candidate = computeCosAngle_Signed(v1, v2, 1);
-    double angle_reward =  fabs(angle_Candidate-angle_oldNBV)  / 360;
+    // 2. 与nbvs old之间的角度  间隔开
+    //Eigen::Vector3d v1(1,0,0);
+    //double angle_oldNBV = 0;
+    //for( auto nbv: mNBVs_old){
+    //    Eigen::Vector3d v2( v_deskcentor(0)-nbv.pose.at<float>(0,3),
+    //                        v_deskcentor(1)-nbv.pose.at<float>(1,3),
+    //                        0.0);
+    //    angle_oldNBV += computeCosAngle_Signed(v1, v2, 1);
+    //}
+    //
+    //angle_oldNBV /= mNBVs_old.size();//NBVold与v1的平均夹角
+    //Eigen::Vector3d v2 (    v_deskcentor(0)-candidate.pose.at<float>(0,3),
+    //                        v_deskcentor(1)-candidate.pose.at<float>(1,3),
+    //                                0.0  );
+    //
+    //double angle_Candidate = computeCosAngle_Signed(v1, v2, 1);//candidate_centor 与 v1的夹角
+    //double angle_reward =  fabs(angle_Candidate-angle_oldNBV)  / 360;
 
-    //3. 与nbvs old保持一定的视角差，防止陷入局部最优。
+    double angle_oldNBV = 0;
+    cv::Point2f v_nbvs(0, 0);
+    for( auto nbv: mNBVs_old){
+        if(nbv.bo->mnId == candidate.bo->mnId) {
+            cv::Point2f v_nbv(nbv.pose.at<float>(0, 3) - v_deskcentor(0),
+                              nbv.pose.at<float>(1, 3) - v_deskcentor(1));
+
+            v_nbvs += normalize(v_nbv);
+        }
+    }
+    v_nbvs /= (float)mNBVs_old.size();//NBVold与v1的平均夹角
+    Eigen::Vector3d v_nbvs_eigen (    v_nbvs.x, v_nbvs.y, 0.0  );
+    Eigen::Vector3d v_candidate (   candidate.pose.at<float>(0,3)-v_deskcentor(0),
+                                    candidate.pose.at<float>(1,3)-v_deskcentor(1),
+                                    0.0  );
+    double angle_Candidate = computeCosAngle_Signed(v_nbvs_eigen, v_candidate, 0);//candidate_centor 与 v1的夹角
+    double angle_reward =  angle_Candidate  / 180;
+
+    //3. 与nbvs old保持最大距离  【不好用】
+    //Eigen::Vector3d v_deskcentor(candidate.bo->mean_x, candidate.bo->mean_y ,0.0);
+    //double distance_oldNBV = 0;
+    //for( auto nbv: mNBVs_old){
+    //    double distance = sqrt(  (candidate.pose.at<float>(0,3)-nbv.pose.at<float>(0,3))*(candidate.pose.at<float>(0,3)-nbv.pose.at<float>(0,3))
+    //                            +(candidate.pose.at<float>(1,3)-nbv.pose.at<float>(1,3))*(candidate.pose.at<float>(1,3)-nbv.pose.at<float>(1,3))
+    //                          );
+    //    distance_oldNBV += distance;
+    //}
+    //
+    //distance_oldNBV /= mNBVs_old.size();//NBVold与v1的平均distance
+    //double distance_reward =  distance_oldNBV/sqrt(candidate.bo->length*candidate.bo->length + candidate.bo->width*candidate.bo->width);
+
+    //4. 与nbvs old保持一定的视角差，防止陷入局部最优。
     double angle_difference_cost = 0;
     Eigen::Vector3d v_candidate_desk (      v_deskcentor(0)-candidate.pose.at<float>(0,3),
                                             v_deskcentor(1)-candidate.pose.at<float>(1,3),
                                             0.0  );
     for( auto nbv: mNBVs_old){
-        Eigen::Vector3d v_oldNbv_desk( v_deskcentor(0)-nbv.pose.at<float>(0,3),
+        if(nbv.bo->mnId == candidate.bo->mnId){
+            Eigen::Vector3d v_oldNbv_desk( v_deskcentor(0)-nbv.pose.at<float>(0,3),
                             v_deskcentor(1)-nbv.pose.at<float>(1,3),
                             0.0);
-        double angle_difference = computeCosAngle_Signed(v_oldNbv_desk, v_candidate_desk, 0);
-        if(angle_difference<20)
-            angle_difference_cost += 1;
+            double angle_difference = computeCosAngle_Signed(v_oldNbv_desk, v_candidate_desk, 0);
+            if(angle_difference<20)
+                angle_difference_cost += 1;
+        }
+
     }
 
     //3. 两项相加,

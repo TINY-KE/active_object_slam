@@ -203,7 +203,7 @@ vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::Boundi
         //修改
         if (boxes.size() == 0)
         {
-            std::cout << "[WARNNING] OBJECTS SIZE IS ZERO" << std::endl;
+            std::cout << "[WARNNING] YOLO OBJECTS SIZE IS ZERO" << std::endl;
         }
         /* darknet_ros_msgs::BoundingBox
          * float64 probability

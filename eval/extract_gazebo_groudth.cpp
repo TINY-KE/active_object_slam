@@ -186,7 +186,8 @@ int main(int argc, char **argv)
                 i ++ ;
                 gazebo::physics::Collision_V collisions = link->GetCollisions();
                 int j = 0;
-                for (auto collision : collisions)   //据我观察，collisions只包含一个
+                //for (auto collision : collisions)   //据我观察，collisions只包含一个
+                auto collision = collisions[0];
                 // auto collision = collisions[0];
                 {
                     j++;
@@ -214,16 +215,53 @@ int main(int argc, char **argv)
                 length = width;
                 width = temp;
             }
-            if( model->GetName() == "laptop_mac_3"){
+            if( model->GetName() == "labtop_mac_3"){
                 x = x + length/2.0;
                 y = y - width/2.0;
             }
             if( model->GetName() == "vase_large_3"){
                 //x = x + length/2.0;
-                y = y + width/2.0;
+                y = y - width/2.0;
             }
+            if( model->GetName() == "cafe_table"){
+                //x = x + length/2.0;
+                length = 0.913;
+                width = 0.913;
+                height = 0.785;
+            }
+            if( model->GetName() == "mouse"){
+                length = length/5.0*2.0;
+            }
+            //if( model->GetName() == "book_11"){
+            //    float length_old = length;
+            //    float width_old = width;
+            //    float height_old = height;
+            //    length = height_old;
+            //    height = length_old;
+            //    roll = 0.0;
+            //    pitch = 0.0;
+            //    yaw = 0.0;
+            //}
+            //if( model->GetName() == "book_15"){
+            //    length = 0.245;
+            //    width = 0.16;
+            //}
 
-            object ob(model->GetName(), x, y, z+height/2.0 , roll, pitch, yaw, width, length, height);
+            z = z+height/2.0;
+
+            object ob(model->GetName(), x, y, z , roll, pitch, yaw, width, length, height);
+
+            ob.class_id = 0;
+            if ("bottle_red_wine" == ob.name  || "bottle_white_wine" == ob.name  ||"beer" == ob.name || "beer_0" == ob.name)  ob.class_id = 39;
+            if ("cup_green" == ob.name || "cup_green_clone" == ob.name || "cup_blue" == ob.name || "trash_bin" == ob.name || "can_pepsi" == ob.name || "can_fanta" == ob.name)  ob.class_id = 41;
+            if ("vase_violet" == ob.name || "vase_violet_clone" == ob.name ||"vase_large_3" == ob.name)  ob.class_id = 75;
+            if ("desk_yellow" == ob.name || "desk_yellow_clone" == ob.name || "drawer_white" == ob.name || "cafe_table" == ob.name  || "desk_drawer" == ob.name )  ob.class_id = 60;
+            if ("book_2" == ob.name || "book_16" == ob.name || "book_15" == ob.name || "book_16_clone" == ob.name  || "book_11" == ob.name)  ob.class_id = 73;
+            if ("laptop_pc_1" == ob.name || "labtop_mac_3" == ob.name)  ob.class_id = 63;
+            if ("keyboard" == ob.name)  ob.class_id = 66;
+            if ("mouse" == ob.name)  ob.class_id = 64;
+            if ("chair_2" == ob.name)  ob.class_id = 57;
+
             obs.push_back(ob);
     }
 
@@ -242,9 +280,13 @@ int main(int argc, char **argv)
     file_gt.open(groud_truth_path.c_str());
     file_gt << fixed;
 
+    std::sort(obs.begin(), obs.end(), [](const object obj1, const object obj2) {
+            return obj1.class_id < obj2.class_id;
+        });
     for(auto ob: obs) {
 
-        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone" || ob.name == "desk_white" || ob.name == "desk_white_clone" || ob.name == "wall"){
+        if( ob.name == "ground_plane" || ob.name == "desk_yellow" || ob.name == "desk_yellow_clone" || ob.name == "desk_white" || ob.name == "desk_white_clone" || ob.name == "wall" || ob.name == "grey_wall" || ob.name == "wall6x45_4window_cloor"
+            || ob.name == "ball_bearing"     ){
             std::cout << "invalid"<< std::endl;
             continue;
         }
@@ -259,16 +301,6 @@ int main(int argc, char **argv)
         std::cout << "Position: x=" << ob.x << " ,y=" << ob.y << " ,z=" << ob.z << std::endl;
         std::cout << "Orientation: roll=" << ob.roll << " ,pitch=" << ob.pitch << " ,yaw=" << ob.yaw << std::endl;
         std::cout << "Size: width=" << ob.width << " ,length=" << ob.length << " ,depth=" << ob.depth << std::endl;
-
-        ob.class_id = 0;
-        if ("bottle_red_wine" == ob.name  || "bottle_white_wine" == ob.name  ||"beer" == ob.name || "beer_0" == ob.name)  ob.class_id = 39;
-        if ("cup_green" == ob.name || "cup_green_clone" == ob.name || "cup_blue" == ob.name || "trash_bin" == ob.name || "can_pepsi" == ob.name || "can_fanta" == ob.name)  ob.class_id = 41;
-        if ("vase_violet" == ob.name || "vase_large_3" == ob.name)  ob.class_id = 75;
-        if ("desk_yellow" == ob.name || "desk_yellow_clone" == ob.name || "drawer_white" == ob.name)  ob.class_id = 60;
-        if ("book_2" == ob.name || "book_16" == ob.name || "book_15" == ob.name || "book_16_clone" == ob.name)  ob.class_id = 73;
-        if ("laptop_pc_1" == ob.name || "laptop_mac_3" == ob.name)  ob.class_id = 63;
-        if ("keyboard" == ob.name)  ob.class_id = 66;
-        if ("mouse" == ob.name)  ob.class_id = 64;
 
         g2o::SE3Quat pose ;//= object->mCuboid3D.pose_mat;
         pose = Converter::cvMattoG2oSE3Quat(ob.pose_mat.clone());
@@ -294,6 +326,8 @@ int main(int argc, char **argv)
                     << ob.length << " "
                     << ob.width << " "
                     << ob.depth << " "
+                    << "#" <<yolo_id[ob.class_id]<< "  "
+                    << "%" <<ob.name
                     << endl;
     }
 

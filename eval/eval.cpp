@@ -26,6 +26,10 @@ using namespace ORB_SLAM2;
 
 typedef Eigen::Matrix<double, 9, 1> Vector9d;
 
+float fx ;
+float fy ;
+float cx ;
+float cy ,ImageWidth,ImageHeight;
 
 Eigen::Vector3d TransformPoint(Eigen::Vector3d &point, const Eigen::Matrix4d &T)
 {
@@ -214,6 +218,223 @@ double mean(const std::vector<double>& vec) {
     return mean;
 }
 
+void read_view(const std::string filePath, std::vector<cv::Mat>& views){
+    std::ifstream infile(filePath, std::ios::in);
+    if (!infile.is_open())
+    {
+        std::cout << "open fail: " << filePath << " " << endl;
+        exit(233);
+    }
+    else
+    {
+        std::cout << "read VIEWs.txt" << std::endl;
+    }
+
+    std::vector<double> row;
+
+    cv::Mat cam_pose_mat;
+    int mnid_current = -1;
+    //string s0;
+    //getline(infile, s0);  注销掉无用的line
+    views.clear();
+    string line;
+
+    while (getline(infile, line))
+    {
+        istringstream istr(line);
+        double num,tx,ty,tz,qx,qy,qz,qw;
+
+        //存nbv
+        // 四元数   v[0] = q.x();
+        //v[1] = q.y();
+        //v[2] = q.z();
+        //v[3] = q.w();
+        //<< i << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+        //  << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+        //存物体< q[0] << " " << q[1] << " " << q[2] << " " << q[3]
+        //f_point     << "1 "  //物体
+        //            << object->mnId << "   "
+        //            << object->mnClass << " "
+        //            << object->mnConfidence_foractive << " "
+        //            << object->mvpMapObjectMappoints.size() << "     "
+        //            << pose.translation().x() << " "
+        //            << pose.translation().y() << " "
+        //            << pose.translation().z()<< "     "
+        //            << pose.rotation().x() << " "
+        //            << pose.rotation().y() << " "
+        //            << pose.rotation().z() << " "
+        //            << pose.rotation().w() << "     "
+        //            << object->mCuboid3D.lenth << " "
+        //            << object->mCuboid3D.width << " "
+        //            << object->mCuboid3D.height << " "
+        //            << endl;
+
+        //说明四元数的顺序都是xyzw
+
+        istr >> num;
+
+        double temp;
+        Eigen::MatrixXd object_poses(1, 8); ;
+        istr >> temp;  object_poses(0) = temp;  //obj->mCuboid3D.cuboidCenter0 = temp;
+        istr >> temp;  object_poses(1) = temp;  //obj->mCuboid3D.cuboidCenter1 = temp;
+        istr >> temp;  object_poses(2) = temp;  //obj->mCuboid3D.cuboidCenter2 = temp;
+        istr >> temp;  object_poses(3) = temp;
+        istr >> temp;  object_poses(4) = temp;
+        istr >> temp;  object_poses(5) = temp;
+        istr >> temp;  object_poses(6) = temp;
+        g2o::SE3Quat cam_pose_se3(object_poses.row(0).head(7));
+
+        cv::Mat nbv_pose = ORB_SLAM2::Converter::toCvMat(cam_pose_se3);
+
+        views.push_back(nbv_pose);
+
+        row.clear();
+        istr.clear();
+        line.clear();
+    }
+}
+
+cv::Point2f WorldToImg(cv::Mat &PointPosWorld, cv::Mat& T_world_to_frame)
+{
+
+    //std::cout<<"  3D point: "<<PointPosWorld<<std::endl;
+    //std::cout<<"  Camera Pose: "<<T_world_to_frame<<std::endl;
+    // world.
+    cv::Mat T_frame_to_world = T_world_to_frame.inv();
+    const cv::Mat Rcw = T_frame_to_world.rowRange(0, 3).colRange(0, 3);
+    const cv::Mat tcw = T_frame_to_world.rowRange(0, 3).col(3);
+
+    // camera.
+    cv::Mat PointPosCamera = Rcw * PointPosWorld + tcw;
+
+    const float xc = PointPosCamera.at<float>(0);
+    const float yc = PointPosCamera.at<float>(1);
+    const float invzc = 1.0 / PointPosCamera.at<float>(2);
+    //std::cout<<"  相机内参: fx:"<<fx<<", fy:"<<fy<<", cx:"<<cx<<", cy:"<<cy<<std::endl;
+    //std::cout<<"  xc:"<<xc<<", yc:"<<yc<<", invzc"<<invzc<<std::endl;
+    // image.
+    float u = fx * xc * invzc + cx;
+    float v = fy * yc * invzc + cy;
+    //std::cout<<"  2D point: u:"<<u<<", v:"<<v<<std::endl<<std::endl<<std::endl;;
+
+    return cv::Point2f(u, v);
+}
+
+cv::Point2f object_to_frame(geometry_msgs::Point& p_ob, ORB_SLAM2::Object_Map* ob, cv::Mat& T_world_to_frame){
+        // 坐标系变换矩阵
+        Eigen::Matrix4d T_world_to_ob = Converter::cvMattoMatrix4d(ob->mCuboid3D.pose_mat);
+
+        // 坐标点P在A坐标系下的坐标
+        double x_a = p_ob.x;
+        double y_a = p_ob.y;
+        double z_a = p_ob.z;
+
+        // 将点P从A坐标系变换到B坐标系
+        Eigen::Vector4d P_ob_4(x_a, y_a, z_a, 1.0);  // 注意点P_a需要补一个1，才能与矩阵T相乘
+        Eigen::Vector4d P_world_4 = T_world_to_ob * P_ob_4;
+        //std::cout<<"  3D EIGEN point: "<<P_world_4 <<std::endl;
+
+        Eigen::Vector3d P_world_3_eigen(P_world_4(0), P_world_4(1), P_world_4(2));
+        cv::Mat P_world_3 = Converter::toCvMat(P_world_3_eigen);
+        //std::cout<<"  3D CVMAT point: "<<P_world_3 <<std::endl;
+        cv::Point2f point = WorldToImg(P_world_3, T_world_to_frame);
+        //std::cout<<"  2D point: "<<point<<std::endl;
+
+        return point;
+}
+
+cv::Rect project(Object_Map* ob, cv::Mat& KF){
+    //     8------7
+    //    /|     /|
+    //   / |    / |
+    //  5------6  |
+    //  |  4---|--3
+    //  | /    | /
+    //  1------2
+    // lenth ：corner_2[0] - corner_1[0]
+    // width ：corner_2[1] - corner_3[1]
+    // height：corner_2[2] - corner_6[2]
+    double width_half = ob->mCuboid3D.width  /2.0;
+    double length_half = ob->mCuboid3D.lenth / 2.0;
+    double height_half = ob->mCuboid3D.height / 2.0;
+
+    geometry_msgs::Point p1;   p1.x = -1 * length_half; p1.y = width_half; p1.z = -1*height_half;
+    geometry_msgs::Point p2;   p2.x = -1 * length_half; p2.y = -1 * width_half; p2.z = -1*height_half;
+    geometry_msgs::Point p3;   p3.x = length_half; p3.y = -1 * width_half; p3.z = -1*height_half;
+    geometry_msgs::Point p4;   p4.x = length_half; p4.y = width_half; p4.z =  -1*height_half;
+    geometry_msgs::Point p5;   p5.x = -1 * length_half; p5.y = width_half; p5.z =  height_half;
+    geometry_msgs::Point p6;   p6.x = -1 * length_half; p6.y = -1 * width_half; p6.z =  height_half;
+    geometry_msgs::Point p7;   p7.x = length_half; p7.y = -1 * width_half; p7.z =  height_half;
+    geometry_msgs::Point p8;   p8.x = length_half; p8.y = width_half; p8.z =  height_half;
+
+    cv::Point2f p1_frame = object_to_frame(p1, ob, KF);
+    cv::Point2f p2_frame = object_to_frame(p2, ob, KF);
+    cv::Point2f p3_frame = object_to_frame(p3, ob, KF);
+    cv::Point2f p4_frame = object_to_frame(p4, ob, KF);
+    cv::Point2f p5_frame = object_to_frame(p5, ob, KF);
+    cv::Point2f p6_frame = object_to_frame(p6, ob, KF);
+    cv::Point2f p7_frame = object_to_frame(p7, ob, KF);
+    cv::Point2f p8_frame = object_to_frame(p8, ob, KF);
+
+    //c++有没有从一堆double中选出最大的函数
+    std::vector<double> x_pt = {p1_frame.x, p2_frame.x, p3_frame.x, p4_frame.x, p5_frame.x, p6_frame.x, p7_frame.x, p8_frame.x };
+    std::vector<double> y_pt = {p1_frame.y, p2_frame.y, p3_frame.y, p4_frame.y, p5_frame.y, p6_frame.y, p7_frame.y, p8_frame.y };
+    //double left_top_x = *std::min_element(values_x.begin(), values_x.end());
+    //double left_top_y = *std::min_element(values_y.begin(), values_y.end());
+    //double right_bottom_x = *std::max_element(values_x.begin(), values_x.end());
+    //double right_bottom_y = *std::max_element(values_y.begin(), values_y.end());
+    //
+    //// make insure in the image.
+    //if (left_top_x < 0)
+    //    left_top_x = 0;
+    //if (left_top_y < 0)
+    //    left_top_y = 0;
+    //if (right_bottom_x > ColorImage.cols)
+    //    right_bottom_x = ColorImage.cols;
+    //if (right_bottom_y > ColorImage.rows)
+    //    right_bottom_y = ColorImage.rows;
+
+    //double width = right_bottom_x - left_top_x;
+    //double height= right_bottom_y - left_top_y;
+    //
+    //cv::Rect RectPredict = cv::Rect(left_top_x, left_top_y, width, height);
+
+    sort(x_pt.begin(), x_pt.end());
+    sort(y_pt.begin(), y_pt.end());
+    float x_min = x_pt[0];
+    float x_max = x_pt[x_pt.size() - 1];
+    float y_min = y_pt[0];
+    float y_max = y_pt[y_pt.size() - 1];
+
+    std::cout<<"  x_min:"<<x_min<<", x_max:"<<x_max<<", y_min"<<y_min<<", y_max"<<y_max;
+
+    if(x_max < 0 || y_max < 0 || x_min > ImageWidth || y_min > ImageHeight){
+        std::cout<<"超出视场外"<<std::endl;
+        return cv::Rect(0,0,0,0);
+    }
+
+
+
+    // make insure in the image.
+    if (x_min < 0)
+        x_min = 0;
+    if (y_min < 0)
+        y_min = 0;
+    if (x_max > ImageWidth)
+        x_max = ImageWidth;
+    if (y_max > ImageHeight)
+        y_max = ImageHeight;
+
+    // the bounding box constructed by object feature points.
+    // notes: 视野范围内的特征点
+    // 用于data associate中
+    cv::Rect RectPredict = cv::Rect(x_min, y_min, x_max - x_min, y_max - y_min);
+
+    std::cout<<", 修正后  RectPredict: "<<RectPredict<<std::endl<<std::endl;;
+    return RectPredict;
+}
+
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "RGBD");
@@ -224,7 +445,13 @@ int main(int argc, char **argv) {
     WORK_SPACE_PATH = current_folder_path + "/" + "../";
     yamlfile_object = "kinectv1.yaml";
 
-
+    cv::FileStorage fSettings(WORK_SPACE_PATH + "/config/"+ yamlfile_object,  cv::FileStorage::READ );
+    fx = fSettings["Camera.fx"];
+    fy = fSettings["Camera.fy"];
+    cx = fSettings["Camera.cx"];
+    cy = fSettings["Camera.cy"];
+    ImageWidth = fSettings["Camera.width"];
+    ImageHeight = fSettings["Camera.height"];
 
     vector<ORB_SLAM2::Object_Map* > obs_gt, obs_model;
 
@@ -234,9 +461,74 @@ int main(int argc, char **argv) {
     string my_objects_path = current_folder_path + "/" + "Objects_with_points_for_read.txt";
     ReadLocalObjects(my_objects_path, obs_model);
     std::cout << "[建模物体的数量]:" << obs_model.size() << std::endl;
+    std::string NBV_filePath, camera_filePath;
+    NBV_filePath = "/home/zhjd/active_eao/src/active_eao/eval/GlobalNBV.txt";
+    camera_filePath = "/home/zhjd/active_eao/src/active_eao/eval/KeyFrameTrajectory.txt";
+    std::vector<cv::Mat> NBVs, cameras;
+    read_view(NBV_filePath, NBVs);
+    read_view(camera_filePath, cameras);
 
-    //物体数量的准确性性
-    double num_percent = 1.0 - (double)std::abs(static_cast<int>(obs_gt.size() - obs_model.size())) / obs_gt.size();
+    //计算轨迹长度
+    double distance_all = 0;
+    for(int i=1; i<cameras.size(); i++){
+        auto KF_1 = cameras[i].clone();
+        auto KF_0 = cameras[i-1].clone();
+        double dis = sqrt(
+                (KF_1.at<float>(0,3)-KF_0.at<float>(0,3)) * (KF_1.at<float>(0,3)-KF_0.at<float>(0,3))  +
+                (KF_1.at<float>(1,3)-KF_0.at<float>(1,3)) * (KF_1.at<float>(1,3)-KF_0.at<float>(1,3))  +
+                (KF_1.at<float>(2,3)-KF_0.at<float>(2,3)) * (KF_1.at<float>(2,3)-KF_0.at<float>(2,3))
+                );
+        distance_all += dis;
+    }
+
+    //计算非遮挡度
+    double non_occlusion_all = 0;
+
+    double IouThreshold = 0.6;
+    for (size_t i = 0, iend = cameras.size(); i < iend; i++) {
+
+        cv::Mat KF = cameras[i].clone();
+        double non_occlusion = 0;
+        int num=0; //当前帧中有重叠的次数
+        for(auto obj3d: obs_gt){
+
+            cv::Rect obj2d = project(obj3d, KF);
+
+            for(auto obj3d_2: obs_gt) {
+                cv::Rect obj2d_2 = project(obj3d_2, KF);
+
+                float Iou = Converter::bboxOverlapratio(obj2d, obj2d_2);
+                //std::cout<<" bboxOverlapratio: "<<Iou<<std::endl;
+                if(Iou>0){
+                    num ++;
+                    non_occlusion += (1-Iou);
+                }
+            }
+        }
+        if(num>0)
+            non_occlusion /= (double)num;
+        std::cout<<" 【one frame non_occlusion】: "<<non_occlusion<<std::endl;
+
+        non_occlusion_all += non_occlusion;
+
+        bool debug_iou_view= false;
+        if(debug_iou_view){
+            //cv::Mat mat_test = mpCurrentFrame->mColorImage.clone();
+            //cv::Scalar color = (200, 0, 0);
+            //cv::rectangle(mat_test, RectCurrent, (0, 0, 255), 2);
+            //cv::rectangle(mat_test, RectPredict, (255, 0, 0), 2);
+            //cv::putText(mat_test, std::to_string(Iou), cv::Point(0, 500), cv::FONT_HERSHEY_DUPLEX, 1.0,
+            //            (0, 255, 0), 2);
+            //cv::resize(mat_test, mat_test, cv::Size(640 * 0.5, 480 * 0.5), 0, 0, cv::INTER_CUBIC);
+            //cv::imshow("[MotionIou]", mat_test);
+        }
+    }
+    non_occlusion_all /= (double)cameras.size();
+    std::cout<<" size: NBV "<<NBVs.size()<<",  camera "<<cameras.size()<<std::endl;
+    std::cout<<" Object GT数量: "<<obs_gt.size()<<std::endl;
+    std::cout<<" 注意核对物体真值的数量，是否正确。 "<<std::endl;
+    std::cout<<" distance: "<<distance_all<<std::endl;
+    std::cout<<" 非遮挡度: "<<non_occlusion_all<<std::endl<<std::endl;
 
 
     //计算IOU和theta。从my objects中挑选，最合适的一个，作为比较的对象

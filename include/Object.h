@@ -410,7 +410,7 @@ public:
     bool AllInclude(std::vector<Object_Map*> fos);
     void IncludeFOs_and_WheatherEndActive(const std::vector<Object_Map*> &FOs);
 
-    void computePose();
+    void computePose(double yaw = 0.0);
 
     bool return_end_ASLAM();
 };

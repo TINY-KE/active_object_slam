@@ -1,3 +1,9 @@
+/*
+* 修改/home/zhjd/fabo_gazebo/src/fabo_moveit_gazebo/ASLAM_gazebo_world/urdf/robot_hokuyo_kinectv1neck.urdf.xacro中
+* <xacro:kinectv1_neck parent="base_footprint"  中的
+* camera_offset_z
+* */
+
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
@@ -27,10 +33,12 @@ visualization_msgs::Marker mReferenceKeyFrames;
 visualization_msgs::Marker mMST;
 visualization_msgs::Marker mNBVs;
 visualization_msgs::Marker mKFs;
+visualization_msgs::Marker mCandidates;
+visualization_msgs::Marker mCandidates_1;
 
-void PublishNBVs(const vector<cv::Mat> &VIEWs, const bool isKeyFrame)
+void PublishNBVs(const vector<cv::Mat> &VIEWs, const int type)
 {
-    if(isKeyFrame){
+    if(type == 1){   //KeyFrame
         mKFs.points.clear();
 
         float d = 0.05;
@@ -137,7 +145,7 @@ void PublishNBVs(const vector<cv::Mat> &VIEWs, const bool isKeyFrame)
         //publisher_CoView.publish(mCovisibilityGraph);
         publisher_nbv.publish(mMST);
     }
-    else
+    else if (type == 0) //NBV
     {
         mNBVs.points.clear();
         //mCovisibilityGraph.points.clear();
@@ -201,6 +209,127 @@ void PublishNBVs(const vector<cv::Mat> &VIEWs, const bool isKeyFrame)
         mNBVs.header.stamp = ros::Time::now();
 
         publisher_nbv.publish(mNBVs);
+
+    }
+    else if (type == 2) //Candidates
+    {
+        mCandidates.points.clear();
+
+        float d = 0.05;
+
+
+        //Camera is a pyramid. Define in camera coordinate system
+        cv::Mat bias = (cv::Mat_<float>(4, 1) << 0, 0, 0.3, 1);
+        double b = 0.13;
+        cv::Mat o = (cv::Mat_<float>(4, 1) << 0, 0, 0  +b, 1);
+        cv::Mat p1 = (cv::Mat_<float>(4, 1) << d, d * 0.8, d * 0.5  +b, 1);
+        cv::Mat p2 = (cv::Mat_<float>(4, 1) << d, -d * 0.8, d * 0.5  +b, 1);
+        cv::Mat p3 = (cv::Mat_<float>(4, 1) << -d, -d * 0.8, d * 0.5  +b, 1);
+        cv::Mat p4 = (cv::Mat_<float>(4, 1) << -d, d * 0.8, d * 0.5  +b, 1);
+        //o += bias;
+        //p1 += bias;
+        //p2 += bias;
+        //p3 += bias;
+        //p4 += bias;
+
+        for (size_t i = 1, iend = VIEWs.size(); i < iend; i++) {
+
+            cv::Mat Twc = VIEWs[i];
+            //根据 Ow.copyTo(Twc.rowRange(0,3).col(3));
+            //cv::Mat ow = VIEWs[i].rowRange(0, 3).col(3).clone();//->GetCameraCenter();
+            cv::Mat ow = Twc * o;
+            cv::Mat p1w = Twc * p1;
+            cv::Mat p2w = Twc * p2;
+            cv::Mat p3w = Twc * p3;
+            cv::Mat p4w = Twc * p4;
+
+            geometry_msgs::Point msgs_o, msgs_p1, msgs_p2, msgs_p3, msgs_p4;
+            msgs_o.x = ow.at<float>(0);
+            msgs_o.y = ow.at<float>(1);
+            msgs_o.z = ow.at<float>(2);
+            msgs_p1.x = p1w.at<float>(0);
+            msgs_p1.y = p1w.at<float>(1);
+            msgs_p1.z = p1w.at<float>(2);
+            msgs_p2.x = p2w.at<float>(0);
+            msgs_p2.y = p2w.at<float>(1);
+            msgs_p2.z = p2w.at<float>(2);
+            msgs_p3.x = p3w.at<float>(0);
+            msgs_p3.y = p3w.at<float>(1);
+            msgs_p3.z = p3w.at<float>(2);
+            msgs_p4.x = p4w.at<float>(0);
+            msgs_p4.y = p4w.at<float>(1);
+            msgs_p4.z = p4w.at<float>(2);
+
+            mCandidates.points.push_back(msgs_o);
+            mCandidates.points.push_back(msgs_p1);
+            mCandidates.points.push_back(msgs_o);
+            mCandidates.points.push_back(msgs_p2);
+            mCandidates.points.push_back(msgs_o);
+            mCandidates.points.push_back(msgs_p3);
+            mCandidates.points.push_back(msgs_o);
+            mCandidates.points.push_back(msgs_p4);
+            mCandidates.points.push_back(msgs_p1);
+            mCandidates.points.push_back(msgs_p2);
+            mCandidates.points.push_back(msgs_p2);
+            mCandidates.points.push_back(msgs_p3);
+            mCandidates.points.push_back(msgs_p3);
+            mCandidates.points.push_back(msgs_p4);
+            mCandidates.points.push_back(msgs_p4);
+            mCandidates.points.push_back(msgs_p1);
+
+        }
+        mCandidates.header.stamp = ros::Time::now();
+
+
+        publisher_nbv.publish(mCandidates);
+
+        {
+            cv::Mat Twc = VIEWs[0];
+            //根据 Ow.copyTo(Twc.rowRange(0,3).col(3));
+            //cv::Mat ow = VIEWs[i].rowRange(0, 3).col(3).clone();//->GetCameraCenter();
+            cv::Mat ow = Twc * o;
+            cv::Mat p1w = Twc * p1;
+            cv::Mat p2w = Twc * p2;
+            cv::Mat p3w = Twc * p3;
+            cv::Mat p4w = Twc * p4;
+
+            geometry_msgs::Point msgs_o, msgs_p1, msgs_p2, msgs_p3, msgs_p4;
+            msgs_o.x = ow.at<float>(0);
+            msgs_o.y = ow.at<float>(1);
+            msgs_o.z = ow.at<float>(2);
+            msgs_p1.x = p1w.at<float>(0);
+            msgs_p1.y = p1w.at<float>(1);
+            msgs_p1.z = p1w.at<float>(2);
+            msgs_p2.x = p2w.at<float>(0);
+            msgs_p2.y = p2w.at<float>(1);
+            msgs_p2.z = p2w.at<float>(2);
+            msgs_p3.x = p3w.at<float>(0);
+            msgs_p3.y = p3w.at<float>(1);
+            msgs_p3.z = p3w.at<float>(2);
+            msgs_p4.x = p4w.at<float>(0);
+            msgs_p4.y = p4w.at<float>(1);
+            msgs_p4.z = p4w.at<float>(2);
+
+            mCandidates_1.points.push_back(msgs_o);
+            mCandidates_1.points.push_back(msgs_p1);
+            mCandidates_1.points.push_back(msgs_o);
+            mCandidates_1.points.push_back(msgs_p2);
+            mCandidates_1.points.push_back(msgs_o);
+            mCandidates_1.points.push_back(msgs_p3);
+            mCandidates_1.points.push_back(msgs_o);
+            mCandidates_1.points.push_back(msgs_p4);
+            mCandidates_1.points.push_back(msgs_p1);
+            mCandidates_1.points.push_back(msgs_p2);
+            mCandidates_1.points.push_back(msgs_p2);
+            mCandidates_1.points.push_back(msgs_p3);
+            mCandidates_1.points.push_back(msgs_p3);
+            mCandidates_1.points.push_back(msgs_p4);
+            mCandidates_1.points.push_back(msgs_p4);
+            mCandidates_1.points.push_back(msgs_p1);
+
+        }
+        mCandidates_1.header.stamp = ros::Time::now();
+        publisher_nbv.publish(mCandidates_1);
 
     }
 }
@@ -286,16 +415,18 @@ void read_view(const std::string filePath, std::vector<cv::Mat>& views){
 
 int main(int argc, char **argv)
 {
-    std::string NBV_filePath, camera_filePath;
+    std::string NBV_filePath, camera_filePath, candidate_filePath;
     if(argc != 3){
         std::cout<<"【注意】：没有输入被读取的nbv文件地址"<<std::endl;
         std::cout<<"读取默认文件：/home/zhjd/active_eao/src/active_eao/eval/GlobalNBV.txt"<<std::endl;
         NBV_filePath = "/home/zhjd/active_eao/src/active_eao/eval/GlobalNBV.txt";
         camera_filePath = "/home/zhjd/active_eao/src/active_eao/eval/KeyFrameTrajectory.txt";
+        candidate_filePath = "/home/zhjd/active_eao/src/active_eao/eval/Candidates.txt";
     }
     else{
         NBV_filePath = argv[1];
         camera_filePath = argv[2];
+        candidate_filePath = argv[3];
     }
 
 
@@ -342,13 +473,39 @@ int main(int argc, char **argv)
     mKFs.color.b = 1.0f;
     mKFs.color.a = 1.0;
 
-    std::vector<cv::Mat> NBVs, cameras;
+    //Configure KeyFrames
+    mCandidates.header.frame_id = MAP_FRAME_ID;
+    mCandidates.ns = KEYFRAMES_NAMESPACE;
+    mCandidates.id=5;
+    mCandidates.type = visualization_msgs::Marker::LINE_LIST;
+    mCandidates.scale.x=0.005;
+    mCandidates.pose.orientation.w=1.0;
+    mCandidates.action=visualization_msgs::Marker::ADD;
+    mCandidates.color.r=0.0f;
+    mCandidates.color.b=0.0f;
+    mCandidates.color.g=0.0f;
+    mCandidates.color.a = 1.0;
+
+    mCandidates_1.header.frame_id = MAP_FRAME_ID;
+    mCandidates_1.ns = KEYFRAMES_NAMESPACE;
+    mCandidates_1.id=6;
+    mCandidates_1.type = visualization_msgs::Marker::LINE_LIST;
+    mCandidates_1.scale.x=0.005;
+    mCandidates_1.pose.orientation.w=1.0;
+    mCandidates_1.action=visualization_msgs::Marker::ADD;
+    mCandidates_1.color.r=0.0f;
+    mCandidates_1.color.b=1.0f;
+    mCandidates_1.color.g=0.0f;
+    mCandidates_1.color.a = 1.0;
+
+    std::vector<cv::Mat> NBVs, cameras, candidates;
     ros::init ( argc, argv, "gazebo_world_parser" );
     ros::NodeHandle nh;
     publisher_nbv = nh.advertise<visualization_msgs::Marker>("nbv_trajectory", 1000);
 
     read_view(NBV_filePath, NBVs);
     read_view(camera_filePath, cameras);
+    read_view(candidate_filePath, candidates);
 
     std::cout<<" size: NBV "<<NBVs.size()<<",  camera "<<cameras.size()<<std::endl;
 
@@ -356,6 +513,7 @@ int main(int argc, char **argv)
     while (nh.ok()){
         PublishNBVs(NBVs,0);
         PublishNBVs(cameras,1);
+        PublishNBVs(candidates,2);
     }  
 
 

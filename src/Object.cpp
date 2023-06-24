@@ -713,8 +713,9 @@ int Object_2D::Object2D_DataAssociationWith_Object3D()  //cv::Mat &image
             }
             else if ((t_test_x + t_test_y + t_test_z) / 3 < 4)
             {
+                //计算obj3d在mpCurrentFrame中的投影边框mRect_byProjectPoints
                 obj3d->ComputeProjectRectFrameToCurrentFrame(*mpCurrentFrame);
-
+                //投影边框分别于RectCurrent和mBox_cvRect_FeaturePoint进行比较
                 float fIou_force = Converter::bboxOverlapratio(RectCurrent, obj3d->mRect_byProjectPoints);
                 float fIou2_force = Converter::bboxOverlapratio(mBox_cvRect_FeaturePoints, obj3d->mRect_byProjectPoints);
                 fIou_force = max(fIou_force, fIou2_force);
@@ -2527,7 +2528,7 @@ Object_Map::Object_Map() {
     cv::FileStorage fSettings( WORK_SPACE_PATH + "/config/" +yamlfile_object, cv::FileStorage::READ);
     if(!fSettings.isOpened())
 	{
-		cerr<<"Failed to open settings file at: "<<WORK_SPACE_PATH+yamlfile_object<<endl;
+		cerr<<"Failed to open settings file at: "<<WORK_SPACE_PATH+ "/config/"+yamlfile_object<<endl;
 	}
 	//else cout<<"success to open file at: "<<WORK_SPACE_PATH+yamlfile_object<<endl;
 
@@ -3084,13 +3085,13 @@ bool BackgroudObject::return_end_ASLAM()
         return false;
 }
 
-void BackgroudObject::computePose() {
+void BackgroudObject::computePose( double yaw ) {
     float cp = cos(0.0);
     float sp = sin(0.0);
     float sr = sin(0.0);
     float cr = cos(0.0);
-    float sy = sin(0.0);
-    float cy = cos(0.0);
+    float sy = sin(yaw);
+    float cy = cos(yaw);
     Eigen::Matrix<double, 3, 3> REigen;
     REigen << cp * cy, (sr * sp * cy) - (cr * sy), (cr * sp * cy) + (sr * sy),
         cp * sy, (sr * sp * sy) + (cr * cy), (cr * sp * sy) - (sr * cy),

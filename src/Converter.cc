@@ -154,6 +154,9 @@ std::vector<float> Converter::toQuaternion(const cv::Mat &M)
 //[active slam]
 float Converter::bboxOverlapratio(const cv::Rect& rect1, const cv::Rect& rect2)
 {
+    if (rect1.width == 0 || rect1.height == 0 || rect2.width == 0 || rect2.height == 0) {
+        return 0;
+    }
     int overlap_area = (rect1&rect2).area();
     return (float)overlap_area/((float)(rect1.area()+rect2.area()-overlap_area));
 }

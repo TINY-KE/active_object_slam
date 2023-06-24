@@ -38,7 +38,7 @@ Eigen::Vector3d TransformPoint(Eigen::Vector3d &point, const Eigen::Matrix4d &T)
 }
 
 double angle_tune = 0;
-geometry_msgs::Point corner_to_marker(geometry_msgs::Point& oldp, ORB_SLAM2::Object_Map* ob){
+geometry_msgs::Point world_to_frame(geometry_msgs::Point& oldp, ORB_SLAM2::Object_Map* ob){
         geometry_msgs::Point newp;
 
         // 坐标系变换矩阵
@@ -63,6 +63,8 @@ geometry_msgs::Point corner_to_marker(geometry_msgs::Point& oldp, ORB_SLAM2::Obj
         newp.z = z_b ;
         return newp;
 }
+
+
 
 int main(int argc, char **argv) {
 
@@ -93,8 +95,8 @@ int main(int argc, char **argv) {
     std::cout << "[建模物体的数量]:" << obs_model.size() << std::endl;
 
 
-
     ros::Rate rate(10);
+    std::cout << "Publishing GT and Object Model"<< std::endl;
     while (nh.ok()){
 
         int id = 0;
@@ -139,35 +141,35 @@ int main(int argc, char **argv) {
 
 
 
-            marker.points.push_back(corner_to_marker(p1, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
-            marker.points.push_back(corner_to_marker(p1, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
 
-            marker.points.push_back(corner_to_marker(p5, ob));
-            marker.points.push_back(corner_to_marker(p1, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
 
-            marker.points.push_back(corner_to_marker(p5, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p5, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
 
             publisher_GT.publish(marker);
-            std::cout << "publish GT"<< std::endl;
+            //std::cout << "publish GT"<< std::endl;
         }
 
         if(rviz_model)
@@ -215,35 +217,35 @@ int main(int argc, char **argv) {
 
 
 
-            marker.points.push_back(corner_to_marker(p1, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
-            marker.points.push_back(corner_to_marker(p1, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
 
-            marker.points.push_back(corner_to_marker(p5, ob));
-            marker.points.push_back(corner_to_marker(p1, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p2, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p3, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p4, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
+            marker.points.push_back(world_to_frame(p1, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p2, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p3, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p4, ob));
 
-            marker.points.push_back(corner_to_marker(p5, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p6, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p7, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p8, ob));
-            marker.points.push_back(corner_to_marker(p5, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p6, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p7, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p8, ob));
+            marker.points.push_back(world_to_frame(p5, ob));
 
             publisher_model.publish(marker);
-            std::cout << "publish Model"<< std::endl;
+            //std::cout << "publish Model"<< std::endl;
         }
     }
     ros::shutdown();
