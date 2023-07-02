@@ -207,8 +207,8 @@ Planle.Safe_radius: 0.5
 
 ConstraintType: 1 #3 rostf; 2 imu; 1 yaml
 FakeBackgroudObjects: 0  #fake背景物体的数量
-IE.BackgroudObjectNum: 1   #背景物体的先验数量
-IE.ThresholdEndMapping: 0.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
+IE.BackgroudObjectNum: 5   #背景物体的先验数量
+IE.ThresholdEndMapping: 1.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0

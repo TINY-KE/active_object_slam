@@ -419,6 +419,7 @@ void  NbvGenerator::Filter_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> 
 
         // 支撑平面
         mvPlanes_filter.push_back(tmp);
+        publishSupportingPlane(allCloudPoints);
 
         //  计算点云的最小值和最大值
         Eigen::Vector4f minPoint;
@@ -1267,59 +1268,62 @@ void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
     //publishBackgroudObject(colored_pcl_ptr);
     for(auto bo: mvBackgroud_objects){
         publishBackgroudObject(bo);
-
-        //plane
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr  colored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
-        colored_pcl_ptr->points.clear();
-        int index=0;
-        //for(auto tmp : mvPlanes_filter)
-
-        auto tmp = bo->mPlane;
-        index++;
-        vector<float> color = colors_bgr[index%6];
-        //tmp转为pcl::PointXYZRGB, 才能显示颜色
-        for (int i = 0; i <  tmp->points.size(); i++)
-        {
-          pcl::PointXYZRGB  p;
-          p.x=tmp->points[i].x;
-          p.y=tmp->points[i].y;
-          p.z=tmp->points[i].z;
-          p.r = static_cast<uint8_t>(color[2]);
-          p.g = static_cast<uint8_t>(color[1]);
-          p.b = static_cast<uint8_t>(color[0]);
-
-          colored_pcl_ptr->points.push_back(p);
-        }
-
-
-        //plane的边界
-        //index=2;
-        //for(auto cloud_boundary : mvCloudBoundary){
-        //    index++;
-        //    vector<float> color = colors_bgr[index % 6];
-        //    for (int i = 0; i <  cloud_boundary->points.size(); i++)
-        //    {
-        //      pcl::PointXYZ pno = cloud_boundary->points[i];
-        //      pcl::PointXYZRGB  p;
-        //      p.x= pno.x;
-        //      p.y= pno.y;
-        //      p.z= pno.z;
-        //      p.r = color[2];
-        //      p.g = color[1];
-        //      p.b = color[0];
-        //      colored_pcl_ptr->points.push_back(p);
-        //    }
-        //}
-
-        // 发布平面点和边缘点
-        sensor_msgs::PointCloud2 colored_msg;
-        colored_pcl_ptr->width = 1;
-        colored_pcl_ptr->height = colored_pcl_ptr->points.size();
-        pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
-        colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
-        pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
     }
 
+}
+void NbvGenerator::publishSupportingPlane( pcl::PointCloud<pcl::PointXYZRGB>::Ptr allCloudPoints ){
+    // color.
+    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+    //plane
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr  colored_pcl_ptr (new pcl::PointCloud<pcl::PointXYZRGB>);
+    colored_pcl_ptr->points.clear();
+    int index=0;
+    //for(auto tmp : mvPlanes_filter)
+
+    //auto tmp = allCloudPoints;
+    index++;
+    vector<float> color = colors_bgr[index%6];
+    //tmp转为pcl::PointXYZRGB, 才能显示颜色
+    for (int i = 0; i <  allCloudPoints->points.size(); i++)
+    {
+      pcl::PointXYZRGB  p;
+      p.x=allCloudPoints->points[i].x;
+      p.y=allCloudPoints->points[i].y;
+      p.z=allCloudPoints->points[i].z;
+      p.r = static_cast<uint8_t>(color[2]);
+      p.g = static_cast<uint8_t>(color[1]);
+      p.b = static_cast<uint8_t>(color[0]);
+
+      colored_pcl_ptr->points.push_back(p);
+    }
+
+
+    //plane的边界
+    //index=2;
+    //for(auto cloud_boundary : mvCloudBoundary){
+    //    index++;
+    //    vector<float> color = colors_bgr[index % 6];
+    //    for (int i = 0; i <  cloud_boundary->points.size(); i++)
+    //    {
+    //      pcl::PointXYZ pno = cloud_boundary->points[i];
+    //      pcl::PointXYZRGB  p;
+    //      p.x= pno.x;
+    //      p.y= pno.y;
+    //      p.z= pno.z;
+    //      p.r = color[2];
+    //      p.g = color[1];
+    //      p.b = color[0];
+    //      colored_pcl_ptr->points.push_back(p);
+    //    }
+    //}
+
+    // 发布平面点和边缘点
+    sensor_msgs::PointCloud2 colored_msg;
+    colored_pcl_ptr->width = 1;
+    colored_pcl_ptr->height = colored_pcl_ptr->points.size();
+    pcl::toROSMsg( *colored_pcl_ptr,  colored_msg);  //将点云转化为消息才能发布
+    colored_msg.header.frame_id = MAP_FRAME_ID;//帧id改成和velodyne一样的
+    pubCloud.publish( colored_msg); //发布调整之后的点云数据，主题为/adjustd_cloud
 }
 
 void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){

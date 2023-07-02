@@ -459,7 +459,7 @@ int main(int argc, char **argv)
     mMST.action=visualization_msgs::Marker::ADD;
     mMST.color.r=0.0f;
     mMST.color.b=0.0f;
-    mMST.color.g=0.0f;
+    mMST.color.g=1.0f;
     mMST.color.a = 1.0;
 
     //Configure KeyFrames
@@ -513,7 +513,7 @@ int main(int argc, char **argv)
     while (nh.ok()){
         PublishNBVs(NBVs,0);
         PublishNBVs(cameras,1);
-        PublishNBVs(candidates,2);
+        //PublishNBVs(candidates,2);
     }  
 
 

@@ -150,6 +150,7 @@ private:
     //MapPublisher mappublisher;
     void PublishBackgroudObjects_and_SupportingPlane();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
+    void publishSupportingPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
     void publishBackgroudObject( BackgroudObject* bo );
     geometry_msgs::Point corner_to_marker(Eigen::Vector3d& v);
 

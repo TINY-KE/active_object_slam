@@ -12,7 +12,7 @@ Panels:
         - /TF1/Frames1
         - /TF1/Tree1
         - /object_MainDirection1/Namespaces1
-      Splitter Ratio: 0.35976505279541016
+      Splitter Ratio: 0.3641703426837921
     Tree Height: 1301
   - Class: rviz/Selection
     Name: Selection
@@ -99,13 +99,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: false
+      Enabled: true
       Marker Topic: /objectmap
       Name: objectmap
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
-      Value: false
+      Value: true
     - Alpha: 0.05000000074505806
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -135,21 +135,21 @@ Visualization Manager:
       Use rainbow: true
       Value: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /candidate
       Name: NBV
       Namespaces:
-        Candidate: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /candidate_unsort
       Name: candidate_unsort
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /Point
@@ -167,20 +167,19 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /KeyFrame
       Name: KeyFrame
       Namespaces:
-        Graph: true
-        KeyFrames: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /Point
       Name: Point
       Namespaces:
-        MapPoints: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 0.699999988079071
@@ -288,7 +287,7 @@ Visualization Manager:
       Use rainbow: true
       Value: false
     - Class: rviz/TF
-      Enabled: true
+      Enabled: false
       Frame Timeout: 15
       Frames:
         All Enabled: false
@@ -300,7 +299,7 @@ Visualization Manager:
       Tree:
         {}
       Update Interval: 0
-      Value: true
+      Value: false
     - Alpha: 0.30000001192092896
       Class: rviz/Map
       Color Scheme: costmap
@@ -540,13 +539,13 @@ Visualization Manager:
       Value: true
       Visual Enabled: true
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /object_MainDirection
       Name: object_MainDirection
       Namespaces:
-        vector: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: false
       Marker Topic: /object_SumMainDirection
@@ -572,13 +571,13 @@ Visualization Manager:
       Queue Size: 100
       Value: false
     - Class: rviz/Marker
-      Enabled: true
+      Enabled: false
       Marker Topic: /objectmap_backgroud
       Name: objectmap_backgroud
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -612,7 +611,8 @@ Visualization Manager:
       Marker Topic: /nbv_trajectory
       Name: NBV_trajectory
       Namespaces:
-        {}
+        Graph: true
+        KeyFrames: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -643,25 +643,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 4.552437782287598
+      Distance: 5.2013258934021
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -0.0005190074443817139
-        Y: 0.02098129689693451
+        X: -1.9610464572906494
+        Y: -0.7413787245750427
         Z: 0
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6153987646102905
+      Pitch: 1.460397481918335
       Target Frame: <Fixed Frame>
       Value: ThirdPersonFollower (rviz)
-      Yaw: 6.018568992614746
+      Yaw: 4.728576183319092
     Saved: ~
 Window Geometry:
   Displays:
