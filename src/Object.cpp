@@ -1378,13 +1378,111 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
     // step 8. 计算ie
     this->ComputeIE();
-    if(mIE < mIEThresholdEndMapping )
+    if(mIE < mIEThresholdEndMapping ){
         end_build = true;
+        //    yolo_class: [   39bottle瓶子,  41cup杯子,    63laptop笔记本电脑, 66keyboard键盘,   73 book书,  75vase花瓶,     ]
+        if(mbFakeGBVs){
+            if(mnClass == 39)  FakeObjectModel(  0.0,0.0,0.0,    0.109946, 0.100190, 0.236864 );
+            if(mnClass == 41)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
+            if(mnClass == 63)  FakeObjectModel(  -2.487148, -0.559188, 0.730031,         0.367074, 0.259145, 0.245264 );
+            if(mnClass == 66)  FakeObjectModel(  -1.934208, -0.365646, 0.610426,         0.366773, 0.115214, 0.029107 );
+            if(mnClass == 73)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
+            if(mnClass == 75)  FakeObjectModel(  -1.428671, 0.174307, 0.773543,    0.197897, 0.260161, 0.362524 );
+        }
+    }
+
+    if(mbFakeGBVs){
+            if(mnClass == 39)  FakeObjectModel(  0.0,0.0,0.0,    0.109946, 0.100190, 0.236864 );
+            if(mnClass == 41)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
+            if(mnClass == 63)  FakeObjectModel(  -2.487148, -0.559188, 0.730031,         0.367074, 0.259145, 0.245264 );
+            if(mnClass == 66)  FakeObjectModel(  -1.934208, -0.365646, 0.610426,         0.366773, 0.115214, 0.029107 );
+            if(mnClass == 73)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
+            if(mnClass == 75)  FakeObjectModel(  -1.428671, 0.174307, 0.773543,    0.197897, 0.260161, 0.362524 );
+    }
+
     if(mbPublishIEwheel)
         this->PublishIE();
 
     // step 9. 计算观测主方向
     this->ComputeMainDirection();
+}
+
+void Object_Map::FakeObjectModel(double x, double y, double z, double length, double width, double height ) {
+
+    double mean_x, mean_y, mean_z;
+    if(x!=0 || y!=0 || z!=0 )
+    {
+        mean_x = x;
+        mean_y = y;
+        mean_z = z;
+        mCuboid3D.cuboidCenter = Eigen::Vector3d(mean_x,mean_y,mean_z);
+
+    } else{
+        mean_x = mCuboid3D.cuboidCenter.x();
+        mean_y = mCuboid3D.cuboidCenter.y();
+        mean_z = mCuboid3D.cuboidCenter.z();
+    }
+
+    // step 3. 生成Cuboid3D的中心和尺寸  update object center and scale.
+    //float x_min = mean_x - length/2.0;
+    //float x_max = mean_x + length/2.0;
+    //
+    //float y_min = mean_y - width/2.0;
+    //float y_max = mean_y + width/2.0;
+    //
+    //float z_min = mean_z - height/2.0;
+    //float z_max = mean_z + height/2.0;
+
+    // centre. 这是点集外包框的中心
+    //mCuboid3D.cuboidCenter = Eigen::Vector3d((x_max + x_min) / 2, (y_max + y_min) / 2, (z_max + z_min) / 2);
+
+    //mCuboid3D.x_min = x_min;
+    //mCuboid3D.x_max = x_max;
+    //mCuboid3D.y_min = y_min;
+    //mCuboid3D.y_max = y_max;
+    //mCuboid3D.z_min = z_min;
+    //mCuboid3D.z_max = z_max;
+    //
+    //mCuboid3D.lenth = x_max - x_min;
+    //mCuboid3D.width = y_max - y_min;
+    //mCuboid3D.height = z_max - z_min;
+    //
+    //mCuboid3D.corner_1 = Eigen::Vector3d(x_min, y_min, z_min);
+    //mCuboid3D.corner_2 = Eigen::Vector3d(x_max, y_min, z_min);
+    //mCuboid3D.corner_3 = Eigen::Vector3d(x_max, y_max, z_min);
+    //mCuboid3D.corner_4 = Eigen::Vector3d(x_min, y_max, z_min);
+    //mCuboid3D.corner_5 = Eigen::Vector3d(x_min, y_min, z_max);
+    //mCuboid3D.corner_6 = Eigen::Vector3d(x_max, y_min, z_max);
+    //mCuboid3D.corner_7 = Eigen::Vector3d(x_max, y_max, z_max);
+    //mCuboid3D.corner_8 = Eigen::Vector3d(x_min, y_max, z_max);
+
+
+
+     // step 4. update object pose。  更新物体在世界下的坐标
+    Update_Twobj();
+
+
+    // step 5. 计算8个定点在物体系下的坐标
+    g2o::SE3Quat pose =  Converter::toSE3Quat(this->mCuboid3D.pose_mat);
+
+    float x_min_obj = - length/2.0;
+    float x_max_obj =  length/2.0;
+    float y_min_obj = - width/2.0;
+    float y_max_obj = width/2.0;
+    float z_min_obj = - height/2.0;
+    float z_max_obj = height/2.0;
+
+    // step 6. 计算8个定点在世界系下的坐标
+    // update object vertices and translate it to world frame.
+    // g2o::SE3Quat Converter::toSE3Quat(const cv::Mat &cvT)
+    mCuboid3D.corner_1 = pose * Eigen::Vector3d(x_min_obj, y_min_obj, z_min_obj);
+    mCuboid3D.corner_2 = pose * Eigen::Vector3d(x_max_obj, y_min_obj, z_min_obj);
+    mCuboid3D.corner_3 = pose * Eigen::Vector3d(x_max_obj, y_max_obj, z_min_obj);
+    mCuboid3D.corner_4 = pose * Eigen::Vector3d(x_min_obj, y_max_obj, z_min_obj);
+    mCuboid3D.corner_5 = pose * Eigen::Vector3d(x_min_obj, y_min_obj, z_max_obj);
+    mCuboid3D.corner_6 = pose * Eigen::Vector3d(x_max_obj, y_min_obj, z_max_obj);
+    mCuboid3D.corner_7 = pose * Eigen::Vector3d(x_max_obj, y_max_obj, z_max_obj);
+    mCuboid3D.corner_8 = pose * Eigen::Vector3d(x_min_obj, y_max_obj, z_max_obj);
 }
 
 // 移除object3d中的outliers，重新优化物体的坐标和尺度
@@ -2549,6 +2647,7 @@ Object_Map::Object_Map() {
     mbPublishIEwheel = fSettings["IE.PublishIEwheel"];
     mIEThresholdEndMapping =  fSettings["IE.ThresholdEndMapping"];
     mnViewField =  fSettings["ViewField"];
+    mbFakeGBVs = fSettings["FakeGBVs"];
 }
 
 double Object_Map::IE(const double &p){
@@ -3054,11 +3153,11 @@ void BackgroudObject::IncludeFOs_and_WheatherEndActive(const std::vector<Object_
     //判断最大观测次数，防止陷入局部最优值
     if(mnObserveNum < mnObserveMaxNum){
         //如果背景物体内部一个物体也没有了，则认为是未探索状态。仍需要生成GNBV。
-        if(FO_num==0){
+        if(FO_num==0 && mState != End && mState != UnEnd){
             mState = UnExplored;
         }
         //如果背景物体内部存在多个物体了
-        else{
+        else if(FO_num>0){
             //如果所有物体都建立完了，则认为是 End
             if(FO_num_not_end==0)
                 mState = End;

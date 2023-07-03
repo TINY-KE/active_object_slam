@@ -366,6 +366,10 @@ public:
 
 private:
     float mnViewField;
+
+//fake GBV
+    int mbFakeGBVs;
+    void FakeObjectModel(double x, double y, double z, double length, double width, double height );
 };
 
 void cmpute_corner(Object_Map* object) ;
@@ -413,6 +417,8 @@ public:
     void computePose(double yaw = 0.0);
 
     bool return_end_ASLAM();
+
+
 };
 
 }

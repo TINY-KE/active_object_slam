@@ -80,6 +80,7 @@ mpMap(map), mpTracker(pTracking)
     mReward_angle_cost = fSettings["MAM.Reward_angle_cost"];
     mBackgroudObjectNum = fSettings["IE.BackgroudObjectNum"];
     mbFakeBackgroudObjects = fSettings["FakeBackgroudObjects"];
+    mbFakeGBVs = fSettings["FakeGBVs"];
     mnObserveMaxNumBackgroudObject = fSettings["ObserveMaxNumBackgroudObject"];
 
     Candidate origin_pose;
@@ -87,7 +88,95 @@ mpMap(map), mpTracker(pTracking)
     mNBVs_old.push_back(origin_pose);
     cv::Mat clonedMat = mT_world_cam.clone();
     mpMap->mvNBVs_pose.push_back(clonedMat);
+
+    //fake GBVs
+    if(mbFakeGBVs){
+        std::string NBV_filePath = "/home/zhjd/active_eao/src/active_eao/eval/GlobalNBV.txt";
+        read_view(NBV_filePath, mvFakeGBVs);
+    }
+
+
 }
+
+void NbvGenerator::read_view(const std::string filePath, std::vector<Candidate>& views){
+    std::ifstream infile(filePath, std::ios::in);
+    if (!infile.is_open())
+    {
+        std::cout << "open fail: " << filePath << " " << endl;
+        exit(233);
+    }
+    else
+    {
+        std::cout << "read VIEWs.txt" << std::endl;
+    }
+
+    std::vector<double> row;
+
+    cv::Mat cam_pose_mat;
+    int mnid_current = -1;
+    //string s0;
+    //getline(infile, s0);  注销掉无用的line
+    views.clear();
+    string line;
+
+    while (getline(infile, line))
+    {
+        istringstream istr(line);
+        double num,tx,ty,tz,qx,qy,qz,qw;
+
+        //存nbv
+        // 四元数   v[0] = q.x();
+        //v[1] = q.y();
+        //v[2] = q.z();
+        //v[3] = q.w();
+        //<< i << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+        //  << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+        //存物体< q[0] << " " << q[1] << " " << q[2] << " " << q[3]
+        //f_point     << "1 "  //物体
+        //            << object->mnId << "   "
+        //            << object->mnClass << " "
+        //            << object->mnConfidence_foractive << " "
+        //            << object->mvpMapObjectMappoints.size() << "     "
+        //            << pose.translation().x() << " "
+        //            << pose.translation().y() << " "
+        //            << pose.translation().z()<< "     "
+        //            << pose.rotation().x() << " "
+        //            << pose.rotation().y() << " "
+        //            << pose.rotation().z() << " "
+        //            << pose.rotation().w() << "     "
+        //            << object->mCuboid3D.lenth << " "
+        //            << object->mCuboid3D.width << " "
+        //            << object->mCuboid3D.height << " "
+        //            << endl;
+
+        //说明四元数的顺序都是xyzw
+
+        istr >> num;
+
+        double temp;
+        Eigen::MatrixXd object_poses(1, 8); ;
+        istr >> temp;  object_poses(0) = temp;  //obj->mCuboid3D.cuboidCenter0 = temp;
+        istr >> temp;  object_poses(1) = temp;  //obj->mCuboid3D.cuboidCenter1 = temp;
+        istr >> temp;  object_poses(2) = temp;  //obj->mCuboid3D.cuboidCenter2 = temp;
+        istr >> temp;  object_poses(3) = temp;
+        istr >> temp;  object_poses(4) = temp;
+        istr >> temp;  object_poses(5) = temp;
+        istr >> temp;  object_poses(6) = temp;
+        g2o::SE3Quat cam_pose_se3(object_poses.row(0).head(7));
+
+        cv::Mat nbv_pose = ORB_SLAM2::Converter::toCvMat(cam_pose_se3);
+        Candidate cand;
+        cand.pose = nbv_pose.clone();
+        views.push_back(cand);
+
+        row.clear();
+        istr.clear();
+        line.clear();
+    }
+}
+
+
 void NbvGenerator::SubReachGoal(const std_msgs::Bool::ConstPtr & msg){
     mbReachGoalFlag = msg->data;
 }
@@ -143,10 +232,11 @@ void NbvGenerator::Run() {
 
             if(init_bo_first){
                 //std::cerr << "等待Extract_Candidates" << std::endl;
+
                 Extract_Candidates(bo_first);
             }
             else if( mvBackgroud_objects.size() == mBackgroudObjectNum){
-                std::cerr << "结束建图，两个桌子都建立完毕了"<< std::endl;
+                std::cerr << "结束建图,"<<mBackgroudObjectNum<<"个桌子都建立完毕了"<< std::endl;
                 break;
 
             }
@@ -157,7 +247,7 @@ void NbvGenerator::Run() {
         }
 
 
-        PublishBackgroudObjects_and_SupportingPlane();  //可视化 筛选后的平面
+        PublishBackgroudObjectsModel();  //可视化 筛选后的平面
 
 
         //2. 旋转（旋转暂时停用）并评估 全局候选点
@@ -186,6 +276,15 @@ void NbvGenerator::Run() {
         //3. 将全局NBV发送给导航模块
         if( mvGlobalCandidate.size() != 0 )
         {
+            if(mbFakeGBVs){
+                Candidate cand = *mvFakeGBVs.begin();
+                cand.bo = mvGlobalCandidate[0].bo;
+                cand.reward = DBL_MAX;
+                mvGlobalCandidate.push_back(cand);
+                vector<Candidate>::iterator temp =mvFakeGBVs.begin();
+                mvFakeGBVs.erase(temp);
+            }
+
             //从大到小排序GlobalCandidate, 队首是NBV
             std::sort(mvGlobalCandidate.begin(), mvGlobalCandidate.end(),
                       [](Candidate a, Candidate b) -> bool { return a.reward > b.reward; });
@@ -275,7 +374,8 @@ void NbvGenerator::Run() {
                             //记录当前BO生成NBV的数量，
                             std::cerr << "更新背景物体的观测次数，x:"<<mvGlobalCandidate.front().bo->mean_x<<", y:"<<mvGlobalCandidate.front().bo->mean_y <<", ObserveNum:"<<mvGlobalCandidate.front().bo->mnObserveNum<< std::endl;
                             mvGlobalCandidate.front().bo->mnObserveNum = mvGlobalCandidate.front().bo->mnObserveNum + 1;
-                            std::cerr << "新ObserveNum:"<<mvGlobalCandidate.front().bo->mnObserveNum<< std::endl;
+                            std::cerr << "新ObserveNum:"<<mvGlobalCandidate.front().bo->mnObserveNum
+                             << " / "<<mvGlobalCandidate.front().bo->mnObserveMaxNum<< std::endl;
                             break;
 
                         } else{
@@ -547,7 +647,7 @@ void  NbvGenerator::Fake_BackgroudObjects(const vector<ORB_SLAM2::MapPlane *> &v
 
             bo->length = length;
             bo->width = width;
-            bo->height = depth;
+            bo->height = z+depth/2.0;
 
             // Rotation matrix.
             bo->computePose();
@@ -1012,7 +1112,7 @@ void  NbvGenerator::Extract_Candidates(){
 
     if (mvBackgroud_objects.empty())
         return;
-    std::cerr << "当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
+    std::cerr << "开始提取候选点，当前背景物体的数量为"<< mvBackgroud_objects.size()  << std::endl;
 
     //1.先按照背景物体的mnid，排序，从小开始处理
     //在前面完成了
@@ -1095,7 +1195,7 @@ void  NbvGenerator::ExtractCandidates(const vector<MapPlane *> &vpMPs){
     voxel.setLeafSize(0.002, 0.002, 0.002);
 
     int num=0; //平面的数量
-    std::cerr << "PublishBackgroudObjects_and_SupportingPlane: 平面的数量为"<< vpMPs.size()  << std::endl;
+    std::cerr << "开始提取候选点，平面的数量为"<< vpMPs.size()  << std::endl;
     for (auto pMP : vpMPs)  //对vpMPs中每个平面pMP分别进行处理,
     {
         if(pMP->end_activemapping)
@@ -1258,9 +1358,9 @@ vector<Candidate>  NbvGenerator::RotateCandidates(Candidate& initPose){
     return  cands;
 }
 
-void  NbvGenerator::PublishBackgroudObjects_and_SupportingPlane()
+void  NbvGenerator::PublishBackgroudObjectsModel()
 {
-    std::cout << "PublishBackgroudObjects_and_SupportingPlane: 平面点云的数量为"<< mvPlanes_filter.size()  << std::endl;
+    std::cout << "PublishBackgroudObjectsModel: 平面点云的数量为"<< mvPlanes_filter.size()  << std::endl;
     // color.
     std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
 
@@ -1360,10 +1460,10 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     Object3D->backgroud_object = true;
     //Eigen::Matrix4d pose = Converter::cvMattoMatrix4d(bo->pose_mat);
     g2o::SE3Quat pose =  Converter::toSE3Quat( bo->pose_mat );
-    Object3D->mCuboid3D.corner_1 = pose * Eigen::Vector3d(x_min, y_min, 0);
-    Object3D->mCuboid3D.corner_2 = pose * Eigen::Vector3d(x_max, y_min, 0);
-    Object3D->mCuboid3D.corner_3 = pose * Eigen::Vector3d(x_max, y_max, 0);
-    Object3D->mCuboid3D.corner_4 = pose * Eigen::Vector3d(x_min, y_max, 0);
+    Object3D->mCuboid3D.corner_1 = pose * Eigen::Vector3d(x_min, y_min, 0);Object3D->mCuboid3D.corner_1.z() = 0;
+    Object3D->mCuboid3D.corner_2 = pose * Eigen::Vector3d(x_max, y_min, 0);Object3D->mCuboid3D.corner_2.z() = 0;
+    Object3D->mCuboid3D.corner_3 = pose * Eigen::Vector3d(x_max, y_max, 0);Object3D->mCuboid3D.corner_3.z() = 0;
+    Object3D->mCuboid3D.corner_4 = pose * Eigen::Vector3d(x_min, y_max, 0);Object3D->mCuboid3D.corner_4.z() = 0;
     Object3D->mCuboid3D.corner_5 = pose * Eigen::Vector3d(x_min, y_min, z_max);
     Object3D->mCuboid3D.corner_6 = pose * Eigen::Vector3d(x_max, y_min, z_max);
     Object3D->mCuboid3D.corner_7 = pose * Eigen::Vector3d(x_max, y_max, z_max);
@@ -1377,7 +1477,6 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     marker.header.stamp=ros::Time::now();
     marker.type = visualization_msgs::Marker::LINE_LIST; //LINE_STRIP;
     marker.action = visualization_msgs::Marker::ADD;
-    //marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
     //if(bo->return_end_ASLAM() == bo->UnExplored){
     //  marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
     //}
@@ -1387,9 +1486,15 @@ void NbvGenerator::publishBackgroudObject( BackgroudObject* bo ){
     //else{
     //  marker.color.r = 0.0; marker.color.g = 1.0; marker.color.b = 0.0; marker.color.a = 1.0;
     //}
-    std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
-    vector<float> color = colors_bgr[ (bo->mnClass +4) % 6];  //+1还是粉色/红色    +2绿色  +3蓝色  +4橙色   +5黄色
-    marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
+    if(bo->mState == bo->UnExplored){    //还没有开始观测
+        marker.color.r = 0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
+    }
+    else {  //还在建图中或建图完毕，则是桌子的彩色
+        std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
+        vector<float> color = colors_bgr[ (bo->mnClass +4) % 6];  //+1还是粉色/红色    +2绿色  +3蓝色  +4橙色   +5黄色
+        marker.color.r = color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 1.0;
+    }
+
 
     marker.scale.x = 0.01;
     //     8------7

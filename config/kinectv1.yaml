@@ -70,7 +70,7 @@ Trobot_camera.qz: 0.364187
 
 Trobot_camera.tx: 0.0
 Trobot_camera.ty: 0.0
-Trobot_camera.tz: 1.4  #this height is 0.2 higher than the height in gazebo
+Trobot_camera.tz: 1.4 #this height is 0.2 higher than the height in gazebo
 Trobot_camera.down_nbv_height: 0.0
 
 
@@ -200,15 +200,16 @@ ViewField: 0.7
 PubGlobalGoal: 0  # 为1，用于实体机器人，需调用movebase；为0时，用于gazebo环境，手动键盘控制。
 PubLocalGoal: 1  # 1 my_nbv ; 2 cover;  0 frontier
 
-ObserveMaxNumBackgroudObject: 100
+ObserveMaxNumBackgroudObject: 7
 MAM.Reward_angle_cost: 0.0  #计算reward时的dis。
 MAM.Reward_dis: 0.5  #计算reward时的dis。当前没用到
 Planle.Safe_radius: 0.5
 
-ConstraintType: 1 #3 rostf; 2 imu; 1 yaml
-FakeBackgroudObjects: 0  #fake背景物体的数量
-IE.BackgroudObjectNum: 5   #背景物体的先验数量
-IE.ThresholdEndMapping: 1.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
+ConstraintType: 3 #3 rostf; 2 imu; 1 yaml
+FakeBackgroudObjects: 1  #fake背景物体的数量
+FakeGBVs: 1
+IE.BackgroudObjectNum: 1   #背景物体的先验数量
+IE.ThresholdEndMapping: 0.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0
@@ -242,3 +243,4 @@ IE.ThresholdEndMapping: 1.45   #0.4 #0.42   #设置为极小值，即可关闭en
 #41   #杯子
 yolo_class: [77, 73,  39,  63, 75,  66,  41, 64]   #先去掉笔记本电脑 63
 #yolo_class: [77, 73, 56, 39,  75,  66,  41]
+#yolo_class: [ 73 book书,  39bottle瓶子,  63laptop笔记本电脑, 75vase花瓶,  66keyboard键盘,  41cup杯子 ]

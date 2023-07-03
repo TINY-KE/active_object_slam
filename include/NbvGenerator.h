@@ -94,7 +94,7 @@ private:
     visualization_msgs::Marker mPlanesCentroid;
     int  mbPubGlobalGoal, mbPubLocalGoal;
     int mFakeLocalNum=0;
-    int mbFakeBackgroudObjects;
+    int mbFakeBackgroudObjects, mbFakeGBVs;
     int mnObserveMaxNumBackgroudObject = 10;
 
     const char* CANDIDATE_NAMESPACE = "Candidate";
@@ -148,7 +148,7 @@ private:
     ros::Publisher pubCloud;
     ros::Publisher publisher_object_backgroud;
     //MapPublisher mappublisher;
-    void PublishBackgroudObjects_and_SupportingPlane();
+    void PublishBackgroudObjectsModel();
     void publishBackgroudObject(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
     void publishSupportingPlane(pcl::PointCloud<pcl::PointXYZRGB>::Ptr plane );
     void publishBackgroudObject( BackgroudObject* bo );
@@ -189,6 +189,11 @@ private:
     void publishLocalNBV(const Candidate& nbv);
     float mTfDuration;
     void publishNeckAngle(double angle);
+
+//fake gbvs
+private:
+    void read_view(const std::string filePath, std::vector<Candidate>& views);
+    vector<Candidate> mvFakeGBVs;
 };
 
 }
