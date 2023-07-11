@@ -362,6 +362,7 @@ void NbvGenerator::Run() {
                 //v2:
                 ros::Rate loop_rate(2);
                 while(true){
+                    PublishBackgroudObjectsModel();  //可视化 筛选后的平面
                     //用于my NBV方法。系统自动选择相机直视的背景物体。
                     if(mbPubLocalGoal==1){
                         if(mbReachGoalFlag){

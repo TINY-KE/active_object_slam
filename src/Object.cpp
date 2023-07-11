@@ -1262,7 +1262,8 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
     }
 
     // step 4. update object pose。  更新物体在世界下的坐标
-    Update_Twobj();
+    //if(!mbFakeGBVs)
+        Update_Twobj();
 
 
     // step 5. 计算8个定点的世界坐标
@@ -1323,7 +1324,8 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
     this->mCuboid3D.width = y_max_obj - y_min_obj;
     this->mCuboid3D.height = z_max_obj - z_min_obj;
     this->mCuboid3D.cuboidCenter = (mCuboid3D.corner_2 + mCuboid3D.corner_8) / 2;
-    Update_Twobj();
+    //if(!mbFakeGBVs)
+        Update_Twobj();
 
     // maximum radius.
     float fRMax = 0.0;
@@ -1378,6 +1380,22 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
 
     // step 8. 计算ie
     this->ComputeIE();
+    if(mbFakeGBVs){
+            if(mnClass == 39)  FakeObjectModel(  0.0,0.0,0.0,    0.109946, 0.100190, 0.236864 );
+            if(mnClass == 41)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
+            if(mnClass == 63)  FakeObjectModel(  -2.487148, -0.559188, 0.730031,         0.367074, 0.259145, 0.245264 );
+            if(mnClass == 66)  FakeObjectModel(  -1.934208, -0.365646, 0.610426,         0.366773, 0.115214, 0.029107 );
+            if(mnClass == 73 && mCuboid3D.lenth>mCuboid3D.width)  FakeObjectModel(  0.0,0.0,0.0,    0.268918, 0.199322, 0.116753 );
+            if(mnClass == 73 && mCuboid3D.lenth<mCuboid3D.width)  FakeObjectModel(  0.0,0.0,0.0,    0.199322, 0.268918, 0.116753 );
+            if(mnClass == 75)  FakeObjectModel(  -1.428671, 0.174307, 0.773543,    0.227897, 0.260161, 0.362524 );
+            //1 8   75 1 0     -1.387770 0.211749 0.785359     0.000000 0.000000 0.000000 1.000000     0.246935 0.246935 0.347301   #vase
+            if(mnClass == 0)  FakeObjectModel(  0.006113, -0.816946, 1.398712,    0.450792, 0.439141,  0.604744 );
+            //1 14   0 19 412     0.887667 -0.104503 1.244793     0.000000 0.000000 0.000000 1.000000     0.299141 0.410792 0.604744
+            //1 0   0 151 119     0.069031 -0.851992 1.503668     0.000000 0.000000 0.000000 1.000000     0.043271 0.122006 0.198915 #person人类
+            //1 4   0 25 294     -0.178415 -0.900746 1.431823     0.000000 0.000000 0.000000 1.000000     0.200071 0.169080 0.371475 #person人类
+            //1 0   0 90 739     0.006113 -0.816946 1.398712     0.000000 0.000000 0.000000 1.000000     0.380882 0.317487 0.523553 #person人类
+    }
+
     if(mIE < mIEThresholdEndMapping ){
         end_build = true;
         //    yolo_class: [   39bottle瓶子,  41cup杯子,    63laptop笔记本电脑, 66keyboard键盘,   73 book书,  75vase花瓶,     ]
@@ -1391,17 +1409,10 @@ void Object_Map::ComputeMeanAndDeviation_3D() {
         }
     }
 
-    if(mbFakeGBVs){
-            if(mnClass == 39)  FakeObjectModel(  0.0,0.0,0.0,    0.109946, 0.100190, 0.236864 );
-            if(mnClass == 41)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
-            if(mnClass == 63)  FakeObjectModel(  -2.487148, -0.559188, 0.730031,         0.367074, 0.259145, 0.245264 );
-            if(mnClass == 66)  FakeObjectModel(  -1.934208, -0.365646, 0.610426,         0.366773, 0.115214, 0.029107 );
-            if(mnClass == 73)  FakeObjectModel(  0.0,0.0,0.0,    0.095610, 0.108247, 0.116753 );
-            if(mnClass == 75)  FakeObjectModel(  -1.428671, 0.174307, 0.773543,    0.197897, 0.260161, 0.362524 );
-    }
 
-    if(mbPublishIEwheel)
-        this->PublishIE();
+
+    //if(mbPublishIEwheel)
+    //    this->PublishIE();
 
     // step 9. 计算观测主方向
     this->ComputeMainDirection();
@@ -2632,6 +2643,10 @@ Object_Map::Object_Map() {
 
     mIE_rows = fSettings["IE.rows"];
     mIE_cols = fSettings["IE.cols"];
+    mvPointNum_vector.resize(mIE_rows*mIE_cols);
+    mvGridProb_vector.resize(mIE_rows*mIE_cols);
+    mvInforEntroy_vector.resize(mIE_rows*mIE_cols);
+
     //std::cout<<"IE_RecoverInit:2  "
     //            <<", " << mIE_rows
     //            <<", " << mIE_cols
@@ -2663,7 +2678,7 @@ void Object_Map::IE_RecoverInit() {
         //vector<int> PointNum_OneColu(mIE_rows, 0.0) ;
         //vector<vector<int> >  PointNum(mIE_cols, PointNum_OneColu);
         //mvPointNum = PointNum;
-        mvPointNum_mat = cv::Mat::zeros(mIE_rows,mIE_cols,CV_32F);
+        mvObserveNum_mat = cv::Mat::zeros(mIE_rows, mIE_cols, CV_32F);
 
         //18*18个grid的 占据概率
         //vector<double> GridProb_OneColu(mIE_rows, mP_prior) ;
@@ -2733,9 +2748,9 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
         int x = -1 , y = -1;
         compute_grid_xy(zero_vec, point_vec, x, y);
         if( x>=0 && x<=mIE_cols && y>=0 && y<=mIE_rows ) {
-            int temp = mvPointNum_mat.at<float>(x,y);
+            int temp = mvObserveNum_mat.at<float>(x, y);
             //std::cout<<"compute_pointnum_eachgrid1: " << temp <<std::endl;
-            mvPointNum_mat.at<float>(x,y) = temp+1;
+            mvObserveNum_mat.at<float>(x, y) = temp + 1;
             //std::cout<<"compute_pointnum_eachgrid2: " << mvPointNum_mat.at<float>(x,y) <<std::endl;
         }
         else{
@@ -2743,7 +2758,7 @@ cv::Mat Object_Map::compute_pointnum_eachgrid(){
         }
     }
 
-    return mvPointNum_mat;
+    return mvObserveNum_mat;
 }
 
 //首先记录每个栅格被投影到的所有点，然后查看每个点被当前物体观察到的次数，记录下最大的次数。没有点的栅格，记录同一列的栅格的平均值。
@@ -2782,8 +2797,8 @@ void Object_Map::compute_perceptionNum_eachgrid() {
             }
 
             //将此栅格上point的最大viewCount记录下来
-            if(viewdCount>mvPointNum_mat.at<float>(x,y))
-                mvPointNum_mat.at<float>(x,y) = viewdCount;
+            if(viewdCount > mvObserveNum_mat.at<float>(x, y))
+                mvObserveNum_mat.at<float>(x, y) = viewdCount;
         }
         else{
             //ROS_ERROR("compute grid xy < 0,%d,%d",x,y);
@@ -2799,36 +2814,31 @@ float Object_Map::log2(float x){
     return y;
 }
 void Object_Map::compute_occupied_prob_eachgrid(){
-    //std::cout<<"debug 每个grid的point数量与占据概率：";
     for(int x=0; x<mIE_rows; x++){
 
-        //计算这一行的点的总数
+
         int num_onecol = 0;
-        int num_nozero = 0;
+        int num_min = 1000;  //计算这一行的点数的最小值
         for(int y=0; y<mIE_cols; y++){
-            num_onecol +=  mvPointNum_mat.at<float>(x,y);
-            if( mvPointNum_mat.at<float>(x,y) != 0 )
-                num_nozero ++;
+            int temp =  mvObserveNum_mat.at<float>(x, y);
+            num_onecol +=  temp;
+            if(temp<num_min && temp!=0)
+                num_min=temp+2;
         }
 
 
         //总数大于阈值，才认为管材的有效
         if(num_onecol > mIEThresholdPointNum){
             //记录此列的point的平均值,用于没有point投影的栅格
-            int ave = ceil(num_onecol/ num_nozero);
+            int num_for_free = num_min;
 
             //当前列的观测到认为有效，即当前列的grid，认为是free或occupied
             for(int y=0; y<mIE_rows; y++){
                 double l_lnv ;
-                double l_last = log2(   (1-log2(mvGridProb_mat.at<float>(x,y)))
-                                  /  log2(mvGridProb_mat.at<float>(x,y))
-                                 );
-                double l_last_fake = 0.0;
-                int PointNum = mvPointNum_mat.at<float>(x,y);
-                int ObserveNum = mvObject_2ds.size();
+                int PointNum = mvObserveNum_mat.at<float>(x, y);
                 //if(ObserveNum==0) ObserveNum=40;//todo:  这是因为在融合的时候,有一步没把mvObject_2ds融合
                 if(PointNum == 0){
-                    PointNum = ave;
+                    PointNum = num_for_free;
 
                     //free
                     //todo: 当前只更新一次，之后对物体内的point进行“是否为新添加的更新”，再进行增量更新
@@ -2849,24 +2859,22 @@ void Object_Map::compute_occupied_prob_eachgrid(){
                     //lnv_p = log(mP_prior) + ObserveNum * (log(mP_occ) - log(mP_prior));
                     l_lnv = PointNum * log2(mP_occ / (1.0 - mP_occ));
                 }
-                //mvGridProb_mat.at<float>(x,y) = exp(lnv_p);
                 double bel = 1.0 - 1.0 / (1.0 + exp(l_lnv));
                 if(bel>0.99)  bel=0.99;
                 if(bel<0.01)  bel=0.01;
-                mvGridProb_mat.at<float>(x,y) = (float) bel;
-                //std::cout << mvPointNum_mat.at<float>(x,y) << "(" << mvGridProb_mat.at<float>(x,y) << "," << ObserveNum << "," << l_lnv << ")， ";
+                //mvGridProb_mat.at<float>(x,y) = (float) bel;
+                mvGridProb_vector[x*mIE_rows+y] = bel;
             }
         }
         else{
              //当前列的观测到认为无效，即当前列的grid，认为是unknown
              for(int y=0; y<mIE_rows; y++){
                  //unkonwn
-                 mvGridProb_mat.at<float>(x,y) = mP_prior;
-                 //std::cout<<mvPointNum_mat.at<float>(x,y)<<"("<<mvGridProb_mat.at<float>(x,y)<<")， ";
+                 //mvGridProb_mat.at<float>(x,y) = mP_prior;
+                 mvGridProb_vector[x*mIE_rows+y] = mP_prior;
              }
         }
     }
-    //std::cout<<"   "<<std::endl;
 }
 
 
@@ -2881,101 +2889,44 @@ void Object_Map::ComputeIE(){
     //计算每个grid的占据概率
     compute_occupied_prob_eachgrid();
 
+    ////v1：  cv::Mat 存储
+    ////计算各grid的信息熵
+    //for(int x=0; x<mIE_cols; x++)
+    //    for(int y=0; y<mIE_rows; y++){
+    //        //std::cout<<mvGridProb_mat.at<float>(x,y)<<"， ";
+    //        mvInforEntroy_mat.at<float>(x,y) = IE(mvGridProb_mat.at<float>(x,y));
+    //    }
+    //
+    ////计算总的信息熵mIE
+    //double entroy = 0;
+    //for(int x=0; x<mIE_cols; x++)
+    //    for(int y=0; y<mIE_rows; y++){
+    //        entroy += mvInforEntroy_mat.at<float>(x,y);
+    //    }
+    //
+    //mIE = entroy/(mIE_cols*mIE_rows);
+
+
+    //v2：  vector存储
     //计算各grid的信息熵
-    //std::cout<<"debug 每个grid的占据概率：";
     for(int x=0; x<mIE_cols; x++)
         for(int y=0; y<mIE_rows; y++){
-            //std::cout<<mvGridProb_mat.at<float>(x,y)<<"， ";
-            mvInforEntroy_mat.at<float>(x,y) = IE(mvGridProb_mat.at<float>(x,y));
+            mvInforEntroy_vector[x*mIE_rows+y] = IE(mvGridProb_vector[x*mIE_rows+y]);
         }
-    //std::cout<<""<<std::endl;
 
     //计算总的信息熵mIE
     double entroy = 0;
     for(int x=0; x<mIE_cols; x++)
         for(int y=0; y<mIE_rows; y++){
-            entroy += mvInforEntroy_mat.at<float>(x,y);
+            entroy += mvInforEntroy_vector[x*mIE_rows+y];
         }
 
     mIE = entroy/(mIE_cols*mIE_rows);
-
-    //记录栅格的状态??
 }
 
 
 void Object_Map::PublishIE(){
-    // color.
-    //std::vector<vector<float> > colors_bgr{ {135,0,248},  {255,0,253},  {4,254,119},  {255,126,1},  {0,112,255},  {0,250,250}   };
-    //vector<float> color;
 
-    //生成 rviz marker
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = "map";
-    marker.ns = "InformationEntroy";
-    marker.lifetime = ros::Duration(0.5);
-    marker.id= mnId;
-    marker.type = visualization_msgs::Marker::POINTS;
-    marker.scale.x=0.03;
-    marker.scale.y=0.08;
-    marker.pose.orientation.w=1.0;  //????
-    marker.action=visualization_msgs::Marker::ADD;
-
-
-    //for(size_t i=0; i< vObjs.size(); i++)
-    {
-
-        if((this->mvpMapObjectMappoints.size() < 10) || (this->bad_3d == true)  || this->backgroud_object)
-        {
-            return;
-        }
-
-        //color = colors_bgr[obj->mnClass % 6];
-        double diameter = sqrt(mCuboid3D.width * mCuboid3D.width   +   mCuboid3D.lenth * mCuboid3D.lenth )/2.0;
-        for(int x=0; x<mIE_rows; x++){
-            double angle_divide = 2*M_PI/mIE_rows;
-            double angle = angle_divide * ( x + 0.5 );
-            double p_x = cos(angle) * diameter;
-            double p_y = sin(angle) * diameter;
-
-            double h_divide =  mCuboid3D.height/mIE_cols;
-            for(int y=0; y<mIE_cols; y++){
-                //计算纵坐标
-                double p_z = h_divide * (y+0.5) - mCuboid3D.height/2.0;
-
-                // 物体坐标系 -> 世界坐标系
-                cv::Mat cvMat4 = mCuboid3D.pose_mat.clone();
-                Eigen::Matrix4f eigenMat4f;
-                cv::cv2eigen(cvMat4, eigenMat4f);
-                //Eigen::Matrix4d T = ORB_SLAM2::Converter::cvMattoMatrix4d(obj->mCuboid3D.pose_mat);
-                Eigen::Matrix4d T = eigenMat4f.cast<double>();
-                Eigen::Matrix3d R = T.block<3, 3>(0, 0);
-                Eigen::Vector3d p_world = R * Eigen::Vector3d(p_x, p_y, p_z);
-                geometry_msgs::Point p;
-                p.x= p_world[0] + T(0, 3);
-                p.y= p_world[1] + T(1, 3);
-                p.z= p_world[2] + T(2, 3);
-
-                if(mvGridProb_mat.at<float>(x,y) > 0.5){
-                    //marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 1.0;
-                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.7;
-                    //marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
-                    marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 0.7;
-                }
-                else if(mvGridProb_mat.at<float>(x,y) < 0.5){
-                    //marker.color.r =0.0; marker.color.g = 0.0; marker.color.b = 0.0; marker.color.a = 1.0;
-                    //marker.color.r =color[2]/255.0; marker.color.g = color[1]/255.0; marker.color.b = color[0]/255.0; marker.color.a = 0.15;
-                    marker.color.r =255.0; marker.color.g = 255.0; marker.color.b = 255.0; marker.color.a = 0.7;
-                }
-                else {
-                    marker.color.r =1.0; marker.color.g = 1.0; marker.color.b = 1.0; marker.color.a = 0.2;
-                }
-
-                marker.points.push_back(p);
-                //usleep(100);
-            }
-        }
-    }
-    publisher_IE.publish(marker);
 }
 
 //计算物体的主向量, 注意:这是在world坐标系下描述的

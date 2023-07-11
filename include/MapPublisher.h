@@ -130,6 +130,7 @@ private:
     float fCameraSize;
     float fPointSize;
 
+
     cv::Mat mCameraPose;// = cv::Mat::eye(4,1,CV_32F);
     bool mbCameraUpdated;
 
@@ -146,7 +147,8 @@ private:
     float mObject_Duration;
     float mDirection_Duration;
     float mIE_Duration;
-
+    int mbPublishIEwheel;
+    float mfIEViewThresh;
 //plane
 public:
     //typedef pcl::PointXYZRGB PointT;

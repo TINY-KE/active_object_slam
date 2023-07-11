@@ -118,6 +118,8 @@ int main(int argc, char **argv)
     const std::string VocFile = WORK_SPACE_PATH + "/Vocabulary/ORBvoc.bin";
     ros::param::param<std::string>("~yamlfile", yamlfile, "kinectv1.yaml"); /*kinectdk.yaml  TUM3.yaml TUM3_ros.yaml kinectdk_720.yaml   kinectv1.yaml*/
     ros::param::param<std::string>("~yamlfile", yamlfile_object, "kinectv1.yaml");
+    //ros::param::param<std::string>("~yamlfile", yamlfile, "TUM3_ros.yaml");
+    //ros::param::param<std::string>("~yamlfile", yamlfile_object, "TUM3_ros.yaml");
     const std::string YamlFile = WORK_SPACE_PATH + "/config/" + yamlfile;
     ros::param::param<std::string>("~sensor", sensor, "RGBD");
     ros::param::param<bool>("~online", semanticOnline, "true");
@@ -226,6 +228,8 @@ vector<BoxSE> ImageGrabber::darknetRosMsgToBoxSE(vector<darknet_ros_msgs::Boundi
             std::vector<int>::iterator iter = std::find( yolo_class.begin(),  yolo_class.end(), objInfo.id);
             if(iter == yolo_class.end())
                 continue;
+            if(objInfo.id == 77)
+                objInfo.id = 0;
             BoxSE box;
             box.m_class = objInfo.id;
             box.m_score = objInfo.probability;

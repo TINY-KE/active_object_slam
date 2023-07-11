@@ -47,8 +47,20 @@ ThDepth: 40.0
 # Deptmap values factor  ？？
 DepthMapFactor: 1000.0
 
+
+
 # 1: robot_camera tf; 2: use imu
-ConstraintType: 1
+
+Tworld_camera.qw: -0.506
+Tworld_camera.qx: 0.507
+Tworld_camera.qy: -0.493
+Tworld_camera.qz: 0.494
+Tworld_camera.tx: 0.008
+Tworld_camera.ty: -0.032
+Tworld_camera.tz: 1.145  #this height is 0.2 higher than the height in gazebo
+
+
+
 Trobot_camera.qx: -0.506
 Trobot_camera.qy: 0.507
 Trobot_camera.qz: -0.493
@@ -93,11 +105,28 @@ Viewer.ViewpointY: -0.7
 Viewer.ViewpointZ: -1.8
 Viewer.ViewpointF: 500
 
-Viewer.pangolin: 1
+Viewer.pangolin: 0
 Viewer.rviz: 1
-Viewer.readlocalobject: 1
-# pcl pointcloud mapping
-PointCloudMapping.Resolution: 0.01
+
+
+
+Viewer.show_object3d_frame: 0
+
+Viewer.object_Duration: 0.1
+Viewer.direction_Duration: 0.1
+Viewer.IE_Duration: 0.1
+Viewer.readlocalobject: 0
+Viewer.savelocalobject: 0
+
+#--------------------------------------------------------------------------------------------
+# Plane Extraction Parameters
+#--------------------------------------------------------------------------------------------
+Cloud.Dis: 3
+Plane.MinSize: 500
+Plane.AngleThreshold: 3.0
+Plane.DistanceThreshold: 0.05
+Plane.LeafSize: 0.01
+Plane.MaxDistance: 10.0
 
 #--------------------------------------------------------------------------------------------
 # Plane Optimization Parameters
@@ -118,9 +147,9 @@ Plane.VerticalInfo: 0.5
 #--------------------------------------------------------------------------------------------
 # Supposed Plane Extraction Parameters
 #--------------------------------------------------------------------------------------------
-#Line.Ratio: 0.2
-#Line.DistanceThreshold: 0.01
-#Plane.ShowSPlane: 1
+Line.Ratio: 0.2
+Line.DistanceThreshold: 0.01
+Plane.ShowSPlane: 1
 
 
 #--------------------------------------------------------------------------------------------
@@ -130,7 +159,89 @@ SavePath.Frame: "FrameTrajectory.txt"
 SavePath.Keyframe: "KeyFrameTrajectory.txt"
 SavePath.PlaneFeature: "PlaneFeature.txt"
 
+
 #--------------------------------------------------------------------------------------------
-# NBV
+# foreground object
 #--------------------------------------------------------------------------------------------
+IForest.Threshold: 0.6
+
+#--------------------------------------------------------------------------------------------
+# Local NBV
+#--------------------------------------------------------------------------------------------
+MAM.isused: 0
+MAM.neckdelay: 100
 MAM.divide: 20
+MAM.NeckRange: 6.28
+MAM.TfDuration: 2.0
+
+#--------------------------------------------------------------------------------------------
+# Global NBV
+#--------------------------------------------------------------------------------------------
+
+IE.rows: 18
+IE.cols: 18
+IE.P_occ: 0.6
+IE.P_free: 0.4
+IE.P_prior: 0.5
+IE.ThresholdPointNum: 6
+IE.PublishIEwheel: 0
+
+#IE.BackgroudObjectNum: 2    #背景物体的先验数量
+Plane.Height.Max: 2.0
+Plane.Height.Min: 0.3
+#Planle.Safe_radius: 0.3
+Planle.Gobal_Candidate_Num: 36
+NBV_Angle_correct_factor: 0 #-0.5
+Candidate_num_topub: 1 #36
+ViewField: 0.7
+
+
+
+#核心控制选项
+PubGlobalGoal: 0  # 为1，用于实体机器人，需调用movebase；为0时，用于gazebo环境，手动键盘控制。
+PubLocalGoal: 1  # 1 my_nbv ; 2 cover;  0 frontier
+
+ObserveMaxNumBackgroudObject: 7
+MAM.Reward_angle_cost: 0.0  #计算reward时的dis。
+MAM.Reward_dis: 0.5  #计算reward时的dis。当前没用到
+Planle.Safe_radius: 0.5
+
+ConstraintType: 3 #3 rostf; 2 imu; 1 yaml
+FakeBackgroudObjects: 1  #fake背景物体的数量
+FakeGBVs: 1
+IE.BackgroudObjectNum: 1   #背景物体的先验数量
+IE.ThresholdEndMapping: 0.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
+#--------------------------------------------------------------------------------------------
+# yolo
+#         "person人类",  //0
+#        "`b`icycle自行车", "car汽车", "motorcycle", "airplane", "bus",   //1
+#        "train", "truck", "boat", "traffic light",   "fire hydrant", //6
+#        "stop sign停止标", "parking meter", "bench", "bird", "cat", //11
+#        "dog", "horse", "sheep", "cow",  "elephant", //16
+#        "bear", "zebra", "giraffe", "backpack背包", "umbrella雨伞", //21
+#        "handbag手提包", "tie领带", "suitcase手提箱", "frisbee",  "skis", //26
+#        "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", //31
+#        "skateboard", "surfboard",  "tennis racket", "bottle瓶子", "wine glass酒杯", //36
+#        "cup杯子", "fork", "knife", "spoon", "bowl碗", //41
+#        "banana香蕉", "apple苹果",   "sandwich三明治", "orange橙子", "broccoli", //46
+#        "carrot", "hot dog热狗", "pizza", "donut", "cake蛋糕", //51
+#        "chair椅子", "couch沙发",  "potted plant盆栽", "bed床", "dining table餐桌",//56
+#        "toilet", "tv电视", "laptop笔记本电脑", "mouse鼠标", "remote遥控器", //61
+#        "keyboard键盘", "cell phone手机",  "microwave微波炉", "oven烤箱", "toaster烤面包机", //66
+#        "sink水槽", "refrigerator冰箱", "book书", "clock钟", "vase花瓶", //71
+#        "scissors", "teddy bear泰迪熊",  "hair drier", "toothbrush"};//76
+#--------------------------------------------------------------------------------------------
+#yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
+#yolo_class: [24, 28, 39, 56, 57, 58, 59, 60, 62, 63, 66, 67, 73, 72, 11]
+#yolo_class: [77]
+#77,  #泰迪熊
+#73,  #书
+#56,  #椅子
+#39,  #瓶子
+#63,  #笔记本电脑
+#75,  #花瓶
+#66,  #键盘
+#41   #杯子
+yolo_class: [77, 73,  39,  63, 75,  66,  41, 64]   #先去掉笔记本电脑 63
+#yolo_class: [77, 73, 56, 39,  75,  66,  41]
+#yolo_class: [ 73 book书,  39bottle瓶子,  63laptop笔记本电脑, 75vase花瓶,  66keyboard键盘,  41cup杯子 ]

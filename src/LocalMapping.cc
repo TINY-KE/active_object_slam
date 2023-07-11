@@ -876,7 +876,8 @@ void LocalMapping::WhetherOverlapObject()
             float fVolume2 = (Obj2->mCuboid3D.lenth * Obj2->mCuboid3D.width) * Obj2->mCuboid3D.height;
 
             //如果..., 说明两个物体重叠
-            if((dis_x < sum_lenth_half) && (dis_y < sum_width_half) && (dis_z < sum_height_half))
+            //if((dis_x < sum_lenth_half) && (dis_y < sum_width_half) && (dis_z < sum_height_half))
+            if((dis_x < 0.1) && (dis_y < 0.1) )
             {
                  //计算overlap in 3 directions.
                 float overlap_x = sum_lenth_half - dis_x;

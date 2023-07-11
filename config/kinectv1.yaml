@@ -110,7 +110,7 @@ Viewer.ViewpointF: 500
 
 Viewer.pangolin: 0
 Viewer.rviz: 1
-Viewer.savelocalobject: 1
+
 
 Viewer.show_object3d_frame: 0
 
@@ -118,6 +118,7 @@ Viewer.object_Duration: 0.1
 Viewer.direction_Duration: 0.1
 Viewer.IE_Duration: 0.1
 Viewer.readlocalobject: 0
+Viewer.savelocalobject: 1
 #--------------------------------------------------------------------------------------------
 # Plane Extraction Parameters
 #--------------------------------------------------------------------------------------------
@@ -210,6 +211,7 @@ FakeBackgroudObjects: 1  #fake背景物体的数量
 FakeGBVs: 1
 IE.BackgroudObjectNum: 1   #背景物体的先验数量
 IE.ThresholdEndMapping: 0.45   #0.4 #0.42   #设置为极小值，即可关闭end_build
+
 #--------------------------------------------------------------------------------------------
 # yolo
 #         "person人类",  //0
@@ -241,6 +243,6 @@ IE.ThresholdEndMapping: 0.45   #0.4 #0.42   #设置为极小值，即可关闭en
 #75,  #花瓶
 #66,  #键盘
 #41   #杯子
-yolo_class: [77, 73,  39,  63, 75,  66,  41, 64]   #先去掉笔记本电脑 63
-#yolo_class: [77, 73, 56, 39,  75,  66,  41]
+yolo_class: [ 73, 56, 39,  75,  66,  63, 41]
+
 #yolo_class: [ 73 book书,  39bottle瓶子,  63laptop笔记本电脑, 75vase花瓶,  66keyboard键盘,  41cup杯子 ]

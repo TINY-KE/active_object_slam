@@ -333,10 +333,13 @@ public:
     double mIE;
     //std::vector<std::vector<double> > mvInforEntroy;                   // 没用.  用于存储18*18个栅格的信息熵
     cv::Mat mvInforEntroy_mat;
+    std::vector<double> mvInforEntroy_vector;   //一列一列得存储
     //std::vector<std::vector<double> > mvGridProb;                     //用于存储18*18个栅格的占据概率
     cv::Mat mvGridProb_mat;
+    std::vector<double> mvGridProb_vector;
     //std::vector<std::vector<int> > mvPointNum;                //存储18*18个栅格中,各自的grid数量
-    cv::Mat mvPointNum_mat;
+    cv::Mat mvObserveNum_mat;
+    std::vector<double> mvPointNum_vector;   //一列一列得存储
 
     void compute_grid_xy(const Eigen::Vector3d &zero_vec, const Eigen::Vector3d &point_vec, int& x, int& y);
     cv::Mat compute_pointnum_eachgrid();

@@ -141,7 +141,7 @@ void PublishNBVs(const vector<cv::Mat> &VIEWs, const int type)
         //mCovisibilityGraph.header.stamp = ros::Time::now();
         mMST.header.stamp = ros::Time::now();
 
-        publisher_nbv.publish(mKFs);
+        //publisher_nbv.publish(mKFs);
         //publisher_CoView.publish(mCovisibilityGraph);
         publisher_nbv.publish(mMST);
     }
@@ -447,6 +447,8 @@ int main(int argc, char **argv)
     mNBVs.pose.orientation.w=1.0;
     mNBVs.action=visualization_msgs::Marker::ADD;
     mNBVs.color.r = 1.0f;
+    //mNBVs.color.g = 0.0f;
+    //mNBVs.color.b = 0.0f;
     mNBVs.color.a = 1.0;
 
     //Configure KeyFrames Spanning Tree  关键帧中心的连线
